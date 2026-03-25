@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>♟️ Free Chess - Play Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <style>
+        body { font-family: 'Inter', system_ui, sans-serif; }
+        .chessboard { display: grid; grid-template-columns: repeat(8, 1fr); width: 520px; height: 520px; border: 6px solid #1f2937; background: #111827; }
+        .square { display: flex; align-items: center; justify-content: center; font-size: 42px; cursor: pointer; user-select: none; }
+        .light { background-color: #f1e8d9; }
+        .dark { background-color: #8d6b4f; }
+        .highlight { box-shadow: inset 0 0 0 6px #22c55e; }
+        .selected { box-shadow: inset 0 0 0 6px #eab308; }
+        .timer { font-family: monospace; font-size: 1.5rem; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-white">
+    <div class="max-w-6xl mx-auto p-6">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold flex items-center gap-3">♟️ Free Chess</h1>
+            <div class="flex items-center gap-4">
+                <button onclick="toggleTheme()" id="theme-btn"
+                        class="px-5 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-3xl text-sm">🌙 Dark Mode</button>
+                <button onclick="copyShareLink()" 
+                        class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-3xl text-sm">Share Link</button>
+            </div>
+        </div>
+
+        <div class="flex flex-col lg:flex-row gap-10 justify-center">
+            <!-- Left Player (Black) -->
+            <div class="text-center">
+                <div class="timer bg-zinc-900 px-6 py-3 rounded-3xl" id="black-timer">10:00</div>
+                <p class="text-zinc-400 mt-2">Black</p>
+            </div>
+
+            <!-- Board -->
+            <div>
+                <div id="board" class="chessboard mx-auto"></div>
+            </div>
+
+            <!-- Right Player (White) -->
+            <div class="text-center">
+                <div class="timer bg-zinc-900 px-6 py-3 rounded-3xl" id="white-timer">10:00</div>
+                <p class="text-emerald-400 mt-2">White (You)</p>
+            </div>
+        </div>
+
+        <div class="mt-10 flex flex-col lg:flex-row gap-10">
+            <!-- Game Controls -->
+            <div class="lg:w-80 bg-zinc-900 rounded-3xl p-6">
+                <div id="status" class="text-2xl font-semibold text-center mb-6">White's turn</div>
+                
+                <div class="space-y-3">
+                    <button onclick="newGame()" class="w-full py-4 bg-white text-black rounded-3xl font-medium">New Game</button>
+                    <button onclick="undoMove()" class="w-full py-4 bg-zinc-800 hover:bg-zinc-700 rounded-3xl font-medium">Undo</button>
+                    <button onclick="resign()" class="w-full py-4 bg-red-600 hover:bg-red-500 rounded-3xl font-medium">Resign</button>
+                </div>
+
+                <div class="mt-8">
+                    <h3 class="text-sm text-zinc-400 mb-3">Move History</h3>
+                    <div id="move-history" class="bg-black h-64 overflow-y-auto p-4 rounded-2xl text-sm font-mono"></div>
+                </div>
+            </div>
+
+            <!-- Mode & Difficulty -->
+            <div class="flex-1 bg-zinc-900 rounded-3xl p-8">
+                <h2 class="text-xl font-semibold mb-6">Game Mode</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="setMode('ai')" id="ai-btn" 
+                            class="p-6 rounded-3xl bg-emerald-600 text-center hover:bg-emerald-500">Play vs AI</button>
+                    <button onclick="setMode('2p')" id="2p-btn" 
+                            class="p-6 rounded-3xl bg-zinc-700 text-center hover:bg-zinc-600">2 Players</button>
+                </div>
+
+                <div id="ai-options" class="mt-8">
+                    <h3 class="text-sm text-zinc-400 mb-3">AI Difficulty</h3>
+                    <div class="flex gap-3">
+                        <button onclick="setDifficulty('easy')" class="flex-1 py-4 rounded-3xl bg-zinc-800 hover:bg-zinc-700">Easy</button>
+                        <button onclick="setDifficulty('hard')" class="flex-1 py-4 rounded-3xl bg-emerald-600 hover:bg-emerald-500">Hard</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let game = new Chess();
+        let selectedSquare = null;
+        let currentMode = 'ai';
+        let aiDifficulty = 'easy';
+        let whiteTime = 600, blackTime = 600;
+        let timerInterval = null;
+        let isWhiteTurn = true;
+        let moveHistory = [];
+        let isDarkMode = true;
+
+        const moveSound = new Audio('https://assets.mixkit.co/sfx/preview/2578/2578.wav');
+        const captureSound = new Audio('https://assets.mixkit.co/sfx/preview/2570/2570.wav');
+        const checkSound = new Audio('https://assets.mixkit.co/sfx/preview/2572/2572.wav');
+
+        function renderBoard() {
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = '';
+
+            for (let row = 8; row >= 1; row--) {
+                for (let col = 0; col < 8; col++) {
+                    const squareName = String.fromCharCode(97 + col) + row;
+                    const square = document.createElement('div');
+                    const isLight = (row + col) % 2 === 0;
+                    square.className = `square ${isLight ? 'light' : 'dark'}`;
+                    square.dataset.square = squareName;
+
+                    const piece = game.get(squareName);
+                    if (piece) square.innerHTML = getPieceSymbol(piece);
+
+                    square.onclick = () => handleClick(squareName);
+                    boardEl.appendChild(square);
+                }
+            }
+        }
+
+        function getPieceSymbol(piece) {
+            const symbols = { 'K':'♔','Q':'♕','R':'♖','B':'♗','N':'♘','P':'♙',
+                              'k':'♚','q':'♛','r':'♜','b':'♝','n':'♞','p':'♟️' };
+            return symbols[piece.type.toUpperCase()] || '';
+        }
+
+        function handleClick(square) {
+            if (selectedSquare) {
+                const move = game.move({from: selectedSquare, to: square, promotion: 'q'});
+                if (move) {
+                    playSound(move.captured ? captureSound : moveSound);
+                    if (game.isCheck()) playSound(checkSound);
+                    addToHistory(move);
+                    renderBoard();
+                    updateTimers();
+                    updateStatus();
+                    selectedSquare = null;
+
+                    if (currentMode === 'ai' && game.turn() === 'b') {
+                        setTimeout(aiMove, 400);
+                    }
+                } else {
+                    selectedSquare = null;
+                    handleClick(square);
+                }
+            } else {
+                const piece = game.get(square);
+                if (piece && ((game.turn() === 'w' && piece.color === 'w') || (game.turn() === 'b' && piece.color === 'b'))) {
+                    selectedSquare = square;
+                    renderBoard();
+                }
+            }
+        }
+
+        function aiMove() {
+            let moves = game.moves({verbose: true});
+            if (moves.length === 0) return;
+
+            let bestMove = moves[0];
+            if (aiDifficulty === 'hard') {
+                // Simple greedy AI
+                let bestScore = -999;
+                for (let m of moves) {
+                    game.move(m);
+                    let score = 0;
+                    if (m.captured) score += 10;
+                    if (game.isCheck()) score += 5;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMove = m;
+                    }
+                    game.undo();
+                }
+            } else {
+                bestMove = moves[Math.floor(Math.random() * moves.length)];
+            }
+
+            game.move(bestMove);
+            playSound(bestMove.captured ? captureSound : moveSound);
+            addToHistory(bestMove);
+            renderBoard();
+            updateStatus();
+        }
+
+        function playSound(audio) {
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
+        }
+
+        function addToHistory(move) {
+            moveHistory.push(move.san);
+            const historyEl = document.getElementById('move-history');
+            historyEl.innerHTML = moveHistory.map((m,i) => 
+                `<span class="text-zinc-400">${Math.floor(i/2)+1}.</span> ${m} `
+            ).join('');
+            historyEl.scrollTop = historyEl.scrollHeight;
+        }
+
+        function updateStatus() {
+            const statusEl = document.getElementById('status');
+            if (game.isCheckmate()) {
+                statusEl.innerHTML = `Checkmate! ${game.turn() === 'w' ? 'Black' : 'White'} wins!`;
+            } else if (game.isDraw()) {
+                statusEl.textContent = "Game Draw!";
+            } else {
+                statusEl.textContent = `${game.turn() === 'w' ? "White" : "Black"}'s turn`;
+            }
+        }
+
+        function updateTimers() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (game.turn() === 'w') whiteTime--;
+                else blackTime--;
+
+                document.getElementById('white-timer').textContent = formatTime(whiteTime);
+                document.getElementById('black-timer').textContent = formatTime(blackTime);
+
+                if (whiteTime <= 0 || blackTime <= 0) {
+                    clearInterval(timerInterval);
+                    alert("Time's up! " + (whiteTime <= 0 ? "Black" : "White") + " wins!");
+                }
+            }, 1000);
+        }
+
+        function formatTime(seconds) {
+            const min = Math.floor(seconds / 60);
+            const sec = seconds % 60;
+            return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('ai-btn').classList.toggle('bg-emerald-600', mode === 'ai');
+            document.getElementById('2p-btn').classList.toggle('bg-emerald-600', mode === '2p');
+            document.getElementById('ai-options').classList.toggle('hidden', mode !== 'ai');
+            newGame();
+        }
+
+        function setDifficulty(level) {
+            aiDifficulty = level;
+            newGame();
+        }
+
+        function newGame() {
+            game = new Chess();
+            selectedSquare = null;
+            moveHistory = [];
+            whiteTime = 600;
+            blackTime = 600;
+            document.getElementById('move-history').innerHTML = '';
+            document.getElementById('white-timer').textContent = '10:00';
+            document.getElementById('black-timer').textContent = '10:00';
+            renderBoard();
+            updateStatus();
+            updateTimers();
+        }
+
+        function undoMove() {
+            if (game.history().length > 0) {
+                game.undo();
+                if (currentMode === 'ai' && game.history().length > 0) game.undo();
+                renderBoard();
+                updateStatus();
+            }
+        }
+
+        function resign() {
+            if (confirm("Resign the game?")) {
+                alert("You resigned. Game Over.");
+                newGame();
+            }
+        }
+
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            document.documentElement.classList.toggle('dark', isDarkMode);
+            document.getElementById('theme-btn').textContent = isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode';
+        }
+
+        function copyShareLink() {
+            const link = window.location.href;
+            navigator.clipboard.writeText(link);
+            alert("Share this link with your friend to play together!\n\n" + link);
+        }
+
+        // Initialize
+        window.onload = () => {
+            newGame();
+        };
+    </script>
+</body>
+</html>
