@@ -3,190 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>♟️ Free Chess - Play vs AI or Friend</title>
+    <title>♟️ Free Chess</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <style>
-        .chessboard {
+        .board {
             display: grid;
             grid-template-columns: repeat(8, 1fr);
-            width: 520px;
-            height: 520px;
-            border: 8px solid #1f2937;
-            background: #111827;
-            margin: 0 auto;
+            width: 480px;
+            height: 480px;
+            border: 12px solid #1f2937;
+            margin: 20px auto;
         }
         .square {
+            width: 60px;
+            height: 60px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 42px;
+            font-size: 38px;
             cursor: pointer;
-            user-select: none;
         }
-        .light { background-color: #f1e8d9; }
-        .dark  { background-color: #8d6b4f; }
-        .highlight { box-shadow: inset 0 0 0 6px #22c55e; }
-        .selected  { box-shadow: inset 0 0 0 6px #eab308; }
+        .light { background: #f0d9b5; }
+        .dark  { background: #b58863; }
+        .selected { background: #22c55e !important; }
+        .possible { box-shadow: inset 0 0 0 5px #eab308; }
     </style>
 </head>
-<body class="bg-zinc-950 text-white min-h-screen">
-    <div class="max-w-5xl mx-auto p-6">
-        <h1 class="text-5xl font-bold text-center mb-10">♟️ Free Chess</h1>
+<body class="bg-zinc-950 text-white">
+    <div class="max-w-md mx-auto pt-10">
+        <h1 class="text-4xl font-bold text-center mb-8">♟️ Free Chess</h1>
 
-        <div class="flex flex-col lg:flex-row gap-12 justify-center items-start">
-            <!-- Chess Board -->
-            <div>
-                <div id="board" class="chessboard"></div>
-            </div>
+        <div class="flex justify-center gap-4 mb-6">
+            <button onclick="setMode('ai')" id="aiBtn" 
+                    class="px-6 py-3 rounded-3xl bg-emerald-600">vs AI</button>
+            <button onclick="setMode('2p')" id="2pBtn"
+                    class="px-6 py-3 rounded-3xl bg-zinc-700">2 Players</button>
+        </div>
 
-            <!-- Controls -->
-            <div class="w-full lg:w-96 bg-zinc-900 rounded-3xl p-8">
-                <div id="status" class="text-2xl font-semibold text-center mb-8">White's turn</div>
+        <div id="board" class="board"></div>
 
-                <div class="space-y-4">
-                    <button onclick="newGame()" 
-                            class="w-full py-4 bg-white text-black rounded-3xl font-medium text-lg">New Game</button>
-                    
-                    <div class="grid grid-cols-2 gap-3">
-                        <button onclick="setMode('ai')" id="ai-btn"
-                                class="py-4 rounded-3xl font-medium bg-emerald-600">vs AI</button>
-                        <button onclick="setMode('2p')" id="2p-btn"
-                                class="py-4 rounded-3xl font-medium bg-zinc-700">2 Players</button>
-                    </div>
+        <div class="text-center mt-6">
+            <p id="status" class="text-xl font-medium">White's turn</p>
+        </div>
 
-                    <div id="difficulty" class="hidden grid grid-cols-2 gap-3">
-                        <button onclick="setDifficulty('easy')" class="py-3 rounded-3xl bg-zinc-800">Easy AI</button>
-                        <button onclick="setDifficulty('hard')" class="py-3 rounded-3xl bg-emerald-600">Hard AI</button>
-                    </div>
+        <div class="flex gap-4 justify-center mt-8">
+            <button onclick="newGame()" class="px-8 py-3 bg-white text-black rounded-3xl">New Game</button>
+            <button onclick="undoMove()" class="px-8 py-3 bg-zinc-800 rounded-3xl">Undo</button>
+        </div>
 
-                    <button onclick="undoMove()" 
-                            class="w-full py-4 bg-zinc-800 hover:bg-zinc-700 rounded-3xl">Undo Move</button>
-                    <button onclick="resign()" 
-                            class="w-full py-4 bg-red-600 hover:bg-red-500 rounded-3xl">Resign</button>
-                </div>
-
-                <div class="mt-10">
-                    <h3 class="text-sm text-zinc-400 mb-3">Move History</h3>
-                    <div id="history" class="bg-black h-64 overflow-y-auto p-4 rounded-2xl text-sm font-mono whitespace-pre-wrap"></div>
-                </div>
-            </div>
+        <div class="text-center text-xs text-zinc-500 mt-12">
+            Click a piece to select • Click destination to move
         </div>
     </div>
 
     <script>
         let game = new Chess();
-        let selected = null;
-        let mode = 'ai';
-        let difficulty = 'easy';
-        let moveHistory = [];
+        let selectedSquare = null;
+        let isAiMode = true;
 
         function renderBoard() {
-            const boardEl = document.getElementById('board');
-            boardEl.innerHTML = '';
+            const boardDiv = document.getElementById('board');
+            boardDiv.innerHTML = '';
 
             for (let row = 8; row >= 1; row--) {
                 for (let col = 0; col < 8; col++) {
                     const square = String.fromCharCode(97 + col) + row;
-                    const div = document.createElement('div');
+                    const squareDiv = document.createElement('div');
                     const isLight = (row + col) % 2 === 0;
-                    div.className = `square ${isLight ? 'light' : 'dark'}`;
-                    div.dataset.square = square;
+                    
+                    squareDiv.className = `square ${isLight ? 'light' : 'dark'}`;
+                    squareDiv.dataset.square = square;
 
                     const piece = game.get(square);
-                    if (piece) div.innerHTML = getPiece(piece);
+                    if (piece) {
+                        squareDiv.innerHTML = getPieceSymbol(piece);
+                    }
 
-                    div.onclick = () => handleClick(square);
-                    boardEl.appendChild(div);
+                    squareDiv.addEventListener('click', () => handleSquareClick(square));
+                    boardDiv.appendChild(squareDiv);
                 }
             }
         }
 
-        function getPiece(piece) {
-            const map = {
-                'K':'♔','Q':'♕','R':'♖','B':'♗','N':'♘','P':'♙',
-                'k':'♚','q':'♛','r':'♜','b':'♝','n':'♞','p':'♟️'
+        function getPieceSymbol(piece) {
+            const pieces = {
+                'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟️',
+                'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙'
             };
-            return map[piece.type.toUpperCase()] || '';
+            return pieces[piece.type] || '';
         }
 
-        function handleClick(square) {
-            if (selected) {
-                const move = game.move({from: selected, to: square, promotion: 'q'});
+        function handleSquareClick(square) {
+            if (selectedSquare) {
+                const move = game.move({
+                    from: selectedSquare,
+                    to: square,
+                    promotion: 'q'
+                });
+
                 if (move) {
-                    moveHistory.push(move.san);
-                    updateHistory();
                     renderBoard();
                     updateStatus();
 
-                    if (mode === 'ai' && !game.game_over() && game.turn() === 'b') {
-                        setTimeout(aiMove, 500);
+                    if (isAiMode && game.turn() === 'b' && !game.game_over()) {
+                        setTimeout(aiMakeMove, 300);
                     }
                 }
-                selected = null;
-                renderBoard();
+                selectedSquare = null;
             } else {
                 const piece = game.get(square);
                 if (piece && ((game.turn() === 'w' && piece.color === 'w') || 
                              (game.turn() === 'b' && piece.color === 'b'))) {
-                    selected = square;
+                    selectedSquare = square;
                     renderBoard();
                 }
             }
         }
 
-        function aiMove() {
-            let moves = game.moves();
+        function aiMakeMove() {
+            const moves = game.moves();
             if (moves.length === 0) return;
 
-            let move;
-            if (difficulty === 'easy') {
-                move = moves[Math.floor(Math.random() * moves.length)];
-            } else {
-                // Hard: prefer captures
-                move = moves.find(m => m.includes('x')) || moves[0];
-            }
-
-            game.move(move);
-            moveHistory.push(move);
-            updateHistory();
+            const randomMove = moves[Math.floor(Math.random() * moves.length)];
+            game.move(randomMove);
             renderBoard();
             updateStatus();
         }
 
         function updateStatus() {
-            const status = document.getElementById('status');
+            const statusEl = document.getElementById('status');
             if (game.isCheckmate()) {
-                status.textContent = `Checkmate! ${game.turn() === 'w' ? 'Black' : 'White'} wins!`;
+                statusEl.textContent = `Checkmate! ${game.turn() === 'w' ? 'Black' : 'White'} wins!`;
             } else if (game.isDraw()) {
-                status.textContent = "Draw!";
+                statusEl.textContent = "It's a draw!";
             } else {
-                status.textContent = `${game.turn() === 'w' ? 'White' : 'Black'}'s turn`;
+                statusEl.textContent = `${game.turn() === 'w' ? "White" : "Black"}'s turn`;
             }
         }
 
-        function updateHistory() {
-            document.getElementById('history').textContent = moveHistory.join('  ');
-        }
-
-        function setMode(m) {
-            mode = m;
-            document.getElementById('ai-btn').classList.toggle('bg-emerald-600', m === 'ai');
-            document.getElementById('2p-btn').classList.toggle('bg-emerald-600', m === '2p');
-            document.getElementById('difficulty').classList.toggle('hidden', m !== 'ai');
-            newGame();
-        }
-
-        function setDifficulty(d) {
-            difficulty = d;
+        function setMode(mode) {
+            isAiMode = (mode === 'ai');
+            document.getElementById('aiBtn').classList.toggle('bg-emerald-600', isAiMode);
+            document.getElementById('2pBtn').classList.toggle('bg-emerald-600', !isAiMode);
             newGame();
         }
 
         function newGame() {
             game = new Chess();
-            selected = null;
-            moveHistory = [];
-            document.getElementById('history').innerHTML = '';
+            selectedSquare = null;
             renderBoard();
             updateStatus();
         }
@@ -194,16 +159,9 @@
         function undoMove() {
             if (game.history().length > 0) {
                 game.undo();
-                if (mode === 'ai' && game.history().length > 0) game.undo();
+                if (isAiMode && game.history().length > 0) game.undo();
                 renderBoard();
                 updateStatus();
-            }
-        }
-
-        function resign() {
-            if (confirm("Resign the game?")) {
-                alert("You resigned.");
-                newGame();
             }
         }
 
