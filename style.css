@@ -137,6 +137,7 @@ input {
   justify-content: space-between;
   margin-top: 12px;
   color: #cbd5e1;
+  gap: 8px;
 }
 
 .label {
@@ -146,6 +147,7 @@ input {
 #status {
   line-height: 1.6;
   color: #e2e8f0;
+  min-height: 52px;
 }
 
 .history {
