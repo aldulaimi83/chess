@@ -1,4 +1,4 @@
-const SERVER_URL = "YOUR_RENDER_BACKEND_URL";
+const SERVER_URL = "https://youooo-chess-backend.onrender.com";
 
 let socket = null;
 let board = null;
