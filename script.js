@@ -57,8 +57,9 @@ function updateStatus() {
 }
 
 function applyBoardPosition() {
-  if (!board || !game) return;
-  board.position(game.fen(), true);
+  if (board && game) {
+    board.position(game.fen(), true);
+  }
 }
 
 function resetGameLocal() {
@@ -67,6 +68,7 @@ function resetGameLocal() {
 
   if (board) {
     board.position("start", true);
+    board.orientation("white");
   }
 
   isMyTurn = true;
@@ -230,10 +232,7 @@ function connectSocket() {
       applyBoardPosition();
     }
 
-    isMyTurn =
-      playerColor === "white"
-        ? game.turn() === "w"
-        : game.turn() === "b";
+    isMyTurn = playerColor === "white" ? game.turn() === "w" : game.turn() === "b";
 
     renderMoveHistory();
     updateStatus();
@@ -310,6 +309,11 @@ function initBoard() {
     return;
   }
 
+  if (typeof $ === "undefined") {
+    safeSetStatus("Error: jQuery did not load");
+    return;
+  }
+
   if (typeof Chess === "undefined") {
     safeSetStatus("Error: chess.js did not load");
     return;
@@ -326,19 +330,14 @@ function initBoard() {
     draggable: true,
     position: "start",
     pieceTheme:
-      "https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/img/chesspieces/wikipedia/{piece}.png",
-    onDragStart,
-    onDrop,
-    onSnapEnd
+      "https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png",
+    onDragStart: onDragStart,
+    onDrop: onDrop,
+    onSnapEnd: onSnapEnd
   });
 
-  setTimeout(() => {
-    if (board) {
-      board.position("start", true);
-    }
-    renderMoveHistory();
-    updateStatus();
-  }, 50);
+  renderMoveHistory();
+  updateStatus();
 }
 
 function bindEvents() {
