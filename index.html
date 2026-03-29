@@ -3,41 +3,50 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Youooo Chess Academy V2</title>
+  <title>Youooo Board Games</title>
 
   <link rel="stylesheet" href="style.css" />
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.css"
-  />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.css" />
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <div>
-        <h1>♟ Youooo Chess Academy</h1>
-        <p class="subtitle">Play online, train by level, solve puzzles, and improve from beginner to expert</p>
+        <h1>♟ Youooo Board Games</h1>
+        <p class="subtitle">Play Chess and Checkers on one website</p>
       </div>
-      <div class="badge">Academy V2</div>
+      <div class="badge">V1</div>
     </header>
 
-    <div class="tabbar">
-      <button id="playTabBtn" class="tab-btn active">Play</button>
-      <button id="academyTabBtn" class="tab-btn">Academy</button>
+    <div class="top-switchers">
+      <div class="switch-group">
+        <span class="switch-label">Game</span>
+        <button id="chessGameBtn" class="tab-btn active">Chess</button>
+        <button id="checkersGameBtn" class="tab-btn">Checkers</button>
+      </div>
+
+      <div class="switch-group">
+        <span class="switch-label">Mode</span>
+        <button id="aiBtn" class="action-btn">Play vs AI</button>
+        <button id="localBtn" class="action-btn">2 Players</button>
+        <button id="createRoomBtn" class="action-btn">Create Room</button>
+        <button id="joinRoomBtn" class="action-btn">Join Room</button>
+      </div>
     </div>
 
     <main class="layout">
       <section class="board-panel">
         <div class="board-toolbar">
-          <div class="mode-pill" id="currentSectionLabel">Play Mode</div>
+          <div id="modePill" class="mode-pill">Chess • Local</div>
           <div class="board-actions">
-            <button id="flipBtn" class="secondary small-btn">Flip Board</button>
+            <button id="flipBtn" class="secondary small-btn">Flip</button>
             <button id="resetBtn" class="danger small-btn">Reset</button>
           </div>
         </div>
 
         <div class="board-wrap">
-          <div id="board"></div>
+          <div id="chessBoard"></div>
+          <div id="checkersBoard" class="checkers-board hidden"></div>
         </div>
 
         <div class="status-card">
@@ -52,111 +61,48 @@
       </section>
 
       <aside class="side-panel">
-        <!-- PLAY PANEL -->
-        <div id="playPanel" class="panel active-panel">
-          <div class="card">
-            <h2>Game Modes</h2>
-            <div class="controls">
-              <button id="aiBtn">Play vs AI</button>
-              <button id="localBtn">2 Players</button>
-              <button id="createRoomBtn">Create Room</button>
-              <button id="joinRoomBtn">Join Room</button>
-            </div>
-          </div>
+        <div class="card">
+          <h2>Game Settings</h2>
 
-          <div class="card">
-            <h2>AI Difficulty</h2>
+          <div class="field">
+            <label>AI Difficulty</label>
             <div class="difficulty-grid">
               <button class="difficulty-btn active-difficulty" data-difficulty="easy">Easy</button>
               <button class="difficulty-btn" data-difficulty="medium">Medium</button>
               <button class="difficulty-btn" data-difficulty="hard">Hard</button>
               <button class="difficulty-btn" data-difficulty="expert">Expert</button>
             </div>
-            <div id="aiInfo" class="note-box">
-              Easy uses weaker move selection. Medium and above use board evaluation and search.
-            </div>
           </div>
 
-          <div class="card">
-            <h2>Online Room</h2>
-            <input id="roomInput" type="text" placeholder="Enter room code" />
-            <div class="room-row">
-              <span class="label">Current room:</span>
-              <span id="roomCode">None</span>
-            </div>
-            <div class="room-row">
-              <span class="label">Server:</span>
-              <span id="serverState">Connecting...</span>
-            </div>
-          </div>
-
-          <div class="card">
-            <h2>How to Use</h2>
-            <ul class="help-list">
-              <li><strong>AI:</strong> practice against different difficulty levels</li>
-              <li><strong>2 Players:</strong> play on one device</li>
-              <li><strong>Create Room:</strong> make an online room</li>
-              <li><strong>Join Room:</strong> enter a friend’s room code</li>
-            </ul>
+          <div id="aiInfo" class="note-box">
+            Easy uses simpler move choice. Higher levels search deeper.
           </div>
         </div>
 
-        <!-- ACADEMY PANEL -->
-        <div id="academyPanel" class="panel">
-          <div class="card">
-            <h2>Academy Levels</h2>
-            <div class="level-tabs">
-              <button class="level-btn active-level" data-level="beginner">Beginner</button>
-              <button class="level-btn" data-level="intermediate">Intermediate</button>
-              <button class="level-btn" data-level="advanced">Advanced</button>
-              <button class="level-btn" data-level="expert">Expert</button>
-            </div>
+        <div class="card">
+          <h2>Online Room</h2>
+          <input id="roomInput" type="text" placeholder="Enter room code" />
+          <div class="room-row">
+            <span class="label">Current room:</span>
+            <span id="roomCode">None</span>
           </div>
-
-          <div class="card">
-            <div class="academy-header-row">
-              <h2>Lessons</h2>
-              <span id="academyProgressBadge" class="progress-badge">0% Complete</span>
-            </div>
-            <div id="lessonList" class="lesson-list"></div>
+          <div class="room-row">
+            <span class="label">Server:</span>
+            <span id="serverState">Connecting...</span>
           </div>
-
-          <div class="card">
-            <h2 id="lessonTitle">Select a lesson</h2>
-            <p id="lessonSummary" class="lesson-summary">Choose a lesson to begin.</p>
-
-            <div class="lesson-meta">
-              <span id="lessonLevelTag" class="meta-tag">Level</span>
-              <span id="lessonTypeTag" class="meta-tag">Type</span>
-              <span id="lessonStarsTag" class="meta-tag">Stars: 0</span>
-            </div>
-
-            <div id="coachBox" class="coach-box">
-              Welcome to the academy. Pick a lesson from the list.
-            </div>
-
-            <div class="lesson-controls">
-              <button id="prevLessonBtn" class="secondary">Previous</button>
-              <button id="hintBtn">Hint</button>
-              <button id="retryLessonBtn" class="danger">Retry</button>
-              <button id="nextLessonBtn">Next</button>
-            </div>
+          <div class="mini-note">
+            Online rooms work for <strong>Chess</strong> in this V1.
           </div>
+        </div>
 
-          <div class="card">
-            <h2>Special Training</h2>
-            <div class="controls">
-              <button id="openingTrainerBtn">Opening Trainer</button>
-              <button id="endgameTrainerBtn">Endgame Trainer</button>
-              <button id="dailyChallengeBtn" class="secondary">Daily Challenge</button>
-              <button id="reviewModeBtn" class="danger">Review Current</button>
-            </div>
-          </div>
-
-          <div class="card">
-            <h2>Progress</h2>
-            <div id="progressStats" class="progress-stats"></div>
-          </div>
+        <div class="card">
+          <h2>How It Works</h2>
+          <ul class="help-list">
+            <li><strong>Chess:</strong> AI, local, online rooms</li>
+            <li><strong>Checkers:</strong> AI and local play</li>
+            <li><strong>Flip:</strong> flips the current board</li>
+            <li><strong>Reset:</strong> resets the current game</li>
+          </ul>
         </div>
       </aside>
     </main>
