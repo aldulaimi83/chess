@@ -50,13 +50,14 @@ function initChessView() {
   if (chessBoard) { chessBoard.destroy(); chessBoard = null; }
   chessGame = new Chess();
   const size = Math.min(520, window.innerWidth - (window.innerWidth > 860 ? 340 : 32));
+  $('#chessboard').css('width', size + 'px');
   chessBoard = Chessboard('chessboard', {
+    width: size,
     draggable: true, position: 'start',
     pieceTheme: 'https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/img/chesspieces/wikipedia/{piece}.png',
     onDragStart: chOnDragStart, onDrop: chOnDrop,
     onSnapEnd: () => chessBoard.position(chessGame.fen()),
   });
-  $('#chessboard').css('width', size + 'px'); chessBoard.resize();
   updateChessStatus(); clearChessMoveHistory();
   document.getElementById('chessDiffCard').style.display = '';
 }
@@ -945,8 +946,12 @@ function renderDominoHands() {
 
 function renderDominoBoard() {
   const boardEl=document.getElementById('dominoBoard');
-  boardEl.innerHTML='';
-  document.getElementById('dominoBoardEmpty').style.display=DOM.boardTiles.length?'none':'';
+  // Remove only played tiles — don't destroy the static empty-msg element
+  Array.from(boardEl.children).forEach(child=>{
+    if (!child.classList.contains('domino-empty-msg')) child.remove();
+  });
+  const emptyMsg=document.getElementById('dominoBoardEmpty');
+  if (emptyMsg) emptyMsg.style.display=DOM.boardTiles.length?'none':'';
   DOM.boardTiles.forEach(bt=>{
     const el=makeDominoTileEl({a:bt.da,b:bt.db,id:bt.id});
     el.classList.add('on-board','horizontal');
