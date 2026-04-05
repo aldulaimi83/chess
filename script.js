@@ -32,7 +32,7 @@ function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(`view-${name}`).classList.add('active');
   window.scrollTo(0, 0);
-  if (name === 'chess')     setTimeout(initChessView, 50);
+  if (name === 'chess')     requestAnimationFrame(()=>requestAnimationFrame(initChessView));
   if (name === 'checkers')  initCheckersView();
   if (name === 'snake')     initSnakeView();
   if (name === 'domino')    {/* domino inits on button click */}
@@ -49,15 +49,13 @@ const CVALS = {p:100,n:320,b:330,r:500,q:900,k:20000};
 function initChessView() {
   if (chessBoard) { chessBoard.destroy(); chessBoard = null; }
   chessGame = new Chess();
-  const size = Math.min(520, window.innerWidth - (window.innerWidth > 860 ? 340 : 32));
-  $('#chessboard').css('width', size + 'px');
   chessBoard = Chessboard('chessboard', {
-    width: size,
     draggable: true, position: 'start',
     pieceTheme: 'https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/img/chesspieces/wikipedia/{piece}.png',
     onDragStart: chOnDragStart, onDrop: chOnDrop,
     onSnapEnd: () => chessBoard.position(chessGame.fen()),
   });
+  chessBoard.resize();
   updateChessStatus(); clearChessMoveHistory();
   document.getElementById('chessDiffCard').style.display = '';
 }
@@ -966,30 +964,16 @@ function selectDominoTile(id) {
   if (DOM.turn!=='player'||DOM.gameOver) return;
   const tile=DOM.playerHand.find(t=>t.id===id);
   if (!tile) return;
-
-  if (DOM.boardTiles.length===0) {
-    if (DOM.selected===id) {
-      // Second click on empty board — play it as first tile
-      tryPlayTile(tile, DOM.playerHand, 'player');
-    } else {
-      DOM.selected=id; renderDominoHands();
-      updateDominoStatus('Click the tile again to play it as the first tile');
-    }
-    return;
-  }
-
-  // Board has tiles — try to play immediately
   const played=tryPlayTile(tile, DOM.playerHand, 'player');
   if (!played) {
     DOM.selected=id; renderDominoHands();
-    updateDominoStatus('This tile cannot be played — try drawing or select another');
+    updateDominoStatus("This tile can't be played — draw a tile or pick another");
   }
 }
 
 function tryPlayTile(tile, hand, who) {
   if (DOM.boardTiles.length===0) {
-    if (DOM.selected!==tile.id && who==='player') return false;
-    // First tile
+    // First tile — always allowed
     placeTile(tile, tile.a, tile.b);
     DOM.leftEnd=tile.a; DOM.rightEnd=tile.b;
     hand.splice(hand.indexOf(tile),1);
