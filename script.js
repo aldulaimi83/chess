@@ -32,7 +32,7 @@ function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(`view-${name}`).classList.add('active');
   window.scrollTo(0, 0);
-  if (name === 'chess')     initChessView();
+  if (name === 'chess')     setTimeout(initChessView, 50);
   if (name === 'checkers')  initCheckersView();
   if (name === 'snake')     initSnakeView();
   if (name === 'domino')    {/* domino inits on button click */}
@@ -565,6 +565,15 @@ function createOnlineRoom(game, code) {
     initData.board = JSON.stringify(ck.board);
     initData.turn = 'red';
   }
+  if (game === 'domino') {
+    const tiles=shuffle(createTileSet());
+    initData.playerHand=JSON.stringify(tiles.slice(0,7));
+    initData.guestHand=JSON.stringify(tiles.slice(7,14));
+    initData.boneyard=JSON.stringify(tiles.slice(14));
+    initData.boardTiles=JSON.stringify([]);
+    initData.leftEnd=null; initData.rightEnd=null;
+    initData.turn='host';
+  }
   ref.set(initData);
 
   ref.child('players/guest').on('value', snap => {
@@ -575,6 +584,7 @@ function createOnlineRoom(game, code) {
         document.getElementById('roomModal').classList.add('hidden');
         if (game === 'chess') { chessMode='online'; listenChessRoom(code,'white'); }
         if (game === 'checkers') listenCkRoom(code,'red');
+        if (game === 'domino') listenDominoRoom(code,'host');
       }, 1000);
     }
   });
@@ -598,6 +608,7 @@ document.getElementById('confirmJoinBtn').addEventListener('click', () => {
       renderCheckers(); updateCkStatus();
       listenCkRoom(code,'black');
     }
+    if (_roomGame === 'domino') listenDominoRoom(code,'guest');
   });
 });
 
@@ -605,6 +616,7 @@ document.getElementById('closeRoomModal').addEventListener('click', () => {
   document.getElementById('roomModal').classList.add('hidden');
   if (_roomGame === 'chess') { chessMode='ai'; document.querySelector('[data-chess-mode="ai"]').click(); }
   if (_roomGame === 'checkers') { ck.mode='ai'; document.querySelector('[data-ck-mode="ai"]').click(); }
+  if (_roomGame === 'domino') { DOM.mode='ai'; document.getElementById('dominoSetup').style.display=''; }
 });
 
 document.getElementById('copyRoomCodeBtn').addEventListener('click', () => {
@@ -887,6 +899,8 @@ function startDominoGame(mode) {
 
 document.getElementById('dominoVsAiBtn').addEventListener('click', ()=>startDominoGame('ai'));
 document.getElementById('dominoLocalBtn').addEventListener('click', ()=>startDominoGame('local'));
+document.getElementById('dominoCreateBtn').addEventListener('click', ()=>openRoomModal('create','domino'));
+document.getElementById('dominoJoinBtn').addEventListener('click', ()=>openRoomModal('join','domino'));
 
 function makeDominoTileEl(tile, faceDown=false) {
   const el=document.createElement('div');
@@ -945,17 +959,21 @@ function renderDominoBoard() {
 
 function selectDominoTile(id) {
   if (DOM.turn!=='player'||DOM.gameOver) return;
-  if (DOM.selected===id) { DOM.selected=null; renderDominoHands(); return; }
   const tile=DOM.playerHand.find(t=>t.id===id);
   if (!tile) return;
 
   if (DOM.boardTiles.length===0) {
-    DOM.selected=id; renderDominoHands();
-    updateDominoStatus('Click the tile again to play it as the first tile');
+    if (DOM.selected===id) {
+      // Second click on empty board — play it as first tile
+      tryPlayTile(tile, DOM.playerHand, 'player');
+    } else {
+      DOM.selected=id; renderDominoHands();
+      updateDominoStatus('Click the tile again to play it as the first tile');
+    }
     return;
   }
 
-  // Try to play it
+  // Board has tiles — try to play immediately
   const played=tryPlayTile(tile, DOM.playerHand, 'player');
   if (!played) {
     DOM.selected=id; renderDominoHands();
@@ -979,12 +997,15 @@ function tryPlayTile(tile, hand, who) {
   let side=null;
 
   if (tile.a===DOM.leftEnd||tile.b===DOM.leftEnd) {
-    if (tile.b===DOM.leftEnd) { playedA=tile.b; playedB=tile.a; flipped=true; }
+    // orient so db connects to leftEnd, da becomes new outer left
+    if (tile.a===DOM.leftEnd) { playedA=tile.b; playedB=tile.a; }
+    else { playedA=tile.a; playedB=tile.b; }
     DOM.leftEnd=playedA;
     side='left';
   } else if (tile.a===DOM.rightEnd||tile.b===DOM.rightEnd) {
+    // orient so da connects to rightEnd, db becomes new outer right
     if (tile.a===DOM.rightEnd) { playedA=tile.a; playedB=tile.b; }
-    else { playedA=tile.b; playedB=tile.a; flipped=true; }
+    else { playedA=tile.b; playedB=tile.a; }
     DOM.rightEnd=playedB;
     side='right';
   } else {
@@ -1016,13 +1037,27 @@ function afterTilePlay(who) {
   if (DOM.playerHand.length===0||DOM.aiHand.length===0) {
     const winner=DOM.playerHand.length===0?'You win':'AI wins';
     updateDominoStatus(`🏆 ${winner}! Game over.`);
-    DOM.gameOver=true; return;
+    DOM.gameOver=true;
+    if (DOM.mode==='online' && dominoRoomCode) syncDominoState();
+    return;
   }
 
   if (who==='player') {
     DOM.turn='ai';
-    updateDominoStatus('AI is thinking...');
-    setTimeout(aiDominoTurn, 900);
+    if (DOM.mode==='online' && dominoRoomCode) {
+      const nextRole=dominoMyRole==='host'?'guest':'host';
+      db.ref(`rooms/domino/${dominoRoomCode}`).update({
+        boardTiles:JSON.stringify(DOM.boardTiles), leftEnd:DOM.leftEnd, rightEnd:DOM.rightEnd,
+        boneyard:JSON.stringify(DOM.boneyard),
+        hostHand:JSON.stringify(dominoMyRole==='host'?DOM.playerHand:DOM.aiHand),
+        guestHand:JSON.stringify(dominoMyRole==='guest'?DOM.playerHand:DOM.aiHand),
+        turn:nextRole
+      });
+      updateDominoStatus('Waiting for opponent...');
+    } else {
+      updateDominoStatus('AI is thinking...');
+      setTimeout(aiDominoTurn, 900);
+    }
   } else {
     DOM.turn='player';
     updateDominoStatus('Your turn — pick a tile');
@@ -1101,6 +1136,63 @@ function updateBoneyardCount() {
   const el=document.getElementById('boneyardCount');
   if (el) el.textContent=DOM.boneyard.length;
 }
+
+// Domino Online
+let dominoRoomCode=null, dominoMyRole=null, dominoOnlineRef=null;
+
+function syncDominoState() {
+  if (!dominoRoomCode) return;
+  const myHand = dominoMyRole==='host' ? DOM.playerHand : DOM.aiHand;
+  const oppHand = dominoMyRole==='host' ? DOM.aiHand : DOM.playerHand;
+  db.ref(`rooms/domino/${dominoRoomCode}`).update({
+    boardTiles: JSON.stringify(DOM.boardTiles),
+    leftEnd: DOM.leftEnd,
+    rightEnd: DOM.rightEnd,
+    turn: DOM.turn,
+    hostHand: JSON.stringify(dominoMyRole==='host' ? myHand : oppHand),
+    guestHand: JSON.stringify(dominoMyRole==='guest' ? myHand : oppHand),
+    boneyard: JSON.stringify(DOM.boneyard)
+  });
+}
+
+function listenDominoRoom(code, role) {
+  dominoRoomCode=code; dominoMyRole=role;
+  DOM.mode='online'; DOM.gameOver=false; DOM.passCount=0; DOM.selected=null;
+  if (dominoOnlineRef) dominoOnlineRef.off();
+  dominoOnlineRef=db.ref(`rooms/domino/${code}`);
+  dominoOnlineRef.once('value', snap => {
+    const d=snap.val(); if (!d) return;
+    DOM.playerHand=JSON.parse(role==='host' ? d.playerHand||d.hostHand||'[]' : d.guestHand||'[]');
+    DOM.aiHand=JSON.parse(role==='host' ? d.guestHand||'[]' : d.playerHand||d.hostHand||'[]');
+    DOM.boneyard=JSON.parse(d.boneyard||'[]');
+    DOM.boardTiles=JSON.parse(d.boardTiles||'[]');
+    DOM.leftEnd=d.leftEnd; DOM.rightEnd=d.rightEnd;
+    DOM.turn=d.turn==='host' ? (role==='host'?'player':'ai') : (role==='guest'?'player':'ai');
+    document.getElementById('dominoSetup').style.display='none';
+    document.getElementById('dominoBoardEmpty').style.display=DOM.boardTiles.length?'none':'';
+    renderDominoHands(); renderDominoBoard(); updateBoneyardCount();
+    updateDominoStatus(DOM.turn==='player' ? 'Your turn!' : 'Waiting for opponent...');
+  });
+
+  dominoOnlineRef.on('value', snap => {
+    const d=snap.val(); if (!d) return;
+    const remoteBoard=JSON.parse(d.boardTiles||'[]');
+    if (JSON.stringify(remoteBoard)!==JSON.stringify(DOM.boardTiles)) {
+      DOM.boardTiles=remoteBoard;
+      DOM.leftEnd=d.leftEnd; DOM.rightEnd=d.rightEnd;
+      DOM.boneyard=JSON.parse(d.boneyard||'[]');
+      DOM.playerHand=JSON.parse(role==='host' ? d.hostHand||'[]' : d.guestHand||'[]');
+      DOM.aiHand=JSON.parse(role==='host' ? d.guestHand||'[]' : d.hostHand||'[]');
+      const remoteTurn=d.turn;
+      DOM.turn=remoteTurn===role ? 'player' : 'ai';
+      renderDominoBoard(); renderDominoHands(); updateBoneyardCount();
+      const myTurn=DOM.turn==='player';
+      updateDominoStatus(myTurn ? 'Your turn!' : 'Waiting for opponent...');
+      if (d.status==='playing') document.getElementById('dominoSetup').style.display='none';
+    }
+  });
+}
+
 
 // ════════════════════════════════════════════════════════════
 // ██████  WINDOW RESIZE — redraw canvas
