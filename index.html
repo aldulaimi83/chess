@@ -9,8 +9,20 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css" />
   <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="youooo_logo.png" />
+  <style>
+    #splash{position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .8s ease}
+    #splash.fade-out{opacity:0;pointer-events:none}
+    #splash img{width:min(420px,80vw);animation:splashPulse 1.2s ease-in-out infinite alternate}
+    @keyframes splashPulse{from{transform:scale(1);opacity:.9}to{transform:scale(1.04);opacity:1}}
+  </style>
 </head>
 <body>
+
+<!-- ════════════════════ SPLASH ════════════════════ -->
+<div id="splash"><img src="youooo_logo.png" alt="Youooo" /></div>
+<script>(function(){var s=document.getElementById('splash');setTimeout(function(){s.classList.add('fade-out');setTimeout(function(){s.style.display='none'},800)},5000)})()</script>
+
 
   <!-- Animated background -->
   <div class="bg-layer" aria-hidden="true">
@@ -52,7 +64,28 @@
   <div id="view-hub" class="view active">
     <header class="hub-header">
       <div class="hub-logo">
-        <span class="logo-mark">Y</span>
+        <svg width="36" height="44" viewBox="0 0 44 54" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+          <!-- Y arms -->
+          <line x1="22" y1="28" x2="6"  y2="8"  stroke="#c8960c" stroke-width="1.6" stroke-linecap="square"/>
+          <line x1="22" y1="28" x2="38" y2="8"  stroke="#c8960c" stroke-width="1.6" stroke-linecap="square"/>
+          <line x1="22" y1="28" x2="22" y2="48" stroke="#c8960c" stroke-width="1.6" stroke-linecap="square"/>
+          <!-- Crosshair top-left -->
+          <line x1="2"  y1="8"  x2="10" y2="8"  stroke="#8a6008" stroke-width="0.9"/>
+          <line x1="6"  y1="4"  x2="6"  y2="12" stroke="#8a6008" stroke-width="0.9"/>
+          <circle cx="6" cy="8" r="2.2" fill="none" stroke="#8a6008" stroke-width="0.9"/>
+          <!-- Crosshair top-right -->
+          <line x1="34" y1="8"  x2="42" y2="8"  stroke="#8a6008" stroke-width="0.9"/>
+          <line x1="38" y1="4"  x2="38" y2="12" stroke="#8a6008" stroke-width="0.9"/>
+          <circle cx="38" cy="8" r="2.2" fill="none" stroke="#8a6008" stroke-width="0.9"/>
+          <!-- Crosshair bottom -->
+          <line x1="18" y1="48" x2="26" y2="48" stroke="#8a6008" stroke-width="0.9"/>
+          <line x1="22" y1="44" x2="22" y2="52" stroke="#8a6008" stroke-width="0.9"/>
+          <circle cx="22" cy="48" r="2.2" fill="none" stroke="#8a6008" stroke-width="0.9"/>
+          <!-- Angle arc -->
+          <path d="M 15,23 A 8,8 0 0 1 29,23" stroke="#5a3a04" stroke-width="0.8" fill="none"/>
+          <!-- Center dot -->
+          <circle cx="22" cy="28" r="1.8" fill="#c8960c"/>
+        </svg>
         <div>
           <div class="logo-title">Youooo Games</div>
           <div class="logo-sub">Play classic board games — online & offline</div>
