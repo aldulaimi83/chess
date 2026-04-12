@@ -489,24 +489,32 @@ document.getElementById('copyRoomCodeBtn').addEventListener('click',()=>{
 // ════════════════════════════════════════════════════════════
 const GEMS_SIZE  = 8;
 const GEMS_TYPES = 6;
+const GEMS_BALANCE = {
+  continueMoves: 4,
+  maxReshuffles: 3,
+  maxRowBlasts: 2,
+  maxColBlasts: 2,
+  wheelMoveReward: 3,
+  wheelTrophyReward: 1
+};
 const GEMS_LEVELS = [
-  { name:'Candy Meadow',   target:500,  moves:20, giftGoal:90,  multiplier:1.00, goal:'Warm up with simple matches and quick chains.' },
-  { name:'Sugar Rush',     target:950,  moves:21, giftGoal:95,  multiplier:1.05, goal:'Build one cascade chain to speed up scoring.' },
-  { name:'Jelly Harbor',   target:1450, moves:22, giftGoal:100, multiplier:1.10, goal:'Aim for 4-gem clears to charge gifts faster.' },
-  { name:'Mint Circuit',   target:2100, moves:23, giftGoal:105, multiplier:1.15, goal:'Use combos to stay ahead of the target.' },
-  { name:'Neon Nougat',    target:2900, moves:24, giftGoal:110, multiplier:1.20, goal:'Large clears now matter more than small swaps.' },
-  { name:'Caramel Core',   target:3800, moves:25, giftGoal:115, multiplier:1.24, goal:'Gift rewards become part of the winning strategy.' },
-  { name:'Prism Pop',      target:4900, moves:26, giftGoal:120, multiplier:1.28, goal:'Chain multiple cascades for bonus multipliers.' },
-  { name:'Velvet Taffy',   target:6200, moves:27, giftGoal:125, multiplier:1.32, goal:'Keep your move count healthy with smart gifts.' },
-  { name:'Frost Fizz',     target:7600, moves:28, giftGoal:130, multiplier:1.36, goal:'5-gem clears give the biggest swing in score.' },
-  { name:'Galaxy Gummies', target:9200, moves:29, giftGoal:135, multiplier:1.40, goal:'Push for aggressive boards and color-heavy matches.' },
-  { name:'Meteor Mints',   target:11000,moves:30, giftGoal:140, multiplier:1.45, goal:'Cascades and gifts decide this stage.' },
-  { name:'Infinity Candy', target:13000,moves:31, giftGoal:145, multiplier:1.50, goal:'Endless-style pressure. Maximize every move.' },
-  { name:'Royal Jelly',    target:15200,moves:32, giftGoal:150, multiplier:1.56, goal:'Trophy runs begin here. Keep building power hits.' },
-  { name:'Comet Crunch',   target:17600,moves:33, giftGoal:155, multiplier:1.62, goal:'Use the wheel for momentum, not recovery.' },
-  { name:'Aurora Pops',    target:20200,moves:34, giftGoal:160, multiplier:1.68, goal:'Board wipes should create scoring avalanches.' },
-  { name:'Starlight Toffee',target:23000,moves:35,giftGoal:168, multiplier:1.74, goal:'Big matches and trophy play decide the finish.' },
-  { name:'Crown Candy',    target:26000,moves:36, giftGoal:175, multiplier:1.82, goal:'Final preset world. Master continues, spins, and powers.' }
+  { name:'Candy Meadow',   target:500,  moves:20, giftGoal:88,  multiplier:1.00, goal:'Warm up with simple matches and quick chains.' },
+  { name:'Sugar Rush',     target:900,  moves:20, giftGoal:92,  multiplier:1.04, goal:'Build one cascade chain to speed up scoring.' },
+  { name:'Jelly Harbor',   target:1325, moves:21, giftGoal:96,  multiplier:1.08, goal:'Aim for 4-gem clears to charge gifts faster.' },
+  { name:'Mint Circuit',   target:1780, moves:21, giftGoal:100, multiplier:1.12, goal:'Use combos to stay ahead of the target.' },
+  { name:'Neon Nougat',    target:2280, moves:22, giftGoal:104, multiplier:1.16, goal:'Large clears now matter more than small swaps.' },
+  { name:'Caramel Core',   target:2840, moves:22, giftGoal:109, multiplier:1.20, goal:'Gift rewards become part of the winning strategy.' },
+  { name:'Prism Pop',      target:3460, moves:23, giftGoal:114, multiplier:1.24, goal:'Chain multiple cascades for bonus multipliers.' },
+  { name:'Velvet Taffy',   target:4160, moves:23, giftGoal:119, multiplier:1.28, goal:'Keep your move count healthy with smart gifts.' },
+  { name:'Frost Fizz',     target:4950, moves:24, giftGoal:124, multiplier:1.32, goal:'5-gem clears give the biggest swing in score.' },
+  { name:'Galaxy Gummies', target:5840, moves:24, giftGoal:130, multiplier:1.36, goal:'Push for aggressive boards and color-heavy matches.' },
+  { name:'Meteor Mints',   target:6840, moves:25, giftGoal:136, multiplier:1.40, goal:'Cascades and gifts decide this stage.' },
+  { name:'Infinity Candy', target:7960, moves:25, giftGoal:142, multiplier:1.44, goal:'Endless-style pressure. Maximize every move.' },
+  { name:'Royal Jelly',    target:9220, moves:26, giftGoal:148, multiplier:1.49, goal:'Trophy runs begin here. Keep building power hits.' },
+  { name:'Comet Crunch',   target:10640,moves:26, giftGoal:154, multiplier:1.54, goal:'Use the wheel for momentum, not recovery.' },
+  { name:'Aurora Pops',    target:12220,moves:27, giftGoal:160, multiplier:1.60, goal:'Board wipes should create scoring avalanches.' },
+  { name:'Starlight Toffee',target:13980,moves:27,giftGoal:167, multiplier:1.66, goal:'Big matches and trophy play decide the finish.' },
+  { name:'Crown Candy',    target:15940,moves:28, giftGoal:174, multiplier:1.72, goal:'Final preset world. Master continues, spins, and powers.' }
 ];
 
 let gemsGrid     = [];   // 2D array of gem type (0-5) or null
@@ -583,9 +591,9 @@ function gemsStartLevel(level, resetTotalScore = false) {
   gemsAnimating = false;
   gemsPendingPower = null;
   gemsContinueAvailable = true;
-  gemsReshuffles = 1 + (gemsLevel % 5 === 0 ? 1 : 0);
-  gemsRowBlasts += gemsLevel % 4 === 0 ? 1 : 0;
-  gemsColBlasts += gemsLevel % 6 === 0 ? 1 : 0;
+  gemsReshuffles = Math.min(GEMS_BALANCE.maxReshuffles, 1 + (gemsLevel % 7 === 0 ? 1 : 0));
+  gemsRowBlasts = Math.min(GEMS_BALANCE.maxRowBlasts, Math.min(gemsRowBlasts, 1) + (gemsLevel % 5 === 0 ? 1 : 0));
+  gemsColBlasts = Math.min(GEMS_BALANCE.maxColBlasts, Math.min(gemsColBlasts, 1) + (gemsLevel % 8 === 0 ? 1 : 0));
   if (resetTotalScore) gemsScore = 0;
   document.getElementById('gemsOverlay').classList.add('hidden');
   gemsBuildGrid();
@@ -876,9 +884,15 @@ function gemsChargeGiftMeter(analysis) {
 }
 
 function gemsAwardPowerProgress(analysis) {
-  if (analysis.largestRun >= 4) gemsRowBlasts += 1;
-  if (analysis.largestRun >= 5) gemsColBlasts += 1;
-  if (gemsCascadeDepth >= 3) gemsReshuffles += 1;
+  if (analysis.largestRun >= 5) {
+    gemsRowBlasts = Math.min(GEMS_BALANCE.maxRowBlasts, gemsRowBlasts + 1);
+  }
+  if (analysis.largestRun >= 6 || (analysis.largestRun >= 5 && gemsCascadeDepth >= 2)) {
+    gemsColBlasts = Math.min(GEMS_BALANCE.maxColBlasts, gemsColBlasts + 1);
+  }
+  if (gemsCascadeDepth >= 3) {
+    gemsReshuffles = Math.min(GEMS_BALANCE.maxReshuffles, gemsReshuffles + 1);
+  }
 }
 
 function gemsShuffleBoard() {
@@ -958,7 +972,7 @@ function gemsOpenGift() {
   gemsGiftReady = false;
   gemsGiftCharge = 0;
   gemsSpinAnimating = true;
-  const wheelRewards = ['+4 Moves', 'Score Burst', 'Reshuffle', 'Row Wipe', 'Column Wipe', 'Color Blast', '2 Trophies'];
+  const wheelRewards = ['+3 Moves', 'Score Burst', 'Reshuffle', 'Row Wipe', 'Column Wipe', 'Color Blast', '1 Trophy'];
   let spins = 0;
   gemsRewardText = 'Wheel spinning...';
   gemsUpdateUI();
@@ -978,14 +992,14 @@ function gemsOpenGift() {
 }
 
 function gemsApplyWheelReward(reward) {
-  if (reward === '+4 Moves') {
-    gemsMoves += 4;
-    gemsRewardText = 'Wheel reward: +4 moves.';
+  if (reward === '+3 Moves') {
+    gemsMoves += GEMS_BALANCE.wheelMoveReward;
+    gemsRewardText = `Wheel reward: +${GEMS_BALANCE.wheelMoveReward} moves.`;
     gemsUpdateUI();
     return;
   }
   if (reward === 'Score Burst') {
-    const bonus = 240 + (gemsLevel * 85);
+    const bonus = 180 + (gemsLevel * 60);
     gemsScore += bonus;
     gemsLevelScore += bonus;
     gemsRewardText = `Wheel reward: +${bonus} pts.`;
@@ -994,27 +1008,27 @@ function gemsApplyWheelReward(reward) {
     return;
   }
   if (reward === 'Reshuffle') {
-    gemsReshuffles += 1;
+    gemsReshuffles = Math.min(GEMS_BALANCE.maxReshuffles, gemsReshuffles + 1);
     gemsRewardText = 'Wheel reward: +1 reshuffle.';
     gemsUpdateUI();
     return;
   }
   if (reward === 'Row Wipe') {
-    gemsRowBlasts += 1;
+    gemsRowBlasts = Math.min(GEMS_BALANCE.maxRowBlasts, gemsRowBlasts + 1);
     gemsRewardText = 'Wheel reward: +1 row wipe.';
     gemsUpdateUI();
     return;
   }
   if (reward === 'Column Wipe') {
-    gemsColBlasts += 1;
+    gemsColBlasts = Math.min(GEMS_BALANCE.maxColBlasts, gemsColBlasts + 1);
     gemsRewardText = 'Wheel reward: +1 column wipe.';
     gemsUpdateUI();
     return;
   }
-  if (reward === '2 Trophies') {
-    gemsTrophies += 2;
+  if (reward === '1 Trophy') {
+    gemsTrophies += GEMS_BALANCE.wheelTrophyReward;
     localStorage.setItem('gems_trophies', gemsTrophies);
-    gemsRewardText = 'Wheel reward: +2 trophies.';
+    gemsRewardText = `Wheel reward: +${GEMS_BALANCE.wheelTrophyReward} trophy.`;
     gemsUpdateUI();
     return;
   }
@@ -1058,10 +1072,10 @@ function gemsContinueRun() {
   if (!gemsContinueAvailable || !gemsWon) return;
   gemsContinueAvailable = false;
   gemsContinuesUsed += 1;
-  gemsMoves += 5;
+  gemsMoves += GEMS_BALANCE.continueMoves;
   gemsWon = false;
   document.getElementById('gemsOverlay').classList.add('hidden');
-  gemsRewardText = 'Continue activated. +5 moves added to save the run.';
+  gemsRewardText = `Continue activated. +${GEMS_BALANCE.continueMoves} moves added to save the run.`;
   gemsUpdateUI();
 }
 
