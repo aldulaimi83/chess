@@ -544,12 +544,37 @@ let gemsPendingPower = null;
 let gemsToastTimer = null;
 let gemsAudioEnabled = localStorage.getItem('gems_audio') !== 'off';
 let gemsAudioContext = null;
+let gemsAudioUnlocked = false;
+let gemsPlayerName = localStorage.getItem('gems_player_name') || 'Guest';
+let gemsHighScores = loadGemsHighScores();
+
+function loadGemsHighScores() {
+  try {
+    const raw = localStorage.getItem('gems_high_scores');
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveGemsHighScores() {
+  localStorage.setItem('gems_high_scores', JSON.stringify(gemsHighScores));
+}
+
+function normalizeGemsPlayerName(name) {
+  const cleaned = String(name || '').trim().replace(/\s+/g, ' ');
+  return cleaned || 'Guest';
+}
 
 function initGemsView() {
-  gemsBest = parseInt(localStorage.getItem('gems_best') || '0');
+  gemsPlayerName = normalizeGemsPlayerName(localStorage.getItem('gems_player_name') || gemsPlayerName);
+  gemsBest = parseInt(gemsHighScores[gemsPlayerName] || '0');
   gemsTrophies = parseInt(localStorage.getItem('gems_trophies') || '0');
   document.getElementById('gemsBest').textContent = `Best: ${gemsBest.toLocaleString()}`;
+  document.getElementById('gemsBestOwner').textContent = `Player: ${gemsPlayerName}`;
   document.getElementById('gemsTrophies').textContent = `Trophies: ${gemsTrophies.toLocaleString()}`;
+  document.getElementById('gemsPlayerName').value = gemsPlayerName;
   updateGemsSoundButton();
   gemsNewGame();
 }
@@ -698,6 +723,15 @@ function updateGemsSoundButton() {
   btn.textContent = gemsAudioEnabled ? '🔊 Sound On' : '🔈 Sound Off';
 }
 
+function updateGemsPlayerProfile() {
+  gemsPlayerName = normalizeGemsPlayerName(document.getElementById('gemsPlayerName')?.value || gemsPlayerName);
+  localStorage.setItem('gems_player_name', gemsPlayerName);
+  gemsBest = parseInt(gemsHighScores[gemsPlayerName] || '0');
+  document.getElementById('gemsBest').textContent = `Best: ${gemsBest.toLocaleString()}`;
+  document.getElementById('gemsBestOwner').textContent = `Player: ${gemsPlayerName}`;
+  document.getElementById('gemsPlayerName').value = gemsPlayerName;
+}
+
 function initGemsAudio() {
   if (!gemsAudioEnabled) return null;
   if (!window.AudioContext && !window.webkitAudioContext) return null;
@@ -709,6 +743,25 @@ function initGemsAudio() {
     gemsAudioContext.resume().catch(() => {});
   }
   return gemsAudioContext;
+}
+
+function unlockGemsAudio() {
+  if (!gemsAudioEnabled) return;
+  const ctx = initGemsAudio();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
+  if (gemsAudioUnlocked) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.00001, now);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.01);
+  gemsAudioUnlocked = true;
 }
 
 function gemsPlaySound(type) {
@@ -767,7 +820,7 @@ function gemsPlaySound(type) {
 }
 
 function gemsOnClick(r, c) {
-  initGemsAudio();
+  unlockGemsAudio();
   if (gemsAnimating || gemsWon || gemsSpinAnimating) return;
   if (gemsMoves <= 0) return;
 
@@ -1060,8 +1113,10 @@ function gemsUpdateUI() {
   document.getElementById('gemsColBlastBtn').disabled = gemsColBlasts <= 0 || gemsAnimating || gemsWon || gemsSpinAnimating;
   if (gemsScore > gemsBest) {
     gemsBest = gemsScore;
-    localStorage.setItem('gems_best', gemsBest);
+    gemsHighScores[gemsPlayerName] = gemsBest;
+    saveGemsHighScores();
     document.getElementById('gemsBest').textContent = `Best: ${gemsBest.toLocaleString()}`;
+    document.getElementById('gemsBestOwner').textContent = `Player: ${gemsPlayerName}`;
   }
 }
 
@@ -1358,10 +1413,16 @@ document.getElementById('gemsSoundBtn').addEventListener('click', () => {
   localStorage.setItem('gems_audio', gemsAudioEnabled ? 'on' : 'off');
   updateGemsSoundButton();
   if (gemsAudioEnabled) {
-    initGemsAudio();
+    gemsAudioUnlocked = false;
+    unlockGemsAudio();
     gemsPlaySound('select');
   }
 });
+document.getElementById('gemsSavePlayerBtn').addEventListener('click', updateGemsPlayerProfile);
+document.getElementById('gemsPlayerName').addEventListener('change', updateGemsPlayerProfile);
+document.addEventListener('touchstart', unlockGemsAudio, { passive: true });
+document.addEventListener('pointerdown', unlockGemsAudio, { passive: true });
+document.addEventListener('click', unlockGemsAudio, { passive: true });
 
 // ════════════════════════════════════════════════════════════
 // ██████  2048
