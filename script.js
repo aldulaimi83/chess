@@ -489,7 +489,25 @@ document.getElementById('copyRoomCodeBtn').addEventListener('click',()=>{
 // ════════════════════════════════════════════════════════════
 const GEMS_SIZE  = 8;
 const GEMS_TYPES = 6;
-const GEMS_LEVELS = [500, 1200, 2200, 3500, 5500, 8000];
+const GEMS_LEVELS = [
+  { name:'Candy Meadow',   target:500,  moves:20, giftGoal:90,  multiplier:1.00, goal:'Warm up with simple matches and quick chains.' },
+  { name:'Sugar Rush',     target:950,  moves:21, giftGoal:95,  multiplier:1.05, goal:'Build one cascade chain to speed up scoring.' },
+  { name:'Jelly Harbor',   target:1450, moves:22, giftGoal:100, multiplier:1.10, goal:'Aim for 4-gem clears to charge gifts faster.' },
+  { name:'Mint Circuit',   target:2100, moves:23, giftGoal:105, multiplier:1.15, goal:'Use combos to stay ahead of the target.' },
+  { name:'Neon Nougat',    target:2900, moves:24, giftGoal:110, multiplier:1.20, goal:'Large clears now matter more than small swaps.' },
+  { name:'Caramel Core',   target:3800, moves:25, giftGoal:115, multiplier:1.24, goal:'Gift rewards become part of the winning strategy.' },
+  { name:'Prism Pop',      target:4900, moves:26, giftGoal:120, multiplier:1.28, goal:'Chain multiple cascades for bonus multipliers.' },
+  { name:'Velvet Taffy',   target:6200, moves:27, giftGoal:125, multiplier:1.32, goal:'Keep your move count healthy with smart gifts.' },
+  { name:'Frost Fizz',     target:7600, moves:28, giftGoal:130, multiplier:1.36, goal:'5-gem clears give the biggest swing in score.' },
+  { name:'Galaxy Gummies', target:9200, moves:29, giftGoal:135, multiplier:1.40, goal:'Push for aggressive boards and color-heavy matches.' },
+  { name:'Meteor Mints',   target:11000,moves:30, giftGoal:140, multiplier:1.45, goal:'Cascades and gifts decide this stage.' },
+  { name:'Infinity Candy', target:13000,moves:31, giftGoal:145, multiplier:1.50, goal:'Endless-style pressure. Maximize every move.' },
+  { name:'Royal Jelly',    target:15200,moves:32, giftGoal:150, multiplier:1.56, goal:'Trophy runs begin here. Keep building power hits.' },
+  { name:'Comet Crunch',   target:17600,moves:33, giftGoal:155, multiplier:1.62, goal:'Use the wheel for momentum, not recovery.' },
+  { name:'Aurora Pops',    target:20200,moves:34, giftGoal:160, multiplier:1.68, goal:'Board wipes should create scoring avalanches.' },
+  { name:'Starlight Toffee',target:23000,moves:35,giftGoal:168, multiplier:1.74, goal:'Big matches and trophy play decide the finish.' },
+  { name:'Crown Candy',    target:26000,moves:36, giftGoal:175, multiplier:1.82, goal:'Final preset world. Master continues, spins, and powers.' }
+];
 
 let gemsGrid     = [];   // 2D array of gem type (0-5) or null
 let gemsSelected = null; // {r,c}
@@ -498,18 +516,77 @@ let gemsLevel    = 1;
 let gemsMoves    = 20;
 let gemsBest     = 0;
 let gemsAnimating= false;
-let gemsLevelTarget = GEMS_LEVELS[0];
+let gemsLevelScore = 0;
+let gemsCombo    = 1;
+let gemsCascadeDepth = 0;
+let gemsGiftCharge = 0;
+let gemsGiftReady = false;
+let gemsRewardText = 'Big matches and cascades charge your gift meter.';
+let gemsCurrentConfig = GEMS_LEVELS[0];
+let gemsLevelTarget = gemsCurrentConfig.target;
 let gemsWon      = false;
+let gemsTrophies = 0;
+let gemsContinuesUsed = 0;
+let gemsContinueAvailable = true;
+let gemsReshuffles = 1;
+let gemsRowBlasts = 0;
+let gemsColBlasts = 0;
+let gemsSpinAnimating = false;
+let gemsPendingPower = null;
 
 function initGemsView() {
   gemsBest = parseInt(localStorage.getItem('gems_best') || '0');
-  document.getElementById('gemsBest').textContent = `Best: ${gemsBest}`;
+  gemsTrophies = parseInt(localStorage.getItem('gems_trophies') || '0');
+  document.getElementById('gemsBest').textContent = `Best: ${gemsBest.toLocaleString()}`;
+  document.getElementById('gemsTrophies').textContent = `Trophies: ${gemsTrophies.toLocaleString()}`;
   gemsNewGame();
 }
 
 function gemsNewGame() {
-  gemsScore = 0; gemsLevel = 1; gemsMoves = 20;
-  gemsLevelTarget = GEMS_LEVELS[0]; gemsSelected = null; gemsWon = false;
+  gemsScore = 0;
+  gemsGiftCharge = 0;
+  gemsGiftReady = false;
+  gemsContinuesUsed = 0;
+  gemsRowBlasts = 0;
+  gemsColBlasts = 0;
+  gemsReshuffles = 1;
+  gemsPendingPower = null;
+  gemsRewardText = 'Big matches and cascades charge your gift meter.';
+  gemsStartLevel(1, true);
+}
+
+function gemsGetLevelConfig(level) {
+  const preset = GEMS_LEVELS[level - 1];
+  if (preset) return preset;
+  const extra = level - GEMS_LEVELS.length;
+  const last = GEMS_LEVELS[GEMS_LEVELS.length - 1];
+  return {
+    name: `Infinity Candy ${level}`,
+    target: last.target + (extra * 2200),
+    moves: last.moves + Math.min(extra, 6),
+    giftGoal: last.giftGoal + (extra * 5),
+    multiplier: Math.min(2.1, last.multiplier + (extra * 0.05)),
+    goal: 'Endless challenge. Use gifts and cascades to outrun the target.'
+  };
+}
+
+function gemsStartLevel(level, resetTotalScore = false) {
+  gemsLevel = level;
+  gemsCurrentConfig = gemsGetLevelConfig(level);
+  gemsLevelTarget = gemsCurrentConfig.target;
+  gemsMoves = gemsCurrentConfig.moves;
+  gemsLevelScore = 0;
+  gemsCombo = 1;
+  gemsCascadeDepth = 0;
+  gemsSelected = null;
+  gemsWon = false;
+  gemsAnimating = false;
+  gemsPendingPower = null;
+  gemsContinueAvailable = true;
+  gemsReshuffles = 1 + (gemsLevel % 5 === 0 ? 1 : 0);
+  gemsRowBlasts += gemsLevel % 4 === 0 ? 1 : 0;
+  gemsColBlasts += gemsLevel % 6 === 0 ? 1 : 0;
+  if (resetTotalScore) gemsScore = 0;
   document.getElementById('gemsOverlay').classList.add('hidden');
   gemsBuildGrid();
   gemsUpdateUI();
@@ -545,13 +622,24 @@ function gemsRender() {
     cell.className = `gem-cell gem-${type}`;
     cell.dataset.r = r; cell.dataset.c = c;
     cell.addEventListener('click', () => gemsOnClick(r, c));
+    if (gemsPendingPower === 'row') cell.classList.add('power-target-row');
+    if (gemsPendingPower === 'col') cell.classList.add('power-target-col');
     board.appendChild(cell);
   }
 }
 
 function gemsOnClick(r, c) {
-  if (gemsAnimating || gemsWon) return;
+  if (gemsAnimating || gemsWon || gemsSpinAnimating) return;
   if (gemsMoves <= 0) return;
+
+  if (gemsPendingPower === 'row') {
+    gemsUseLinePower('row', r);
+    return;
+  }
+  if (gemsPendingPower === 'col') {
+    gemsUseLinePower('col', c);
+    return;
+  }
 
   if (!gemsSelected) {
     gemsSelected = {r, c};
@@ -588,9 +676,9 @@ function gemsGetCell(r, c) {
 function gemsSwapTiles(r1, c1, r2, c2) {
   // Swap in grid
   [gemsGrid[r1][c1], gemsGrid[r2][c2]] = [gemsGrid[r2][c2], gemsGrid[r1][c1]];
-  const matches = gemsFindMatches();
+  const matches = gemsAnalyzeMatches();
 
-  if (matches.length === 0) {
+  if (matches.count === 0) {
     // Swap back — no match
     [gemsGrid[r1][c1], gemsGrid[r2][c2]] = [gemsGrid[r2][c2], gemsGrid[r1][c1]];
     gemsRender();
@@ -602,12 +690,16 @@ function gemsSwapTiles(r1, c1, r2, c2) {
 
   gemsMoves--;
   gemsAnimating = true;
+  gemsCascadeDepth = 0;
+  gemsCombo = 1;
+  gemsRewardText = 'Match confirmed. Let the cascade roll.';
   gemsRender();
   setTimeout(() => gemsClearAndCascade(), 50);
 }
 
-function gemsFindMatches() {
+function gemsAnalyzeMatches() {
   const matched = new Set();
+  const groups = [];
   // Horizontal
   for (let r=0;r<GEMS_SIZE;r++) {
     let run=1;
@@ -615,11 +707,25 @@ function gemsFindMatches() {
       if (gemsGrid[r][c]!==null && gemsGrid[r][c]===gemsGrid[r][c-1]) {
         run++;
       } else {
-        if (run>=3) for (let k=c-run;k<c;k++) matched.add(`${r},${k}`);
+        if (run>=3) {
+          const group = [];
+          for (let k=c-run;k<c;k++) {
+            matched.add(`${r},${k}`);
+            group.push({r,c:k});
+          }
+          groups.push(group);
+        }
         run=1;
       }
     }
-    if (run>=3) for (let k=GEMS_SIZE-run;k<GEMS_SIZE;k++) matched.add(`${r},${k}`);
+    if (run>=3) {
+      const group = [];
+      for (let k=GEMS_SIZE-run;k<GEMS_SIZE;k++) {
+        matched.add(`${r},${k}`);
+        group.push({r,c:k});
+      }
+      groups.push(group);
+    }
   }
   // Vertical
   for (let c=0;c<GEMS_SIZE;c++) {
@@ -628,30 +734,68 @@ function gemsFindMatches() {
       if (gemsGrid[r][c]!==null && gemsGrid[r][c]===gemsGrid[r-1][c]) {
         run++;
       } else {
-        if (run>=3) for (let k=r-run;k<r;k++) matched.add(`${k},${c}`);
+        if (run>=3) {
+          const group = [];
+          for (let k=r-run;k<r;k++) {
+            matched.add(`${k},${c}`);
+            group.push({r:k,c});
+          }
+          groups.push(group);
+        }
         run=1;
       }
     }
-    if (run>=3) for (let k=GEMS_SIZE-run;k<GEMS_SIZE;k++) matched.add(`${k},${c}`);
+    if (run>=3) {
+      const group = [];
+      for (let k=GEMS_SIZE-run;k<GEMS_SIZE;k++) {
+        matched.add(`${k},${c}`);
+        group.push({r:k,c});
+      }
+      groups.push(group);
+    }
   }
-  return [...matched].map(s=>{ const [r,c]=s.split(','); return {r:+r,c:+c}; });
+  const coords = [...matched].map(s=>{ const [r,c]=s.split(','); return {r:+r,c:+c}; });
+  const largestRun = groups.reduce((max, group) => Math.max(max, group.length), 0);
+  return { coords, groups, largestRun, count: coords.length };
 }
 
 function gemsClearAndCascade() {
-  const matches = gemsFindMatches();
-  if (matches.length === 0) {
+  const analysis = gemsAnalyzeMatches();
+  if (analysis.count === 0) {
     gemsAnimating = false;
+    gemsCombo = 1;
     gemsUpdateUI();
     gemsCheckLevelEnd();
     return;
   }
 
-  // Score: 10 per gem, bonus for 4+ matches
-  const pts = matches.length <= 3 ? matches.length*10 : matches.length*10 + (matches.length-3)*15;
+  gemsCascadeDepth++;
+  gemsCombo = Math.max(1, gemsCascadeDepth);
+
+  const basePts = analysis.count * 12;
+  const sizeBonus = analysis.groups.reduce((sum, group) => {
+    if (group.length >= 5) return sum + 120 + ((group.length - 5) * 35);
+    if (group.length === 4) return sum + 45;
+    return sum;
+  }, 0);
+  const cascadeBonus = Math.max(0, gemsCascadeDepth - 1) * 35;
+  const multiplier = (gemsCurrentConfig.multiplier || 1) + Math.max(0, gemsCascadeDepth - 1) * 0.15;
+  const pts = Math.round((basePts + sizeBonus + cascadeBonus) * multiplier);
   gemsScore += pts;
+  gemsLevelScore += pts;
+  gemsChargeGiftMeter(analysis);
+  gemsAwardPowerProgress(analysis);
+
+  if (analysis.largestRun >= 5) {
+    gemsRewardText = `Mega bonus: ${pts} pts with a ${analysis.largestRun}-gem clear.`;
+  } else if (gemsCascadeDepth > 1) {
+    gemsRewardText = `Cascade x${gemsCascadeDepth} earned ${pts} pts.`;
+  } else {
+    gemsRewardText = `Clean match: +${pts} pts.`;
+  }
 
   // Animate pop
-  matches.forEach(({r,c}) => {
+  analysis.coords.forEach(({r,c}) => {
     const cell = gemsGetCell(r,c);
     if (cell) cell.classList.add('matched');
     gemsGrid[r][c] = null;
@@ -689,9 +833,31 @@ function gemsUpdateUI() {
   document.getElementById('gemsScore').textContent = gemsScore.toLocaleString();
   document.getElementById('gemsMoves').textContent = gemsMoves;
   document.getElementById('gemsLevelNum').textContent = gemsLevel;
+  document.getElementById('gemsStageName').textContent = gemsCurrentConfig.name;
+  document.getElementById('gemsTrophies').textContent = `Trophies: ${gemsTrophies.toLocaleString()}`;
   document.getElementById('gemsTargetTxt').textContent = `Target: ${gemsLevelTarget.toLocaleString()}`;
-  const pct = Math.min(100, (gemsScore / gemsLevelTarget) * 100);
+  document.getElementById('gemsGoalTxt').textContent = `Goal: ${gemsCurrentConfig.goal}`;
+  const pct = Math.min(100, (gemsLevelScore / gemsLevelTarget) * 100);
   document.getElementById('gemsProgressFill').style.width = `${pct}%`;
+  document.getElementById('gemsComboNum').textContent = `x${gemsCombo}`;
+  const giftPct = Math.min(100, (gemsGiftCharge / gemsCurrentConfig.giftGoal) * 100);
+  document.getElementById('gemsGiftFill').style.width = `${giftPct}%`;
+  document.getElementById('gemsGiftTxt').textContent = gemsGiftReady
+    ? 'Gift Meter: Ready to open'
+    : `Gift Meter: ${Math.round(giftPct)}%`;
+  document.getElementById('gemsRewardText').textContent = gemsRewardText;
+  const giftBtn = document.getElementById('gemsGiftBtn');
+  giftBtn.disabled = !gemsGiftReady || gemsAnimating || gemsWon || gemsSpinAnimating;
+  giftBtn.textContent = gemsGiftReady ? '🎡 Spin Wheel' : '🎡 Charging...';
+  document.getElementById('gemsContinueTxt').textContent = gemsContinueAvailable
+    ? 'Continue: ready'
+    : 'Continue: used';
+  document.getElementById('gemsReshuffleCount').textContent = gemsReshuffles;
+  document.getElementById('gemsRowBlastCount').textContent = gemsRowBlasts;
+  document.getElementById('gemsColBlastCount').textContent = gemsColBlasts;
+  document.getElementById('gemsReshuffleBtn').disabled = gemsReshuffles <= 0 || gemsAnimating || gemsWon;
+  document.getElementById('gemsRowBlastBtn').disabled = gemsRowBlasts <= 0 || gemsAnimating || gemsWon || gemsSpinAnimating;
+  document.getElementById('gemsColBlastBtn').disabled = gemsColBlasts <= 0 || gemsAnimating || gemsWon || gemsSpinAnimating;
   if (gemsScore > gemsBest) {
     gemsBest = gemsScore;
     localStorage.setItem('gems_best', gemsBest);
@@ -699,48 +865,258 @@ function gemsUpdateUI() {
   }
 }
 
+function gemsChargeGiftMeter(analysis) {
+  if (gemsGiftReady) return;
+  gemsGiftCharge += (analysis.count * 8) + (analysis.groups.length * 5) + (analysis.largestRun >= 5 ? 18 : 0);
+  if (gemsGiftCharge >= gemsCurrentConfig.giftGoal) {
+    gemsGiftCharge = gemsCurrentConfig.giftGoal;
+    gemsGiftReady = true;
+    gemsRewardText = 'Gift ready. Open it for moves, points, a blast, or a fresh board.';
+  }
+}
+
+function gemsAwardPowerProgress(analysis) {
+  if (analysis.largestRun >= 4) gemsRowBlasts += 1;
+  if (analysis.largestRun >= 5) gemsColBlasts += 1;
+  if (gemsCascadeDepth >= 3) gemsReshuffles += 1;
+}
+
+function gemsShuffleBoard() {
+  gemsBuildGrid();
+  let safety = 0;
+  while (gemsAnalyzeMatches().count > 0 && safety < 20) {
+    gemsBuildGrid();
+    safety++;
+  }
+}
+
+function gemsTriggerReshuffle(spendCharge = true) {
+  if (spendCharge && gemsReshuffles <= 0) return;
+  if (spendCharge) gemsReshuffles--;
+  gemsPendingPower = null;
+  gemsSelected = null;
+  gemsShuffleBoard();
+  gemsRewardText = 'Board reshuffled. Hunt for a bigger combo.';
+  gemsRender();
+  gemsUpdateUI();
+}
+
+function gemsArmPower(type) {
+  if (gemsAnimating || gemsWon || gemsSpinAnimating) return;
+  if (type === 'row' && gemsRowBlasts <= 0) return;
+  if (type === 'col' && gemsColBlasts <= 0) return;
+  gemsPendingPower = gemsPendingPower === type ? null : type;
+  gemsSelected = null;
+  gemsRewardText = gemsPendingPower
+    ? `Super power armed: tap any ${type === 'row' ? 'row' : 'column'} to wipe it.`
+    : 'Super power canceled.';
+  gemsRender();
+  gemsUpdateUI();
+}
+
+function gemsUseLinePower(type, index) {
+  if (type === 'row' && gemsRowBlasts <= 0) return;
+  if (type === 'col' && gemsColBlasts <= 0) return;
+
+  gemsAnimating = true;
+  gemsPendingPower = null;
+  gemsSelected = null;
+  if (type === 'row') gemsRowBlasts--;
+  else gemsColBlasts--;
+
+  const cleared = [];
+  for (let i=0;i<GEMS_SIZE;i++) {
+    const r = type === 'row' ? index : i;
+    const c = type === 'col' ? index : i;
+    if (gemsGrid[r][c] !== null) cleared.push({r,c});
+  }
+
+  cleared.forEach(({r,c}) => {
+    const cell = gemsGetCell(r,c);
+    if (cell) cell.classList.add('matched');
+    gemsGrid[r][c] = null;
+  });
+
+  const powerPts = cleared.length * (30 + gemsLevel);
+  gemsScore += powerPts;
+  gemsLevelScore += powerPts;
+  gemsRewardText = `${type === 'row' ? 'Row' : 'Column'} wipe activated for +${powerPts} pts.`;
+  gemsUpdateUI();
+
+  setTimeout(() => {
+    gemsApplyGravity();
+    gemsFillEmpty();
+    gemsRender();
+    gemsCascadeDepth = 0;
+    setTimeout(() => gemsClearAndCascade(), 250);
+  }, 260);
+}
+
+function gemsOpenGift() {
+  if (!gemsGiftReady || gemsAnimating || gemsWon || gemsSpinAnimating) return;
+
+  gemsGiftReady = false;
+  gemsGiftCharge = 0;
+  gemsSpinAnimating = true;
+  const wheelRewards = ['+4 Moves', 'Score Burst', 'Reshuffle', 'Row Wipe', 'Column Wipe', 'Color Blast', '2 Trophies'];
+  let spins = 0;
+  gemsRewardText = 'Wheel spinning...';
+  gemsUpdateUI();
+  const spinTimer = setInterval(() => {
+    spins++;
+    const preview = wheelRewards[spins % wheelRewards.length];
+    gemsRewardText = `Wheel spinning... ${preview}`;
+    gemsUpdateUI();
+  }, 110);
+
+  setTimeout(() => {
+    clearInterval(spinTimer);
+    gemsSpinAnimating = false;
+    const reward = wheelRewards[Math.floor(Math.random() * wheelRewards.length)];
+    gemsApplyWheelReward(reward);
+  }, 1350);
+}
+
+function gemsApplyWheelReward(reward) {
+  if (reward === '+4 Moves') {
+    gemsMoves += 4;
+    gemsRewardText = 'Wheel reward: +4 moves.';
+    gemsUpdateUI();
+    return;
+  }
+  if (reward === 'Score Burst') {
+    const bonus = 240 + (gemsLevel * 85);
+    gemsScore += bonus;
+    gemsLevelScore += bonus;
+    gemsRewardText = `Wheel reward: +${bonus} pts.`;
+    gemsUpdateUI();
+    gemsCheckLevelEnd();
+    return;
+  }
+  if (reward === 'Reshuffle') {
+    gemsReshuffles += 1;
+    gemsRewardText = 'Wheel reward: +1 reshuffle.';
+    gemsUpdateUI();
+    return;
+  }
+  if (reward === 'Row Wipe') {
+    gemsRowBlasts += 1;
+    gemsRewardText = 'Wheel reward: +1 row wipe.';
+    gemsUpdateUI();
+    return;
+  }
+  if (reward === 'Column Wipe') {
+    gemsColBlasts += 1;
+    gemsRewardText = 'Wheel reward: +1 column wipe.';
+    gemsUpdateUI();
+    return;
+  }
+  if (reward === '2 Trophies') {
+    gemsTrophies += 2;
+    localStorage.setItem('gems_trophies', gemsTrophies);
+    gemsRewardText = 'Wheel reward: +2 trophies.';
+    gemsUpdateUI();
+    return;
+  }
+
+  const availableTypes = new Set();
+  for (let r=0;r<GEMS_SIZE;r++) for (let c=0;c<GEMS_SIZE;c++) {
+    if (gemsGrid[r][c] !== null) availableTypes.add(gemsGrid[r][c]);
+  }
+  const types = [...availableTypes];
+  if (!types.length) {
+    gemsRewardText = 'Wheel reward missed. Board unchanged.';
+    gemsUpdateUI();
+    return;
+  }
+  const targetType = types[Math.floor(Math.random() * types.length)];
+  const blasted = [];
+  for (let r=0;r<GEMS_SIZE;r++) for (let c=0;c<GEMS_SIZE;c++) {
+    if (gemsGrid[r][c] === targetType) blasted.push({r, c});
+  }
+  gemsAnimating = true;
+  gemsRewardText = `Wheel reward: color blast removed ${blasted.length} gems.`;
+  blasted.forEach(({r,c}) => {
+    const cell = gemsGetCell(r,c);
+    if (cell) cell.classList.add('matched');
+    gemsGrid[r][c] = null;
+  });
+  const blastScore = blasted.length * (24 + gemsLevel * 2);
+  gemsScore += blastScore;
+  gemsLevelScore += blastScore;
+  gemsUpdateUI();
+  setTimeout(() => {
+    gemsApplyGravity();
+    gemsFillEmpty();
+    gemsRender();
+    gemsCascadeDepth = 0;
+    setTimeout(() => gemsClearAndCascade(), 280);
+  }, 280);
+}
+
+function gemsContinueRun() {
+  if (!gemsContinueAvailable || !gemsWon) return;
+  gemsContinueAvailable = false;
+  gemsContinuesUsed += 1;
+  gemsMoves += 5;
+  gemsWon = false;
+  document.getElementById('gemsOverlay').classList.add('hidden');
+  gemsRewardText = 'Continue activated. +5 moves added to save the run.';
+  gemsUpdateUI();
+}
+
+function gemsAwardTrophy(amount) {
+  gemsTrophies += amount;
+  localStorage.setItem('gems_trophies', gemsTrophies);
+}
+
 function gemsCheckLevelEnd() {
-  if (gemsScore >= gemsLevelTarget) {
+  if (gemsLevelScore >= gemsLevelTarget) {
     // Level complete
     const nextLevel = gemsLevel + 1;
     const icon = document.getElementById('gemsOverIcon');
     const title = document.getElementById('gemsOverTitle');
     const scoreEl = document.getElementById('gemsOverScore');
     const nextBtn = document.getElementById('gemsNextBtn');
+    const continueBtn = document.getElementById('gemsContinueBtn');
     const retryBtn = document.getElementById('gemsRetryBtn');
 
+    gemsAwardTrophy(1 + (gemsLevel % 5 === 0 ? 1 : 0));
     icon.textContent = '🏆';
     title.textContent = `Level ${gemsLevel} Complete!`;
-    scoreEl.textContent = `Score: ${gemsScore.toLocaleString()} pts`;
-    nextBtn.style.display = nextLevel <= GEMS_LEVELS.length ? '' : 'none';
+    scoreEl.textContent = `Level Score: ${gemsLevelScore.toLocaleString()} · Total Score: ${gemsScore.toLocaleString()} · Trophy earned`;
+    nextBtn.style.display = '';
+    continueBtn.style.display = 'none';
     retryBtn.textContent = 'Play Again';
     document.getElementById('gemsOverlay').classList.remove('hidden');
     gemsWon = true;
+    gemsUpdateUI();
 
     nextBtn.onclick = () => {
-      gemsLevel = nextLevel;
-      gemsLevelTarget = GEMS_LEVELS[gemsLevel-1] || GEMS_LEVELS[GEMS_LEVELS.length-1] * gemsLevel;
-      gemsMoves = 20 + (gemsLevel-1)*2;
-      gemsSelected = null; gemsWon = false;
-      document.getElementById('gemsOverlay').classList.add('hidden');
-      gemsBuildGrid();
-      gemsUpdateUI(); gemsRender();
+      gemsStartLevel(nextLevel, false);
     };
 
   } else if (gemsMoves <= 0) {
     // Out of moves
     document.getElementById('gemsOverIcon').textContent = '💔';
     document.getElementById('gemsOverTitle').textContent = 'Out of Moves!';
-    document.getElementById('gemsOverScore').textContent = `Score: ${gemsScore.toLocaleString()} pts — Need ${gemsLevelTarget.toLocaleString()}`;
+    document.getElementById('gemsOverScore').textContent = `Level Score: ${gemsLevelScore.toLocaleString()} / ${gemsLevelTarget.toLocaleString()} · Total: ${gemsScore.toLocaleString()}`;
     document.getElementById('gemsNextBtn').style.display = 'none';
+    document.getElementById('gemsContinueBtn').style.display = gemsContinueAvailable ? '' : 'none';
     document.getElementById('gemsRetryBtn').textContent = 'Try Again';
     document.getElementById('gemsOverlay').classList.remove('hidden');
     gemsWon = true;
+    gemsUpdateUI();
   }
 }
 
 document.getElementById('gemsNewGameBtn').addEventListener('click', gemsNewGame);
 document.getElementById('gemsRetryBtn').addEventListener('click', gemsNewGame);
+document.getElementById('gemsGiftBtn').addEventListener('click', gemsOpenGift);
+document.getElementById('gemsContinueBtn').addEventListener('click', gemsContinueRun);
+document.getElementById('gemsReshuffleBtn').addEventListener('click', () => gemsTriggerReshuffle(true));
+document.getElementById('gemsRowBlastBtn').addEventListener('click', () => gemsArmPower('row'));
+document.getElementById('gemsColBlastBtn').addEventListener('click', () => gemsArmPower('col'));
 
 // ════════════════════════════════════════════════════════════
 // ██████  2048

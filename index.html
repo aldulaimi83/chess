@@ -245,23 +245,51 @@
           <h3>Score</h3>
           <div class="gems-score-num" id="gemsScore">0</div>
           <div class="gems-best-txt" id="gemsBest">Best: 0</div>
+          <div class="gems-best-txt" id="gemsTrophies">Trophies: 0</div>
         </div>
         <div class="sidebar-card">
           <h3>Level <span id="gemsLevelNum">1</span></h3>
           <div class="gems-progress-wrap">
+            <div class="gems-stage-name" id="gemsStageName">Candy Meadow</div>
             <div class="gems-progress-bar">
               <div class="gems-progress-fill" id="gemsProgressFill" style="width:0%"></div>
             </div>
             <div class="gems-target-txt" id="gemsTargetTxt">Target: 500</div>
+            <div class="gems-goal-txt" id="gemsGoalTxt">Goal: reach the target before you run out of moves.</div>
           </div>
         </div>
         <div class="sidebar-card">
           <h3>Moves Left</h3>
           <div class="gems-moves-num" id="gemsMoves">20</div>
+          <div class="gems-best-txt" id="gemsContinueTxt">Continue: ready</div>
+        </div>
+        <div class="sidebar-card">
+          <h3>Bonuses</h3>
+          <div class="gems-combo-row">
+            <span>Combo</span>
+            <strong id="gemsComboNum">x1</strong>
+          </div>
+          <div class="gems-progress-wrap">
+            <div class="gems-progress-bar gems-gift-bar">
+              <div class="gems-progress-fill gems-gift-fill" id="gemsGiftFill" style="width:0%"></div>
+            </div>
+            <div class="gems-target-txt" id="gemsGiftTxt">Gift Meter: 0%</div>
+          </div>
+          <button class="btn-primary full" id="gemsGiftBtn" disabled>🎡 Spin Wheel</button>
+          <div class="gems-reward-text" id="gemsRewardText">Big matches and cascades charge your gift meter.</div>
+        </div>
+        <div class="sidebar-card">
+          <h3>Super Powers</h3>
+          <div class="gems-power-grid">
+            <button class="btn-secondary" id="gemsReshuffleBtn">🔀 Reshuffle <span id="gemsReshuffleCount">1</span></button>
+            <button class="btn-secondary" id="gemsRowBlastBtn">💥 Row <span id="gemsRowBlastCount">0</span></button>
+            <button class="btn-secondary" id="gemsColBlastBtn">⚡ Column <span id="gemsColBlastCount">0</span></button>
+          </div>
+          <div class="gems-reward-text" id="gemsPowerHint">Reshuffle is refreshed every level. Large clears and wheel rewards can charge row and column wipes.</div>
         </div>
         <div class="sidebar-card gems-hint-card">
           <h3>How to Play</h3>
-          <p class="gems-hint-txt">Tap a gem, then tap an adjacent gem to swap. Match 3 or more in a row to score!</p>
+          <p class="gems-hint-txt">Tap a gem, then tap an adjacent gem to swap. Match 3 or more in a row to score. Large clears build combos, trophies, super powers, and wheel spins that can save a failed run.</p>
         </div>
         <button class="btn-secondary full" id="gemsNewGameBtn">↺ New Game</button>
       </div>
@@ -273,6 +301,7 @@
             <div class="gems-over-title" id="gemsOverTitle">Level Complete!</div>
             <div class="gems-over-score" id="gemsOverScore"></div>
             <button class="btn-primary" id="gemsNextBtn" style="display:none">Next Level →</button>
+            <button class="btn-primary" id="gemsContinueBtn" style="display:none">Continue +5 Moves</button>
             <button class="btn-secondary" id="gemsRetryBtn">Try Again</button>
           </div>
         </div>

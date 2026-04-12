@@ -291,6 +291,58 @@ body {
   transition:width .4s ease;
 }
 .gems-target-txt { font-size:.78rem; color:var(--muted); }
+.gems-stage-name {
+  font-family:'Orbitron',sans-serif;
+  font-size:.9rem;
+  color:#ffd0ea;
+  letter-spacing:.04em;
+}
+.gems-goal-txt {
+  font-size:.78rem;
+  color:var(--muted);
+  line-height:1.5;
+}
+.gems-combo-row {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  font-size:.9rem;
+  color:var(--text);
+}
+.gems-combo-row strong {
+  font-family:'Orbitron',sans-serif;
+  color:#f9a8d4;
+  font-size:1.15rem;
+}
+.gems-gift-bar {
+  height:10px;
+  background:rgba(255,255,255,.06);
+}
+.gems-gift-fill {
+  background:linear-gradient(90deg,#f59e0b,#f472b6,#c084fc);
+}
+.gems-reward-text {
+  min-height:2.8em;
+  font-size:.8rem;
+  color:var(--muted);
+  line-height:1.45;
+}
+.gems-power-grid {
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+}
+.gems-power-grid button {
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.gems-power-grid button:disabled,
+#gemsGiftBtn:disabled {
+  opacity:.55;
+  cursor:not-allowed;
+}
 
 .gems-board-wrap {
   display:flex; justify-content:center; align-items:flex-start;
@@ -317,6 +369,12 @@ body {
   transform:scale(1.12);
   box-shadow:0 0 0 3px white, 0 0 20px rgba(255,255,255,.3);
   z-index:2;
+}
+.gem-cell.power-target-row {
+  box-shadow:inset 0 0 0 2px rgba(244,114,182,.65);
+}
+.gem-cell.power-target-col {
+  box-shadow:inset 0 0 0 2px rgba(251,191,36,.7);
 }
 .gem-cell.matched {
   animation:gemPop .3s ease forwards;
