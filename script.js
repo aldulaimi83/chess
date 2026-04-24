@@ -31,6 +31,7 @@ const GAME_HASHES = {
   '#2048': 't2048',
   '#t2048': 't2048',
   '#snake': 'snake',
+  '#chromamaze': 'chromamaze',
 };
 
 function showView(name) {
@@ -48,6 +49,7 @@ function showView(name) {
   if (name === 'gems')     initGemsView();
   if (name === 't2048')    initT2048View();
   if (name === 'snake' && window._initSnake) window._initSnake();
+  if (name === 'chromamaze') window.location.href = 'chromamaze.html';
 }
 
 function openGameFromHash() {

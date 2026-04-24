@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChromaMaze - Color Puzzle Game | Youooo Games</title>
+    <meta name="description" content="ChromaMaze: Unique color puzzle game. Navigate mazes by collecting colors in the correct sequence. Strategic puzzle gameplay." />
+    <link rel="icon" href="youooo_logo.png" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #16213e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: rgba(20, 30, 60, 0.8);
+            border: 2px solid rgba(100, 200, 255, 0.3);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #00ff88 0%, #00bfff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 900;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            background: rgba(100, 200, 255, 0.1);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            padding: 15px 25px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .game-board {
+            display: flex;
+            gap: 40px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .maze-container {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .info-panel {
+            flex: 0 0 200px;
+            background: rgba(100, 200, 255, 0.05);
+            border: 1px solid rgba(100, 200, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .sequence-display {
+            margin-bottom: 20px;
+        }
+
+        .sequence-label {
+            font-size: 0.9em;
+            color: #aaa;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sequence-colors {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .color-dot {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8em;
+            transition: all 0.3s ease;
+        }
+
+        .color-dot.collected {
+            transform: scale(0.8);
+            opacity: 0.5;
+        }
+
+        .color-dot.next {
+            border-color: #fff;
+            box-shadow: 0 0 15px currentColor;
+        }
+
+        canvas {
+            border: 2px solid rgba(100, 200, 255, 0.3);
+            border-radius: 10px;
+            background: #0a0e27;
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1em;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00ff88 0%, #00bfff 100%);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(100, 200, 255, 0.2);
+            color: #00bfff;
+            border: 1px solid rgba(100, 200, 255, 0.5);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(100, 200, 255, 0.3);
+        }
+
+        .difficulty-selector {
+            margin-bottom: 20px;
+        }
+
+        .difficulty-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .diff-btn {
+            flex: 1;
+            padding: 10px;
+            background: rgba(100, 200, 255, 0.1);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            color: #aaa;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .diff-btn.active {
+            background: linear-gradient(135deg, #00ff88 0%, #00bfff 100%);
+            color: #000;
+            border-color: transparent;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #0a0e27 0%, #16213e 100%);
+            border: 2px solid rgba(100, 200, 255, 0.3);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .modal-content h2 {
+            font-size: 2em;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #00ff88 0%, #00bfff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .modal-content p {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            color: #aaa;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #00bfff;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            color: #00ff88;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .game-board {
+                gap: 20px;
+            }
+
+            .info-panel {
+                flex-basis: 100%;
+                flex-direction: row;
+                display: flex;
+                gap: 20px;
+            }
+
+            .sequence-display {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 ChromaMaze</h1>
+            <p>Navigate the maze. Collect colors in sequence. Reach the goal!</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-label">Level</div>
+                <div class="stat-value" id="levelDisplay">1</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Moves</div>
+                <div class="stat-value" id="movesDisplay">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Best Score</div>
+                <div class="stat-value" id="bestScore">—</div>
+            </div>
+        </div>
+
+        <div class="game-board">
+            <div class="maze-container">
+                <canvas id="gameCanvas" width="400" height="400"></canvas>
+            </div>
+            <div class="info-panel">
+                <div>
+                    <div class="difficulty-selector">
+                        <div class="sequence-label">Difficulty</div>
+                        <div class="difficulty-buttons">
+                            <button class="diff-btn active" data-difficulty="easy">Easy</button>
+                            <button class="diff-btn" data-difficulty="medium">Medium</button>
+                            <button class="diff-btn" data-difficulty="hard">Hard</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="sequence-display">
+                    <div class="sequence-label">Target Sequence</div>
+                    <div class="sequence-colors" id="sequenceDisplay"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-primary" id="playBtn">New Game</button>
+            <button class="btn-secondary" id="resetBtn">Reset</button>
+            <button class="btn-secondary" onclick="window.location.href='/'">Back to Hub</button>
+        </div>
+    </div>
+
+    <div class="modal" id="completeModal">
+        <div class="modal-content">
+            <h2>🎉 Level Complete!</h2>
+            <p id="completeMessage"></p>
+            <button class="btn-primary" id="nextLevelBtn" style="width: 100%; margin-top: 20px;">Next Level →</button>
+        </div>
+    </div>
+
+    <script src="chromamaze.js"></script>
+</body>
+</html>
