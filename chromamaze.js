@@ -2,7 +2,15 @@
 class ChromaMaze {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
+        if (!this.canvas) {
+            console.error('Canvas not found:', canvasId);
+            return;
+        }
         this.ctx = this.canvas.getContext('2d');
+        if (!this.ctx) {
+            console.error('Canvas context failed');
+            return;
+        }
         this.cellSize = 40;
         this.gridWidth = Math.floor(this.canvas.width / this.cellSize);
         this.gridHeight = Math.floor(this.canvas.height / this.cellSize);
