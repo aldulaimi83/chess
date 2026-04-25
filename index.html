@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>Play Free Online Games - Chess, Checkers, Snake, 2048 & Gems Crush | Youooo Games</title>
-  <meta name="description" content="Play free online games with no signup. Enjoy chess online, checkers online, Snake, 2048, and Gems Crush puzzle games in your browser on desktop or mobile." />
+  <title>Play Free Online Games - Chess, Checkers, Snake, 2048, Merge Fruit & Gems Crush | Youooo Games</title>
+  <meta name="description" content="Play free online games with no signup. Enjoy chess online, checkers online, Snake, 2048, Merge Fruit, and Gems Crush in your browser on desktop or mobile." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://game.youooo.com/" />
   <!-- PWA -->
@@ -15,14 +15,14 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Youooo Games" />
   <!-- Open Graph (WhatsApp / Facebook / Twitter previews) -->
-  <meta property="og:title" content="Play Free Online Games - Chess, Checkers, Snake, 2048 & Gems Crush" />
-  <meta property="og:description" content="Free browser games with no signup: chess, checkers, Snake, 2048, and Gems Crush. Play on desktop or mobile." />
+  <meta property="og:title" content="Play Free Online Games - Chess, Checkers, Snake, 2048, Merge Fruit & Gems Crush" />
+  <meta property="og:description" content="Free browser games with no signup: chess, checkers, Snake, 2048, Merge Fruit, and Gems Crush. Play on desktop or mobile." />
   <meta property="og:image" content="https://game.youooo.com/og-preview.png" />
   <meta property="og:url" content="https://game.youooo.com/" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Play Free Online Games - Chess, Checkers, Snake, 2048 & Gems Crush" />
-  <meta name="twitter:description" content="Play free online games with no signup. Chess, Checkers, Snake, Gems Crush and 2048 in your browser." />
+  <meta name="twitter:title" content="Play Free Online Games - Chess, Checkers, Snake, 2048, Merge Fruit & Gems Crush" />
+  <meta name="twitter:description" content="Play free online games with no signup. Chess, Checkers, Snake, Gems Crush, Merge Fruit and 2048 in your browser." />
   <meta name="twitter:image" content="https://game.youooo.com/og-preview.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@700;900&family=Rajdhani:wght@700&display=swap" rel="stylesheet" />
@@ -155,6 +155,19 @@
         <button class="play-btn">Play Snake</button>
       </div>
 
+      <div class="game-card fruit-card" data-game="fruit">
+        <div class="card-glow"></div>
+        <div class="game-card-icon">🍉</div>
+        <h2 class="game-card-name">Merge Fruit</h2>
+        <p class="game-card-desc">Drop, merge, climb the score — viral mobile chaos!</p>
+        <div class="game-tags">
+          <span class="tag">Physics</span>
+          <span class="tag">High Score</span>
+          <span class="tag tag-new">Hot!</span>
+        </div>
+        <button class="play-btn">Play Merge Fruit</button>
+      </div>
+
     </div>
 
     <!-- Leaderboard button -->
@@ -174,10 +187,10 @@
 
     <section class="seo-games-panel">
       <p class="seo-eyebrow">Free Browser Games</p>
-      <h1>Play Free Online Games - Chess, Checkers, Snake, 2048, Gems Crush and LightBridge</h1>
+      <h1>Play Free Online Games - Chess, Checkers, Snake, 2048, Merge Fruit and Gems Crush</h1>
       <p>
         Youooo Games is a free online games hub for quick browser play. Play chess online free with AI or friends,
-        play checkers online, enjoy classic Snake, try a free 2048 browser game, or relax with Gems Crush match-3 puzzles.
+        play checkers online, enjoy classic Snake, try a free 2048 browser game, drop fruit in Merge Fruit, or relax with Gems Crush match-3 puzzles.
         No signup is required, and the games work on desktop and mobile browsers.
       </p>
       <div class="seo-game-links" aria-label="Game pages">
@@ -185,8 +198,8 @@
         <a href="checkers.html">Play checkers online free</a>
         <a href="snake.html">Play snake game online classic</a>
         <a href="2048.html">Play 2048 online free</a>
+        <a href="merge-fruit.html">Play merge fruit game online free</a>
         <a href="gems-crush.html">Play Gems Crush match-3 online</a>
-        <a href="lightbridge.html">Play LightBridge light puzzle game</a>
       </div>
     </section>
   </div>
@@ -477,6 +490,52 @@
     </div>
   </div>
 
+  <!-- ══ MERGE FRUIT VIEW ═════════════════════════════════════ -->
+  <div id="view-fruit" class="view">
+    <div class="game-topbar fruit-bar">
+      <button class="back-btn" data-target="hub">← Hub</button>
+      <span class="game-topbar-title">🍉 Merge Fruit</span>
+      <button class="btn-secondary" id="fruitShareBtn" style="display:none">📤 Share</button>
+    </div>
+    <div class="fruit-layout">
+      <div class="fruit-sidebar">
+        <div class="sidebar-card">
+          <h3>Score</h3>
+          <div class="fruit-score-num" id="fruitScore">0</div>
+          <div class="fruit-best-txt" id="fruitBest">Best: 0</div>
+          <label class="gems-player-field" style="margin-top:10px">
+            <span>Your Name</span>
+            <input type="text" id="fruitPlayerName" maxlength="16" placeholder="Enter name" />
+          </label>
+        </div>
+        <div class="sidebar-card">
+          <h3>Next Fruit</h3>
+          <div class="fruit-next-preview" id="fruitNextPreview">🍒</div>
+          <p class="t2048-hint">Drop fruit into the cup. Two matching fruits merge into a bigger one. Fill the cup too high and the run ends.</p>
+        </div>
+        <div class="sidebar-card">
+          <h3>How to Win</h3>
+          <p class="t2048-hint">Stay balanced, create chain merges, and build toward the biggest fruit. This game is made for quick retries and score sharing.</p>
+        </div>
+        <button class="btn-secondary full" id="fruitNewBtn">↺ New Game</button>
+        <button class="btn-secondary full" id="fruitLeaderBtn" style="margin-top:8px">🏆 Leaderboard</button>
+      </div>
+      <div class="fruit-board-wrap">
+        <canvas id="fruitCanvas" class="fruit-canvas"></canvas>
+        <div class="fruit-drop-guide" id="fruitDropGuide"></div>
+        <div class="fruit-overlay hidden" id="fruitOverlay">
+          <div class="fruit-overlay-inner">
+            <div class="fruit-over-icon" id="fruitOverIcon">🍉</div>
+            <div class="fruit-over-title" id="fruitOverTitle">Game Over!</div>
+            <div class="fruit-over-score" id="fruitOverScore"></div>
+            <button class="btn-primary" id="fruitRetryBtn" style="margin-top:14px">Play Again</button>
+            <button class="btn-secondary" id="fruitShareOverBtn" style="margin-top:8px">📤 Share Score</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ GLOBAL LEADERBOARD MODAL ══════════════════════════════ -->
   <div class="modal-overlay hidden" id="leaderModal">
     <div class="modal-box leader-modal-box">
@@ -488,6 +547,7 @@
       <div class="leader-tabs">
         <button class="leader-tab active" data-ltab="snake">🐍 Snake</button>
         <button class="leader-tab" data-ltab="t2048">🔢 2048</button>
+        <button class="leader-tab" data-ltab="fruit">🍉 Fruit</button>
         <button class="leader-tab" data-ltab="gems">💎 Gems</button>
       </div>
       <ol class="leader-list" id="leaderList">
@@ -516,6 +576,7 @@
   <script src="leaderboard.js"></script>
   <script src="script.js"></script>
   <script src="snake-extra.js"></script>
+  <script src="merge-fruit-extra.js"></script>
   <script src="gems-upgrade.js"></script>
 </body>
 </html>

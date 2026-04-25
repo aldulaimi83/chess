@@ -31,16 +31,11 @@ const GAME_HASHES = {
   '#2048': 't2048',
   '#t2048': 't2048',
   '#snake': 'snake',
-  '#chromamaze': 'chromamaze',
+  '#merge-fruit': 'fruit',
+  '#fruit': 'fruit',
 };
 
 function showView(name) {
-  // Handle external games first (before DOM manipulation)
-  if (name === 'chromamaze') {
-    window.location.href = 'chromamaze.html';
-    return;
-  }
-
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const viewEl = document.getElementById(`view-${name}`);
   if (!viewEl) {
@@ -50,7 +45,13 @@ function showView(name) {
   viewEl.classList.add('active');
 
   if (name !== 'hub') {
-    const hash = name === 't2048' ? '#2048' : name === 'gems' ? '#gems-crush' : `#${name}`;
+    const hash = name === 't2048'
+      ? '#2048'
+      : name === 'gems'
+        ? '#gems-crush'
+        : name === 'fruit'
+          ? '#merge-fruit'
+          : `#${name}`;
     if (window.location.hash !== hash) history.replaceState(null, '', hash);
   } else if (window.location.hash) {
     history.replaceState(null, '', window.location.pathname);
@@ -61,6 +62,7 @@ function showView(name) {
   if (name === 'gems')     initGemsView();
   if (name === 't2048')    initT2048View();
   if (name === 'snake' && window._initSnake) window._initSnake();
+  if (name === 'fruit' && window._initFruit) window._initFruit();
 }
 
 function openGameFromHash() {

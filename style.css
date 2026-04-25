@@ -98,12 +98,13 @@ body {
 .gems-card     { --cc:var(--gems); }
 .t2048-card    { --cc:var(--t2048); }
 .snake-card    { --cc:var(--snake); }
-.lightbridge-card { --cc:#ff6b9d; }
+.fruit-card    { --cc:var(--fruit); }
 
 .chess-card:hover    { border-color:rgba(251,191,36,.5); box-shadow:0 0 40px rgba(251,191,36,.18); transform:translateY(-5px); }
 .checkers-card:hover { border-color:rgba(0,217,255,.5);  box-shadow:0 0 40px rgba(0,217,255,.18);  transform:translateY(-5px); }
 .gems-card:hover     { border-color:rgba(244,114,182,.5);box-shadow:0 0 40px rgba(244,114,182,.18);transform:translateY(-5px); }
 .t2048-card:hover    { border-color:rgba(251,146,60,.5); box-shadow:0 0 40px rgba(251,146,60,.18); transform:translateY(-5px); }
+.fruit-card:hover    { border-color:rgba(251,113,133,.5); box-shadow:0 0 40px rgba(251,113,133,.18); transform:translateY(-5px); }
 
 .game-card-icon { font-size:3rem; line-height:1; }
 .game-card-name {
@@ -844,9 +845,9 @@ body {
    ═══════════════════════════════════════════════════════ */
 @media(max-width:860px) {
   .game-hub-grid { grid-template-columns:1fr; gap:14px; padding:16px; }
-  .chess-layout,.gems-layout,.t2048-layout { grid-template-columns:1fr; }
-  .chess-sidebar,.gems-sidebar,.t2048-sidebar { order:2; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .board-center,.ck-board-wrap,.gems-board-wrap,.t2048-board-wrap { order:1; }
+  .chess-layout,.gems-layout,.t2048-layout,.fruit-layout { grid-template-columns:1fr; }
+  .chess-sidebar,.gems-sidebar,.t2048-sidebar,.fruit-sidebar { order:2; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .board-center,.ck-board-wrap,.gems-board-wrap,.t2048-board-wrap,.fruit-board-wrap { order:1; }
   #chessBoardWrap { width:min(400px,calc(100vw - 32px)); }
   .ck-board { width:min(400px,calc(100vw - 32px)); }
   .gems-board { width:min(430px,calc(100vw - 20px)); }
@@ -858,7 +859,7 @@ body {
   .gems-shell-top { flex-direction:column; align-items:flex-start; }
 }
 @media(max-width:480px) {
-  .chess-sidebar,.gems-sidebar,.t2048-sidebar { grid-template-columns:1fr; }
+  .chess-sidebar,.gems-sidebar,.t2048-sidebar,.fruit-sidebar { grid-template-columns:1fr; }
   .game-card { padding:22px 18px; }
   .game-card-icon { font-size:2.2rem; }
   .gems-layout { padding:12px; gap:14px; }
@@ -880,12 +881,14 @@ body {
   .snake-sidebar { order:2; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .snake-board-wrap { order:1; }
   .snake-canvas { width:min(400px,calc(100vw - 24px)) !important; height:min(400px,calc(100vw - 24px)) !important; }
+  .fruit-canvas { width:min(400px,calc(100vw - 24px)) !important; }
 }
 
 /* ═══════════════════════════════════════════════════════
    SNAKE GAME
    ═══════════════════════════════════════════════════════ */
 :root { --snake: #22c55e; }
+:root { --fruit: #fb7185; }
 
 .snake-card { --cc: var(--snake); }
 
@@ -952,6 +955,106 @@ body {
   -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
 }
 .snake-over-score { color: var(--muted); font-size: 1rem; }
+
+/* ═══════════════════════════════════════════════════════
+   MERGE FRUIT GAME
+   ═══════════════════════════════════════════════════════ */
+.fruit-card { --cc: var(--fruit); }
+
+.fruit-bar { border-bottom-color: rgba(251,113,133,.35); }
+.fruit-bar::after { background: linear-gradient(90deg,transparent,rgba(251,113,133,.18),transparent); }
+
+.fruit-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  padding: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.fruit-sidebar { display:flex; flex-direction:column; gap:16px; }
+
+.fruit-score-num {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 2.4rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #fb7185, #f59e0b);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.fruit-best-txt { color: var(--muted); font-size: .88rem; margin-top: 4px; }
+
+.fruit-next-preview {
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+  margin-top: 8px;
+  border-radius: 24px;
+  font-size: 3rem;
+  background: linear-gradient(135deg, rgba(251,113,133,.18), rgba(245,158,11,.18));
+  border: 1px solid rgba(255,255,255,.1);
+}
+
+.fruit-board-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fruit-canvas {
+  display: block;
+  border-radius: 20px;
+  border: 2px solid rgba(251,113,133,.28);
+  box-shadow: 0 0 40px rgba(251,113,133,.12);
+  background: #12091e;
+  cursor: pointer;
+  width: 420px;
+  height: auto;
+}
+
+.fruit-drop-guide {
+  position: absolute;
+  top: 28px;
+  width: 2px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(255,255,255,.8), rgba(255,255,255,0));
+  pointer-events: none;
+}
+
+.fruit-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(4,8,15,.88);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+}
+
+.fruit-overlay-inner {
+  text-align: center;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.fruit-over-icon { font-size: 3rem; margin-bottom: 8px; }
+.fruit-over-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #fb7185, #f59e0b);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+.fruit-over-score { color: var(--muted); font-size: 1rem; }
 
 /* ═══════════════════════════════════════════════════════
    GLOBAL LEADERBOARD MODAL
