@@ -99,6 +99,7 @@
       y: 44,
       vx: 0,
       vy: 0,
+      age: 0,
       restingFrames: 0,
       merged: false,
     });
@@ -118,6 +119,7 @@
 
   function updateFruitPhysics(dt) {
     for (const fruit of fruits) {
+      fruit.age = (fruit.age || 0) + dt;
       fruit.vy += GRAVITY * dt;
       fruit.x += fruit.vx * dt;
       fruit.y += fruit.vy * dt;
@@ -214,6 +216,7 @@
       y: mergedY,
       vx: (a.vx + b.vx) / 2,
       vy: -1.8,
+      age: 0,
       restingFrames: 0,
     });
   }
@@ -296,7 +299,7 @@
     const dangerLine = 96;
     const risky = fruits.some((fruit) => {
       const info = FRUITS[fruit.kind];
-      return fruit.y - info.r < dangerLine && Math.abs(fruit.vy) < 0.45;
+      return fruit.age > 20 && fruit.y - info.r < dangerLine && Math.abs(fruit.vy) < 0.45;
     });
     if (risky) endFruitGame();
   }
