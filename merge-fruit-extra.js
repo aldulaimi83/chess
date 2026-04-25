@@ -31,6 +31,10 @@
   let animationFrame = null;
   let lastTime = 0;
 
+  function getFruitPlayerName() {
+    return (document.getElementById('fruitPlayerName')?.value?.trim() || 'Guest').slice(0, 16);
+  }
+
   function initFruitView() {
     canvas = document.getElementById('fruitCanvas');
     dropGuide = document.getElementById('fruitDropGuide');
@@ -51,6 +55,23 @@
     playerName = localStorage.getItem('fruit_name') || 'Guest';
     document.getElementById('fruitPlayerName').value = playerName;
     document.getElementById('fruitBest').textContent = `Best: ${best.toLocaleString()}`;
+
+    if (!canvas.dataset.bound) {
+      canvas.style.touchAction = 'none';
+      canvas.addEventListener('pointermove', (event) => {
+        const view = document.querySelector('.view.active');
+        if (!view || view.id !== 'view-fruit') return;
+        updatePointerFromEvent(event.clientX);
+      });
+      canvas.addEventListener('pointerdown', (event) => {
+        const view = document.querySelector('.view.active');
+        if (!view || view.id !== 'view-fruit' || gameOver) return;
+        updatePointerFromEvent(event.clientX);
+        if (canDrop) spawnFruit(pointerX);
+      });
+      canvas.dataset.bound = 'true';
+    }
+
     startFruitGame();
   }
 
@@ -296,10 +317,11 @@
 
   function checkFruitGameOver() {
     if (gameOver) return;
+    if (fruits.length < 3) return;
     const dangerLine = 96;
     const risky = fruits.some((fruit) => {
       const info = FRUITS[fruit.kind];
-      return fruit.age > 20 && fruit.y - info.r < dangerLine && Math.abs(fruit.vy) < 0.45;
+      return fruit.age > 45 && fruit.y - info.r < dangerLine && Math.abs(fruit.vy) < 0.45;
     });
     if (risky) endFruitGame();
   }
@@ -327,51 +349,13 @@
     }
   }
 
-  document.addEventListener('mousemove', (event) => {
-    const view = document.querySelector('.view.active');
-    if (!view || view.id !== 'view-fruit' || !canvas) return;
-    updatePointerFromEvent(event.clientX);
-  });
-
-  document.addEventListener('click', (event) => {
-    const view = document.querySelector('.view.active');
-    if (!view || view.id !== 'view-fruit' || !canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    if (event.target.closest('#fruitNewBtn, #fruitRetryBtn, #fruitLeaderBtn, #fruitShareBtn, #fruitShareOverBtn')) return;
-    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return;
-    if (!gameOver) spawnFruit(pointerX);
-  });
-
-  let touchStartX = 0;
-  document.addEventListener('touchstart', (event) => {
-    const view = document.querySelector('.view.active');
-    if (!view || view.id !== 'view-fruit' || !canvas) return;
-    const touch = event.touches[0];
-    touchStartX = touch.clientX;
-    updatePointerFromEvent(touch.clientX);
-  }, { passive: true });
-
-  document.addEventListener('touchmove', (event) => {
-    const view = document.querySelector('.view.active');
-    if (!view || view.id !== 'view-fruit' || !canvas) return;
-    const touch = event.touches[0];
-    updatePointerFromEvent(touch.clientX);
-  }, { passive: true });
-
-  document.addEventListener('touchend', (event) => {
-    const view = document.querySelector('.view.active');
-    if (!view || view.id !== 'view-fruit' || !canvas || gameOver) return;
-    const touch = event.changedTouches[0];
-    if (Math.abs(touch.clientX - touchStartX) < 20 && canDrop) spawnFruit(pointerX);
-  }, { passive: true });
-
   document.getElementById('fruitNewBtn')?.addEventListener('click', () => {
-    playerName = (document.getElementById('fruitPlayerName')?.value.trim() || 'Guest').slice(0, 16);
+    playerName = getFruitPlayerName();
     localStorage.setItem('fruit_name', playerName);
     startFruitGame();
   });
   document.getElementById('fruitRetryBtn')?.addEventListener('click', () => {
-    playerName = (document.getElementById('fruitPlayerName')?.value.trim() || 'Guest').slice(0, 16);
+    playerName = getFruitPlayerName();
     localStorage.setItem('fruit_name', playerName);
     startFruitGame();
   });
