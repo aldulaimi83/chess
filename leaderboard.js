@@ -2,7 +2,7 @@
 class GameLeaderboard {
     constructor() {
         this.storageKey = 'youooo_leaderboard';
-        this.games = ['chess', 'checkers', 'gems', 't2048', 'snake', 'chromamaze'];
+        this.games = ['chess', 'checkers', 'gems', 't2048', 'snake', 'fruit'];
         this.loadLeaderboards();
         this.initializeUI();
     }
@@ -213,7 +213,7 @@ class GameLeaderboard {
             gems: '💎',
             t2048: '🔢',
             snake: '🐍',
-            chromamaze: '🎨'
+            fruit: '🍉'
         };
         return icons[game] || '🎮';
     }
@@ -225,7 +225,7 @@ class GameLeaderboard {
             gems: 'Gems Crush',
             t2048: '2048',
             snake: 'Snake',
-            chromamaze: 'ChromaMaze'
+            fruit: 'Merge Fruit'
         };
         return names[game] || game;
     }
@@ -251,7 +251,7 @@ class GameSharing {
             gems: `Just crushed Gems Crush with ${score} points! 💎✨`,
             t2048: `Reached ${score} in 2048! 🏆🔢`,
             snake: `Snake high score: ${score}! 🐍`,
-            chromamaze: `Solved ChromaMaze in ${score} moves! 🎨🧩`
+            fruit: `I scored ${score} in Merge Fruit! 🍉`
         };
 
         const text = messages[game] || `Score: ${score}`;
@@ -271,6 +271,70 @@ class GameSharing {
         });
     }
 }
+
+function submitLeaderScore(game, playerName, score, details = {}) {
+    if (!window.gameLeaderboard) return;
+    window.gameLeaderboard.addScore(game, playerName, score, details);
+}
+
+function openLeaderboard(game = 'snake') {
+    const modal = document.getElementById('leaderModal');
+    const list = document.getElementById('leaderList');
+    if (!modal || !list || !window.gameLeaderboard) {
+        if (window.gameLeaderboard) window.gameLeaderboard.showLeaderboardModal();
+        return;
+    }
+
+    const tabs = [...modal.querySelectorAll('.leader-tab')];
+    const targetGame = window.gameLeaderboard.games.includes(game) ? game : 'snake';
+
+    const render = (selectedGame) => {
+        tabs.forEach((tab) => {
+            tab.classList.toggle('active', tab.dataset.ltab === selectedGame);
+        });
+
+        const scores = window.gameLeaderboard.getTopScores(selectedGame, 20);
+        list.innerHTML = '';
+
+        if (!scores.length) {
+            const item = document.createElement('li');
+            item.className = 'leader-loading';
+            item.textContent = 'No scores yet. Be the first.';
+            list.appendChild(item);
+            return;
+        }
+
+        scores.forEach((entry, index) => {
+            const item = document.createElement('li');
+            item.className = 'leader-entry';
+            item.innerHTML = `
+                <span class="leader-rank">#${index + 1}</span>
+                <span class="leader-name">${window.gameLeaderboard.escapeHtml(entry.name)}</span>
+                <span class="leader-score">${Number(entry.score || 0).toLocaleString()}</span>
+            `;
+            list.appendChild(item);
+        });
+    };
+
+    if (!modal.dataset.bound) {
+        tabs.forEach((tab) => {
+            tab.addEventListener('click', () => render(tab.dataset.ltab));
+        });
+        document.getElementById('closeLeaderModal')?.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) modal.classList.add('hidden');
+        });
+        modal.dataset.bound = 'true';
+    }
+
+    render(targetGame);
+    modal.classList.remove('hidden');
+}
+
+window.submitLeaderScore = submitLeaderScore;
+window.openLeaderboard = openLeaderboard;
 
 // Initialize leaderboard when DOM is ready
 if (document.readyState === 'loading') {

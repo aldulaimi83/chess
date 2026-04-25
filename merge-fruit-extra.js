@@ -362,21 +362,22 @@
     if (Math.abs(touch.clientX - touchStartX) < 20 && canDrop) spawnFruit(pointerX);
   }, { passive: true });
 
-  document.getElementById('fruitNewBtn').addEventListener('click', () => {
-    playerName = (document.getElementById('fruitPlayerName').value.trim() || 'Guest').slice(0, 16);
+  document.getElementById('fruitNewBtn')?.addEventListener('click', () => {
+    playerName = (document.getElementById('fruitPlayerName')?.value.trim() || 'Guest').slice(0, 16);
     localStorage.setItem('fruit_name', playerName);
     startFruitGame();
   });
-  document.getElementById('fruitRetryBtn').addEventListener('click', () => {
-    playerName = (document.getElementById('fruitPlayerName').value.trim() || 'Guest').slice(0, 16);
+  document.getElementById('fruitRetryBtn')?.addEventListener('click', () => {
+    playerName = (document.getElementById('fruitPlayerName')?.value.trim() || 'Guest').slice(0, 16);
     localStorage.setItem('fruit_name', playerName);
     startFruitGame();
   });
-  document.getElementById('fruitLeaderBtn').addEventListener('click', () => openLeaderboard('fruit'));
-  document.getElementById('fruitShareBtn').addEventListener('click', shareFruitScore);
-  document.getElementById('fruitShareOverBtn').addEventListener('click', shareFruitScore);
+  document.getElementById('fruitLeaderBtn')?.addEventListener('click', () => {
+    if (window.openLeaderboard) window.openLeaderboard('fruit');
+  });
+  document.getElementById('fruitShareBtn')?.addEventListener('click', shareFruitScore);
+  document.getElementById('fruitShareOverBtn')?.addEventListener('click', shareFruitScore);
 
   window._initFruit = initFruitView;
   if (document.querySelector('.view.active')?.id === 'view-fruit') initFruitView();
 })();
-
