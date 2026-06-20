@@ -16,7 +16,7 @@ function genRoomCode() {
 }
 
 // ── HUB NAVIGATION ───────────────────────────────────────────
-document.querySelectorAll('.game-card').forEach(card => {
+document.querySelectorAll('.game-card[data-game]').forEach(card => {
   card.addEventListener('click', () => showView(card.dataset.game));
 });
 document.querySelectorAll('.back-btn').forEach(btn => {

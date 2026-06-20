@@ -99,12 +99,27 @@ body {
 .t2048-card    { --cc:var(--t2048); }
 .snake-card    { --cc:var(--snake); }
 .fruit-card    { --cc:var(--fruit); }
+.stickman-card { --cc:#36e5ff; text-decoration:none; }
 
 .chess-card:hover    { border-color:rgba(251,191,36,.5); box-shadow:0 0 40px rgba(251,191,36,.18); transform:translateY(-5px); }
 .checkers-card:hover { border-color:rgba(0,217,255,.5);  box-shadow:0 0 40px rgba(0,217,255,.18);  transform:translateY(-5px); }
 .gems-card:hover     { border-color:rgba(244,114,182,.5);box-shadow:0 0 40px rgba(244,114,182,.18);transform:translateY(-5px); }
 .t2048-card:hover    { border-color:rgba(251,146,60,.5); box-shadow:0 0 40px rgba(251,146,60,.18); transform:translateY(-5px); }
 .fruit-card:hover    { border-color:rgba(251,113,133,.5); box-shadow:0 0 40px rgba(251,113,133,.18); transform:translateY(-5px); }
+.stickman-card:hover { border-color:rgba(54,229,255,.5); box-shadow:0 0 40px rgba(54,229,255,.18); transform:translateY(-5px); }
+
+.stickman-card-icon {
+  position:relative; width:44px; height:52px; margin-left:5px;
+  border-radius:50% 50% 32% 32%; background:#03060a;
+  box-shadow:0 0 0 2px rgba(54,229,255,.38), 0 0 24px rgba(54,229,255,.2);
+}
+.stickman-card-icon::before,.stickman-card-icon::after {
+  content:""; position:absolute; left:19px; top:42px; width:5px; height:22px;
+  border-radius:5px; background:#03060a; transform:rotate(25deg); transform-origin:top;
+  box-shadow:0 0 0 1px rgba(54,229,255,.28);
+}
+.stickman-card-icon::after { transform:rotate(-25deg); }
+.stickman-card-icon span { position:absolute; inset:0; display:grid; place-items:center; color:#36e5ff; font:900 13px 'Orbitron',sans-serif; }
 
 .game-card-icon { font-size:3rem; line-height:1; }
 .game-card-name {
