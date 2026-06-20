@@ -88,6 +88,66 @@
     }
   ];
 
+  const ADVANCED_LEVEL_NAMES = [
+    "Second Shift", "Needle Bridge", "Pulse Crossing", "Low Margin", "Falling Rhythm",
+    "Saw Corridor", "Clockwork Steps", "Narrow Route", "Red Circuit", "Double Motion",
+    "Glass Run", "Trap Relay", "No Easy Floor", "Blinking Gap", "Machine Core",
+    "Last Checkpoint", "Edge Control", "Precision Line", "The Long Crossing", "Final Escape"
+  ];
+
+  function buildAdvancedLevel(number) {
+    const difficulty = number - 11;
+    const islandCount = 9 + Math.floor(difficulty / 7);
+    const platforms = [], moving = [], falling = [], spikes = [], traps = [], checkpoints = [], coins = [];
+    let x = 0;
+
+    for (let i = 0; i < islandCount; i += 1) {
+      const width = i === 0 ? 350 : Math.max(190, 280 - difficulty * 3 + (i % 3) * 20);
+      platforms.push(P(x, 470, width, 70));
+      coins.push(C(x + Math.min(width - 45, 100 + (i % 3) * 32), 420 - (i % 2) * 82));
+
+      if (i > 0 && i < islandCount - 1) {
+        const spikeCount = 1 + ((i + difficulty) % (difficulty > 8 ? 3 : 2));
+        spikes.push(S(x + 90 + (i % 2) * 16, 470, spikeCount));
+      }
+      if (i === Math.floor(islandCount / 3) || i === Math.floor(islandCount * 2 / 3)) checkpoints.push(K(x + 24, 410));
+      if (i > 0 && i < islandCount - 1 && i % 3 === 0) {
+        traps.push(T(x + width * .52, 420, "y", 28 + difficulty * 1.4, 2.2 + difficulty * .055));
+        if (difficulty > 6) traps.push(T(x + width * .76, 405, "x", 24 + difficulty, 2.5 + difficulty * .05));
+      }
+
+      if (i < islandCount - 1) {
+        const gap = Math.min(172, 116 + difficulty * 2 + (i % 3) * 10);
+        const gapStart = x + width;
+        spikes.push(S(gapStart, 535, Math.max(4, Math.ceil(gap / 28))));
+        if (i % 2 === 0) moving.push(M(gapStart + gap / 2 - 43, 400 - (i % 3) * 20, 86, i % 4 ? "x" : "y", 28 + difficulty * 2, 1.8 + difficulty * .06, i));
+        else falling.push(F(gapStart + gap / 2 - 38, 402 - (i % 3) * 22, 76));
+        x += width + gap;
+      }
+    }
+
+    const last = platforms[platforms.length - 1];
+    return {
+      name: ADVANCED_LEVEL_NAMES[difficulty], width: last.x + last.w,
+      start: { x: 70, y: 414 }, door: { x: last.x + last.w - 86, y: 390 },
+      platforms, moving, falling, spikes, traps, checkpoints, coins
+    };
+  }
+
+  for (let number = 11; number <= 30; number += 1) LEVELS.push(buildAdvancedLevel(number));
+
+  function validateAdvancedLevels() {
+    if (LEVELS.length !== 30) throw new Error("Stickman Escape requires exactly 30 levels");
+    LEVELS.slice(10).forEach((level, index) => {
+      const ground = level.platforms.filter(platform => platform.y === 470).sort((a, b) => a.x - b.x);
+      for (let i = 1; i < ground.length; i += 1) {
+        const gap = ground[i].x - (ground[i - 1].x + ground[i - 1].w);
+        if (gap > 172) throw new Error(`Level ${index + 11} has an unreachable jump`);
+      }
+      if (!level.moving.length || !level.falling.length || !level.spikes.length || !level.traps.length) throw new Error(`Level ${index + 11} is missing advanced obstacles`);
+    });
+  }
+
   const dom = {
     level: document.getElementById("levelReadout"), coin: document.getElementById("coinReadout"), lives: document.getElementById("lifeReadout"),
     startOverlay: document.getElementById("startOverlay"), pauseOverlay: document.getElementById("pauseOverlay"), completeOverlay: document.getElementById("completeOverlay"),
@@ -115,7 +175,7 @@
     try {
       const data = JSON.parse(localStorage.getItem(SAVE_KEY));
       return {
-        unlocked: Math.max(1, Math.min(10, Number(data?.unlocked) || 1)),
+        unlocked: Math.max(1, Math.min(LEVELS.length, Number(data?.unlocked) || 1)),
         coins: Array.isArray(data?.coins) ? data.coins : [],
         sound: data?.sound !== false
       };
@@ -603,6 +663,7 @@
     if (document.hidden && running && !completed) setPaused(true);
   });
 
+  validateAdvancedLevels();
   loadLevel(levelIndex, true);
   requestAnimationFrame(loop);
 })();
