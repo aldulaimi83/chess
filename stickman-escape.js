@@ -191,7 +191,8 @@
   const YOYO_FALLBACK_LEVEL = 21;
   const YOYO_COOLDOWN = .7;
   const YOYO_RANGE = 380;
-  const WHISTLE_COOLDOWN = 6.2;
+  const WHISTLE_COOLDOWN = 8.6;
+  const WHISTLE_LOOP_DURATION = 8.5;
   let save = loadSave();
   let levelIndex = Math.min(save.unlocked - 1, LEVELS.length - 1);
   let level;
@@ -209,6 +210,10 @@
   let saveTimer = 0;
   let audioContext = null;
   let audioUnlocked = false;
+  let whistleBus = null;
+  let introWhistleTimer = null;
+  let introWhistleNextTime = 0;
+  const introWhistleVoices = new Set();
   let soundOn = save.sound !== false;
   let yoyo;
   let whistleCooldown = 0;
@@ -363,9 +368,8 @@
       audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
       if (audioContext.state === "suspended") audioContext.resume();
       audioUnlocked = true;
-      if (introAnimationFrame && !dom.introOverlay.classList.contains("hidden") && !introWhistlePlayed) {
-        introWhistlePlayed = true;
-        playSound("whistle");
+      if (!dom.introOverlay.classList.contains("hidden") && !introWhistlePlayed) {
+        startIntroWhistle();
       }
     } catch (_) { /* Sound is an enhancement. */ }
   }
@@ -386,7 +390,27 @@
     oscillator.stop(start + duration + .01);
   }
 
-  function scheduleWhistleNote(frequency, duration, volume, delay = 0) {
+  function getWhistleBus() {
+    if (whistleBus) return whistleBus;
+    const master = audioContext.createGain();
+    const reverb = audioContext.createConvolver();
+    const wet = audioContext.createGain();
+    const length = Math.floor(audioContext.sampleRate * 1.15);
+    const impulse = audioContext.createBuffer(2, length, audioContext.sampleRate);
+    for (let channel = 0; channel < impulse.numberOfChannels; channel += 1) {
+      const data = impulse.getChannelData(channel);
+      for (let i = 0; i < length; i += 1) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 3.2);
+    }
+    master.gain.value = .3;
+    wet.gain.value = .14;
+    reverb.buffer = impulse;
+    reverb.connect(wet).connect(master);
+    master.connect(audioContext.destination);
+    whistleBus = { dry: master, reverb };
+    return whistleBus;
+  }
+
+  function scheduleWhistleNote(frequency, duration, volume, delay = 0, introVoice = false) {
     if (!soundOn || !audioUnlocked || !audioContext) return;
     const start = audioContext.currentTime + delay;
     const end = start + duration;
@@ -396,19 +420,16 @@
     const envelope = audioContext.createGain();
     const vibrato = audioContext.createOscillator();
     const vibratoDepth = audioContext.createGain();
-    const echo = audioContext.createDelay();
-    const echoGain = audioContext.createGain();
+    const bus = getWhistleBus();
     whistle.type = "sine";
     harmonic.type = "sine";
     vibrato.type = "sine";
     whistle.frequency.setValueAtTime(frequency * .985, start);
     whistle.frequency.exponentialRampToValueAtTime(frequency, start + Math.min(.09, duration * .3));
     harmonic.frequency.setValueAtTime(frequency * 2, start);
-    harmonicGain.gain.setValueAtTime(.06, start);
-    vibrato.frequency.setValueAtTime(5.4, start);
-    vibratoDepth.gain.setValueAtTime(frequency * .008, start);
-    echo.delayTime.setValueAtTime(.19, start);
-    echoGain.gain.setValueAtTime(.13, start);
+    harmonicGain.gain.setValueAtTime(.045, start);
+    vibrato.frequency.setValueAtTime(5.1, start);
+    vibratoDepth.gain.setValueAtTime(frequency * .007, start);
     envelope.gain.setValueAtTime(.0001, start);
     envelope.gain.exponentialRampToValueAtTime(volume, start + Math.min(.055, duration * .25));
     envelope.gain.setValueAtTime(volume * .88, Math.max(start + .06, end - .09));
@@ -416,10 +437,46 @@
     vibrato.connect(vibratoDepth).connect(whistle.frequency);
     whistle.connect(envelope);
     harmonic.connect(harmonicGain).connect(envelope);
-    envelope.connect(audioContext.destination);
-    envelope.connect(echo).connect(echoGain).connect(audioContext.destination);
+    envelope.connect(bus.dry);
+    envelope.connect(bus.reverb);
+    const voice = { whistle, harmonic, vibrato };
+    if (introVoice) introWhistleVoices.add(voice);
+    whistle.onended = () => introWhistleVoices.delete(voice);
     whistle.start(start); harmonic.start(start); vibrato.start(start);
     whistle.stop(end + .01); harmonic.stop(end + .01); vibrato.stop(end + .01);
+  }
+
+  function scheduleWhistleMelody(delay = 0, introVoice = false) {
+    const note = (frequency, duration, start, volume = .09) => scheduleWhistleNote(frequency, duration, volume, delay + start, introVoice);
+    note(659.25, .5, 0); note(783.99, .5, .5); note(880, 1, 1, .095);
+    note(783.99, .5, 2); note(659.25, .5, 2.5); note(587.33, 1, 3, .085);
+    note(659.25, .5, 4.5); note(783.99, .5, 5); note(987.77, 1, 5.5, .095);
+    note(880, .5, 6.5); note(783.99, .5, 7); note(659.25, 1, 7.5, .088);
+  }
+
+  function stopIntroWhistle() {
+    if (introWhistleTimer) window.clearInterval(introWhistleTimer);
+    introWhistleTimer = null;
+    introWhistleVoices.forEach(voice => {
+      [voice.whistle, voice.harmonic, voice.vibrato].forEach(oscillator => { try { oscillator.stop(); } catch (_) {} });
+    });
+    introWhistleVoices.clear();
+    introWhistlePlayed = false;
+  }
+
+  function startIntroWhistle() {
+    if (!soundOn || !audioUnlocked || !audioContext) return;
+    stopIntroWhistle();
+    introWhistlePlayed = true;
+    introWhistleNextTime = audioContext.currentTime;
+    const pump = () => {
+      while (introWhistleNextTime < audioContext.currentTime + .6) {
+        scheduleWhistleMelody(Math.max(0, introWhistleNextTime - audioContext.currentTime), true);
+        introWhistleNextTime += WHISTLE_LOOP_DURATION - .04;
+      }
+    };
+    pump();
+    introWhistleTimer = window.setInterval(pump, 250);
   }
 
   function playSound(name) {
@@ -462,14 +519,7 @@
       tone(420, 300, .1, "triangle", .025, .04);
     }
     if (name === "whistle") {
-      scheduleWhistleNote(1174.66, .62, .026);
-      scheduleWhistleNote(1318.51, .62, .027, .54);
-      scheduleWhistleNote(1396.91, 1.15, .028, 1.08);
-      scheduleWhistleNote(1396.91, .62, .026, 2.15);
-      scheduleWhistleNote(1318.51, .62, .025, 2.69);
-      scheduleWhistleNote(1174.66, .72, .024, 3.23);
-      scheduleWhistleNote(1318.51, .75, .025, 3.87);
-      scheduleWhistleNote(1174.66, 1.45, .026, 4.54);
+      scheduleWhistleMelody();
     }
     if (name === "button") tone(300, 220, .035, "square", .018);
   }
@@ -1160,10 +1210,10 @@
 
   function playIntro() {
     if (introAnimationFrame) cancelAnimationFrame(introAnimationFrame);
-    introWhistlePlayed = false;
+    stopIntroWhistle();
     dom.introOverlay.classList.remove("hidden");
     dom.introTitle.classList.remove("visible");
-    if (audioUnlocked) { introWhistlePlayed = true; playSound("whistle"); }
+    if (audioUnlocked) startIntroWhistle();
     const introContext = dom.introCanvas.getContext("2d");
     const startedAt = performance.now();
     const walkDuration = 3.2;
@@ -1206,6 +1256,7 @@
   function closeIntro(startGame) {
     if (introAnimationFrame) cancelAnimationFrame(introAnimationFrame);
     introAnimationFrame = null;
+    stopIntroWhistle();
     save.introSeen = true;
     writeSave();
     dom.introOverlay.classList.add("hidden");
@@ -1299,7 +1350,14 @@
   dom.next.addEventListener("click", () => loadLevel(levelIndex + 1));
   dom.replayLevel.addEventListener("click", () => loadLevel(levelIndex));
   dom.menu.addEventListener("click", () => loadLevel(levelIndex, true));
-  dom.sound.addEventListener("click", () => { soundOn = !soundOn; save.sound = soundOn; writeSave(); updateHud(); });
+  dom.sound.addEventListener("click", () => {
+    soundOn = !soundOn;
+    save.sound = soundOn;
+    writeSave();
+    updateHud();
+    if (!soundOn) stopIntroWhistle();
+    else if (audioUnlocked && !dom.introOverlay.classList.contains("hidden")) startIntroWhistle();
+  });
   dom.introStart.addEventListener("click", () => closeIntro(true));
   dom.skipIntro.addEventListener("click", () => closeIntro(false));
   dom.replayIntro.addEventListener("click", playIntro);
