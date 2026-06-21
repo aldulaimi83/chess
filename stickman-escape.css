@@ -75,7 +75,14 @@ button { color: inherit; }
   transition: border-color .2s, background .2s, transform .2s;
 }
 .hub-link { justify-self: start; padding: 10px 14px; }
-.sound-button { justify-self: end; padding: 10px 14px; cursor: pointer; }
+.sound-button { padding: 10px 14px; cursor: pointer; }
+.header-actions { justify-self: end; display: flex; align-items: center; gap: 8px; }
+.background-picker { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: .68rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.background-picker select {
+  min-height: 39px; padding: 7px 28px 7px 10px;
+  border: 1px solid var(--line); border-radius: 12px;
+  color: var(--text); background: #11182a; cursor: pointer; font-weight: 800;
+}
 .hub-link:hover, .sound-button:hover, .game-toolbar button:hover, .secondary-action:hover { border-color: var(--cyan); background: rgba(54,229,255,.1); }
 
 .game-brand { display: flex; align-items: center; gap: 12px; }
@@ -227,12 +234,14 @@ canvas { display: block; width: 100%; height: 100%; outline: none; touch-action:
   display: none;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
   gap: 18px;
-  padding: 14px;
+  padding: 14px 14px max(14px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
   background: rgba(9,15,30,.96);
+  overscroll-behavior: contain;
 }
-.move-controls, .action-controls { display: flex; gap: 12px; }
+.move-controls, .action-controls { display: flex; justify-content: center; gap: 12px; }
 .touch-button {
   width: 68px; height: 56px;
   border: 1px solid rgba(54,229,255,.3);
@@ -250,6 +259,8 @@ canvas { display: block; width: 100%; height: 100%; outline: none; touch-action:
 .whistle-button { width: 76px; border-color: rgba(178,132,255,.45); background: rgba(178,132,255,.09); font-size: .75rem; }
 .whistle-button:active { color: #10091c; background: #b284ff; transform: scale(.96); }
 .whistle-button:disabled { opacity: .4; cursor: wait; }
+.tilt-button { width: 76px; border-color: rgba(255,125,82,.45); background: rgba(255,125,82,.1); }
+.tilt-button.active { color: #1d0903; background: #ff8a5b; }
 
 .game-info {
   display: grid;
@@ -274,11 +285,15 @@ footer a { color: var(--cyan); text-decoration: none; }
   .game-brand p { display: none; }
   .brand-mark { width: 36px; height: 36px; border-radius: 11px; }
   .hub-link, .sound-button { padding: 9px 10px; font-size: .78rem; }
+  .header-actions { gap: 5px; }
+  .background-picker span { display: none; }
+  .background-picker select { min-height: 36px; max-width: 92px; padding: 6px 22px 6px 8px; font-size: .7rem; }
   .game-page { width: calc(100% - 12px); }
   .game-card { border-radius: 18px; }
   .game-toolbar { min-height: 62px; padding: 9px 11px; gap: 12px; }
   .toolbar-stat:nth-child(3), .toolbar-stat:nth-child(4) { display: none; }
   .toolbar-actions button { font-size: .72rem; padding: 8px; }
+  #whistleToolbarButton { display: none; }
   .canvas-shell { min-height: 240px; }
   .overlay-panel p { font-size: .83rem; line-height: 1.45; margin-bottom: 12px; }
   .controls-copy { display: none; }
@@ -294,14 +309,16 @@ footer a { color: var(--cyan); text-decoration: none; }
 @media (max-width: 430px) {
   .game-brand h1 { font-size: .8rem; }
   .brand-mark { display: none; }
+  .sound-button { font-size: 0; }
+  .sound-button::after { content: attr(data-state); font-size: .82rem; }
   .toolbar-stat strong { font-size: .8rem; }
   .toolbar-stat span { font-size: .6rem; }
   .touch-button { width: 50px; height: 52px; font-size: .72rem; }
   .jump-button { width: 64px; }
-  .yoyo-button, .whistle-button { width: 52px; }
+  .yoyo-button, .whistle-button, .tilt-button { width: 52px; }
   .whistle-button { font-size: .62rem; }
-  .mobile-controls { gap: 10px; padding: 10px; }
-  .move-controls, .action-controls { gap: 6px; }
+  .mobile-controls { gap: 8px; padding: 9px 10px max(9px, env(safe-area-inset-bottom)); }
+  .move-controls, .action-controls { width: 100%; gap: 8px; }
   .yoyo-status { right: 8px; bottom: 8px; grid-template-columns: auto 52px auto; }
   .yoyo-meter { width: 52px; }
   .intro-title-card h2 { font-size: 2rem; }

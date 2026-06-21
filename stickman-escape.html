@@ -70,7 +70,17 @@
         <h1>Stickman Escape</h1>
       </div>
     </div>
-    <button class="sound-button" id="soundButton" type="button" aria-label="Toggle sound" aria-pressed="true">Sound: On</button>
+    <div class="header-actions">
+      <label class="background-picker" for="backgroundMode">
+        <span>Background</span>
+        <select id="backgroundMode" aria-label="Choose game background">
+          <option value="night">Night</option>
+          <option value="day">Day</option>
+          <option value="dynamic">Dynamic Shapes</option>
+        </select>
+      </label>
+      <button class="sound-button" id="soundButton" type="button" aria-label="Toggle sound" aria-pressed="true">Sound: On</button>
+    </div>
   </header>
 
   <main class="game-page">
@@ -101,7 +111,7 @@
           <div class="overlay-panel">
             <span class="overlay-kicker">Original YouOOO Platformer</span>
             <h2>Find the exit.</h2>
-            <p>Collect coins, activate checkpoints, and reach the glowing portal. Your progress saves automatically.</p>
+            <p>Guide Tamer through the chambers, collect coins, activate checkpoints, and reach Peri at the final portal. Your progress saves automatically.</p>
             <div class="level-picker" id="levelPicker" aria-label="Choose an unlocked level"></div>
             <button class="primary-action" id="startButton" type="button">Start Level 1</button>
             <button class="secondary-action" id="replayIntroButton" type="button">Replay Intro</button>
@@ -139,8 +149,8 @@
         <div class="game-overlay celebration-overlay" id="gameCompleteOverlay">
           <div class="overlay-panel game-complete-panel">
             <span class="master-badge">Master Escape</span>
-            <h2>Congratulations!</h2>
-            <p>All thirty doors are open.</p>
+            <h2>Tamer rescued Peri!</h2>
+            <p>Peri is safe, and all thirty doors are open.</p>
             <div class="completion-stats" id="gameCompleteStats"></div>
             <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
             <button class="primary-action" id="playAgainButton" type="button">Play Again</button>
@@ -154,6 +164,7 @@
         <div class="move-controls">
           <button class="touch-button" id="leftButton" type="button" aria-label="Move left">◀</button>
           <button class="touch-button" id="rightButton" type="button" aria-label="Move right">▶</button>
+          <button class="touch-button tilt-button" id="tiltButton" type="button" aria-label="Enable tilt controls" aria-pressed="false">Tilt</button>
         </div>
         <div class="action-controls">
           <button class="touch-button whistle-button" id="whistleButton" type="button" aria-label="Whistle">Whistle</button>
@@ -168,7 +179,7 @@
         <span class="section-kicker">Thirty escalating escapes</span>
         <h2>Small hero. Very inconvenient architecture.</h2>
       </div>
-      <p>Guide an original black stickman through neon industrial chambers filled with spikes, moving traps, unstable platforms, and carefully placed checkpoints. The little “Y” on the character is the YouOOO mark—not a costume or reference to any existing character.</p>
+      <p>Guide Tamer, an original black stickman, through neon industrial chambers to rescue Peri at the final portal. The little “Y” on Tamer is the YouOOO mark—not a costume or reference to any existing character.</p>
     </section>
   </main>
 

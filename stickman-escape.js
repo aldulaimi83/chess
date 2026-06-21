@@ -173,6 +173,11 @@
     { id: "master_escape", label: "Master Escape" }
   ];
 
+  const HERITAGE_BACKGROUNDS = {
+    1: "ziggurat", 5: "ishtar", 7: "palms", 9: "walls", 11: "dunes",
+    15: "ziggurat", 19: "ishtar", 23: "cuneiform", 27: "palms", 29: "walls"
+  };
+
   const dom = {
     level: document.getElementById("levelReadout"), coin: document.getElementById("coinReadout"), totalCoins: document.getElementById("totalCoinReadout"),
     deaths: document.getElementById("deathReadout"), timer: document.getElementById("timerReadout"),
@@ -185,7 +190,7 @@
     gameCompleteStats: document.getElementById("gameCompleteStats"), playAgain: document.getElementById("playAgainButton"), gameLevelSelect: document.getElementById("gameLevelSelectButton"), confetti: document.getElementById("confettiLayer"),
     introOverlay: document.getElementById("introOverlay"), introCanvas: document.getElementById("introCanvas"), introTitle: document.getElementById("introTitleCard"), introStart: document.getElementById("introStartButton"), skipIntro: document.getElementById("skipIntroButton"),
     replayIntro: document.getElementById("replayIntroButton"), endingReplayIntro: document.getElementById("endingReplayIntroButton"),
-    yoyoStatus: document.getElementById("yoyoStatus"), yoyoFill: document.getElementById("yoyoCooldownFill"), yoyoText: document.getElementById("yoyoCooldownText"), yoyoButton: document.getElementById("yoyoButton"), whistleButton: document.getElementById("whistleButton"), whistleToolbar: document.getElementById("whistleToolbarButton")
+    yoyoStatus: document.getElementById("yoyoStatus"), yoyoFill: document.getElementById("yoyoCooldownFill"), yoyoText: document.getElementById("yoyoCooldownText"), yoyoButton: document.getElementById("yoyoButton"), whistleButton: document.getElementById("whistleButton"), whistleToolbar: document.getElementById("whistleToolbarButton"), background: document.getElementById("backgroundMode"), tiltButton: document.getElementById("tiltButton")
   };
 
   const YOYO_FALLBACK_LEVEL = 21;
@@ -210,6 +215,7 @@
   let saveTimer = 0;
   let audioContext = null;
   let audioUnlocked = false;
+  let audioPrimed = false;
   let whistleBus = null;
   let introWhistleTimer = null;
   let introWhistleNextTime = 0;
@@ -217,6 +223,10 @@
   let soundOn = save.sound !== false;
   let yoyo;
   let whistleCooldown = 0;
+  let tiltEnabled = false;
+  let tiltNeutral = null;
+  let tiltLeft = false;
+  let tiltRight = false;
   const keys = { left: false, right: false, jump: false, jumpQueued: false };
 
   function loadSave() {
@@ -237,10 +247,12 @@
         lifetimeCoins: Math.max(coins.length, Number(data?.lifetimeCoins) || 0),
         campaignTime: Math.max(0, Number(data?.campaignTime) || 0),
         yoyoTutorialSeen: data?.yoyoTutorialSeen === true,
-        yoyoUnlocked: data?.yoyoUnlocked === true || (Number(data?.unlocked) || 1) >= YOYO_FALLBACK_LEVEL + 1
+        yoyoUnlocked: data?.yoyoUnlocked === true || (Number(data?.unlocked) || 1) >= YOYO_FALLBACK_LEVEL + 1,
+        backgroundMode: ["night", "day", "dynamic"].includes(data?.backgroundMode) ? data.backgroundMode : "night",
+        periRescued: data?.periRescued === true
       };
     } catch (_) {
-      return { unlocked: 1, coins: [], sound: true, introSeen: false, totalDeaths: 0, deathsByLevel: {}, bestTimes: {}, bestGameTime: null, stars: {}, achievements: [], lifetimeCoins: 0, campaignTime: 0, yoyoTutorialSeen: false, yoyoUnlocked: false };
+      return { unlocked: 1, coins: [], sound: true, introSeen: false, totalDeaths: 0, deathsByLevel: {}, bestTimes: {}, bestGameTime: null, stars: {}, achievements: [], lifetimeCoins: 0, campaignTime: 0, yoyoTutorialSeen: false, yoyoUnlocked: false, backgroundMode: "night", periRescued: false };
     }
   }
 
@@ -306,6 +318,7 @@
         writeSave();
         showToast("Press F to throw yo-yo. Hit hooks to cross big gaps.", 5);
       }
+      if (levelIndex === LEVELS.length - 1 && !save.periRescued) showToast("Peri is waiting at the final portal.", 4);
     }
   }
 
@@ -339,6 +352,7 @@
     dom.timer.textContent = formatTime(levelElapsed);
     dom.sound.textContent = soundOn ? "Sound: On" : "Sound: Off";
     dom.sound.setAttribute("aria-pressed", String(soundOn));
+    dom.sound.setAttribute("data-state", soundOn ? "🔊" : "🔇");
     const available = yoyoAvailable();
     const ready = available && yoyo?.state === "ready" && yoyo.cooldown <= 0;
     const cooldownProgress = available ? Math.max(0, Math.min(1, 1 - yoyo.cooldown / YOYO_COOLDOWN)) : 0;
@@ -350,6 +364,10 @@
     dom.whistleButton.textContent = whistleCooldown > 0 ? `${Math.ceil(whistleCooldown)}s` : "Whistle";
     dom.whistleToolbar.disabled = whistleCooldown > 0;
     dom.whistleToolbar.textContent = whistleCooldown > 0 ? `Whistle ${Math.ceil(whistleCooldown)}s` : "Whistle (G)";
+    dom.background.value = save.backgroundMode;
+    dom.tiltButton.classList.toggle("active", tiltEnabled);
+    dom.tiltButton.setAttribute("aria-pressed", String(tiltEnabled));
+    dom.tiltButton.textContent = tiltEnabled ? "Tilt On" : "Tilt";
   }
 
   function showToast(message, duration = 1.8) {
@@ -365,8 +383,20 @@
 
   function unlockAudio() {
     try {
-      audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
-      if (audioContext.state === "suspended") audioContext.resume();
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      audioContext ||= new AudioContextClass();
+      if (audioContext.state !== "running") {
+        const resume = audioContext.resume();
+        if (resume?.catch) resume.catch(() => {});
+      }
+      if (!audioPrimed && audioContext.createBufferSource) {
+        const silent = audioContext.createBufferSource();
+        silent.buffer = audioContext.createBuffer(1, 1, audioContext.sampleRate);
+        silent.connect(audioContext.destination);
+        silent.start(0);
+        audioPrimed = true;
+      }
       audioUnlocked = true;
       if (!dom.introOverlay.classList.contains("hidden") && !introWhistlePlayed) {
         startIntroWhistle();
@@ -447,11 +477,11 @@
   }
 
   function scheduleWhistleMelody(delay = 0, introVoice = false) {
-    const note = (frequency, duration, start, volume = .09) => scheduleWhistleNote(frequency, duration, volume, delay + start, introVoice);
-    note(659.25, .5, 0); note(783.99, .5, .5); note(880, 1, 1, .095);
-    note(783.99, .5, 2); note(659.25, .5, 2.5); note(587.33, 1, 3, .085);
-    note(659.25, .5, 4.5); note(783.99, .5, 5); note(987.77, 1, 5.5, .095);
-    note(880, .5, 6.5); note(783.99, .5, 7); note(659.25, 1, 7.5, .088);
+    const note = (frequency, duration, start, volume = .15) => scheduleWhistleNote(frequency, duration, volume, delay + start, introVoice);
+    note(659.25, .5, 0); note(783.99, .5, .5); note(880, 1, 1, .16);
+    note(783.99, .5, 2); note(659.25, .5, 2.5); note(587.33, 1, 3, .14);
+    note(659.25, .5, 4.5); note(783.99, .5, 5); note(987.77, 1, 5.5, .16);
+    note(880, .5, 6.5); note(783.99, .5, 7); note(659.25, 1, 7.5, .145);
   }
 
   function stopIntroWhistle() {
@@ -597,7 +627,7 @@
       ["Total Time", formatTime(campaignElapsed)], ["Best Time", formatTime(save.bestGameTime)],
       ["Total Deaths", String(save.totalDeaths)], ["Total Coins", String(save.coins.length)],
       ["Total Stars", `${totalStars()} / 90`], ["Achievements", `${save.achievements.length} / ${ACHIEVEMENTS.length}`],
-      ["Completion", `${completionPercentage()}%`], ["Badge", "Master Escape"]
+      ["Completion", `${completionPercentage()}%`], ["Rescue", save.periRescued ? "Peri is safe" : "Final portal"], ["Badge", "Master Escape"]
     ]);
     createConfetti();
     dom.gameCompleteOverlay.classList.add("visible");
@@ -796,7 +826,9 @@
   function moveHorizontal(dt) {
     const hooked = yoyo?.state === "hooked";
     const acceleration = hooked ? 3600 : player.grounded ? 2500 : 1450;
-    const target = hooked ? yoyo.direction * 520 : (keys.left ? -320 : 0) + (keys.right ? 320 : 0);
+    const left = keys.left || tiltLeft;
+    const right = keys.right || tiltRight;
+    const target = hooked ? yoyo.direction * 520 : (left ? -320 : 0) + (right ? 320 : 0);
     if (target) {
       player.vx += Math.sign(target - player.vx) * Math.min(Math.abs(target - player.vx), acceleration * dt);
       player.facing = Math.sign(target);
@@ -953,6 +985,7 @@
     renderLevelPicker();
     if (levelIndex === LEVELS.length - 1) {
       unlockAchievement("master_escape");
+      save.periRescued = true;
       save.bestGameTime = save.bestGameTime ? Math.min(save.bestGameTime, campaignElapsed) : campaignElapsed;
       writeSave();
       showGameComplete();
@@ -999,32 +1032,129 @@
     }
   }
 
-  function drawBackground() {
-    const gradient = ctx.createLinearGradient(0, 0, 0, H);
-    gradient.addColorStop(0, "#111b36");
-    gradient.addColorStop(.62, "#091123");
-    gradient.addColorStop(1, "#050912");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, W, H);
-
-    ctx.save();
-    ctx.translate(-(cameraX * .15) % 80, 0);
-    ctx.strokeStyle = "rgba(54,229,255,.065)";
-    ctx.lineWidth = 1;
-    for (let x = -80; x < W + 160; x += 80) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  function backgroundPalette() {
+    if (save.backgroundMode === "day") return { top: "#8fc9df", middle: "#e4ce96", bottom: "#987a52", grid: "rgba(91,76,48,.09)", spark: "rgba(255,248,198,.46)", accent: "#6d6247" };
+    if (save.backgroundMode === "dynamic") {
+      const palettes = [
+        ["#30155a", "#11183d", "#07101f", "#b284ff"], ["#0b4553", "#102947", "#07121e", "#36e5ff"],
+        ["#542039", "#251631", "#090c18", "#ff6b9f"], ["#384714", "#183126", "#07130f", "#b8ff57"]
+      ];
+      const palette = palettes[levelIndex % palettes.length];
+      return { top: palette[0], middle: palette[1], bottom: palette[2], grid: "rgba(255,255,255,.055)", spark: `${palette[3]}66`, accent: palette[3] };
     }
-    for (let y = 60; y < H; y += 80) {
-      ctx.beginPath(); ctx.moveTo(-80, y); ctx.lineTo(W + 160, y); ctx.stroke();
+    return { top: "#111b36", middle: "#091123", bottom: "#050912", grid: "rgba(54,229,255,.065)", spark: "rgba(54,229,255,.16)", accent: "#36e5ff" };
+  }
+
+  function drawPalm(x, groundY, scale, ink) {
+    ctx.strokeStyle = ink; ctx.lineWidth = 7 * scale; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(x, groundY); ctx.quadraticCurveTo(x - 8 * scale, groundY - 55 * scale, x + 3 * scale, groundY - 112 * scale); ctx.stroke();
+    for (let i = 0; i < 7; i += 1) {
+      const angle = -Math.PI + i * Math.PI / 3;
+      ctx.beginPath(); ctx.moveTo(x + 3 * scale, groundY - 112 * scale); ctx.quadraticCurveTo(x + Math.cos(angle) * 35 * scale, groundY - 128 * scale + Math.sin(angle) * 18 * scale, x + Math.cos(angle) * 53 * scale, groundY - 106 * scale + Math.sin(angle) * 24 * scale); ctx.stroke();
+    }
+  }
+
+  function drawCuneiformStone(x, y, scale, ink) {
+    ctx.fillStyle = ink; ctx.beginPath(); ctx.moveTo(x - 34 * scale, y); ctx.lineTo(x - 27 * scale, y - 60 * scale); ctx.lineTo(x + 24 * scale, y - 68 * scale); ctx.lineTo(x + 35 * scale, y); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = save.backgroundMode === "day" ? "rgba(255,245,199,.55)" : "rgba(5,10,23,.55)"; ctx.lineWidth = 2;
+    for (let row = 0; row < 4; row += 1) {
+      for (let mark = 0; mark < 3; mark += 1) {
+        const px = x - 18 * scale + mark * 17 * scale, py = y - 50 * scale + row * 12 * scale;
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + 7 * scale, py + 3 * scale); ctx.lineTo(px + 2 * scale, py + 7 * scale); ctx.stroke();
+      }
+    }
+  }
+
+  function drawHeritageBackground(palette) {
+    const scene = HERITAGE_BACKGROUNDS[levelIndex];
+    if (!scene) return;
+    const ink = save.backgroundMode === "day" ? "#6d6247" : palette.accent;
+    const dark = save.backgroundMode === "day" ? "#8a7958" : "#10142a";
+    ctx.save(); ctx.globalAlpha = save.backgroundMode === "day" ? .18 : .16;
+
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.moveTo(0, 420); ctx.quadraticCurveTo(150, 315, 330, 410); ctx.quadraticCurveTo(505, 325, 690, 412); ctx.quadraticCurveTo(830, 350, W, 414); ctx.lineTo(W, 450); ctx.lineTo(0, 450); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha *= .7;
+    ctx.beginPath(); ctx.moveTo(0, 430); ctx.quadraticCurveTo(240, 370, 470, 425); ctx.quadraticCurveTo(720, 360, W, 428); ctx.lineTo(W, 460); ctx.lineTo(0, 460); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = save.backgroundMode === "day" ? .2 : .18;
+
+    if (scene === "ziggurat" || scene === "cuneiform") {
+      ctx.fillStyle = ink;
+      for (let step = 0; step < 5; step += 1) ctx.fillRect(520 + step * 24, 388 - step * 43, 290 - step * 48, 43);
+      ctx.fillRect(622, 174, 86, 42);
+      drawPalm(450, 420, .85, ink); drawPalm(825, 420, .72, ink);
+      drawCuneiformStone(875, 420, .78, ink);
+      if (scene === "cuneiform") { drawCuneiformStone(150, 420, 1.15, ink); drawCuneiformStone(270, 420, .9, ink); }
+    } else if (scene === "ishtar") {
+      ctx.fillStyle = ink; ctx.fillRect(585, 270, 170, 150);
+      for (let i = 0; i < 7; i += 1) ctx.fillRect(580 + i * 27, 251 + (i % 2) * 8, 18, 25);
+      ctx.fillStyle = dark;
+      ctx.beginPath(); ctx.arc(670, 366, 38, Math.PI, 0); ctx.lineTo(708, 420); ctx.lineTo(632, 420); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = dark; ctx.lineWidth = 4;
+      for (let row = 0; row < 3; row += 1) for (let col = 0; col < 5; col += 1) ctx.strokeRect(602 + col * 29, 290 + row * 31, 15, 11);
+      drawPalm(500, 420, .62, ink); drawPalm(825, 420, .58, ink);
+    } else if (scene === "palms") {
+      drawPalm(180, 420, 1.05, ink); drawPalm(370, 420, .72, ink); drawPalm(650, 420, 1.12, ink); drawPalm(840, 420, .82, ink);
+      ctx.fillStyle = ink; ctx.beginPath(); ctx.ellipse(520, 420, 180, 18, 0, Math.PI, 0); ctx.fill();
+      drawCuneiformStone(510, 420, .7, ink);
+    } else if (scene === "walls") {
+      ctx.fillStyle = ink; ctx.fillRect(60, 330, 840, 90);
+      for (let x = 60; x < 900; x += 58) ctx.fillRect(x, 304, 35, 34);
+      ctx.strokeStyle = dark; ctx.lineWidth = 3;
+      for (let row = 0; row < 3; row += 1) for (let x = 80 - row * 20; x < 890; x += 72) ctx.strokeRect(x, 344 + row * 25, 46, 15);
+      drawCuneiformStone(770, 420, .8, ink);
+    } else if (scene === "dunes") {
+      drawPalm(180, 420, .55, ink); drawPalm(790, 420, .62, ink);
+      drawCuneiformStone(680, 420, .76, ink);
     }
     ctx.restore();
+  }
 
-    for (let i = 0; i < 20; i++) {
+  function drawBackground(time) {
+    const palette = backgroundPalette();
+    const gradient = ctx.createLinearGradient(0, 0, 0, H);
+    gradient.addColorStop(0, palette.top); gradient.addColorStop(.62, palette.middle); gradient.addColorStop(1, palette.bottom);
+    ctx.fillStyle = gradient; ctx.fillRect(0, 0, W, H);
+
+    if (save.backgroundMode === "day") {
+      ctx.fillStyle = "rgba(255,243,177,.82)"; ctx.shadowColor = "rgba(255,229,125,.7)"; ctx.shadowBlur = 30;
+      ctx.beginPath(); ctx.arc(120, 100, 42, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+      ctx.fillStyle = "rgba(116,93,58,.14)";
+      ctx.beginPath(); ctx.moveTo(0, 410); ctx.quadraticCurveTo(220, 320, 450, 410); ctx.quadraticCurveTo(690, 330, W, 405); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+    } else if (save.backgroundMode === "night") {
+      ctx.fillStyle = "rgba(228,241,255,.8)"; ctx.shadowColor = "rgba(154,205,255,.65)"; ctx.shadowBlur = 24;
+      ctx.beginPath(); ctx.arc(120, 100, 35, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+      ctx.fillStyle = palette.top; ctx.beginPath(); ctx.arc(137, 88, 34, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.fillStyle = `${palette.accent}55`; ctx.shadowColor = palette.accent; ctx.shadowBlur = 28;
+      ctx.beginPath(); ctx.arc(120, 100, 31 + Math.sin(time * .7) * 4, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+    }
+
+    ctx.save(); ctx.translate(-(cameraX * .15) % 80, 0); ctx.strokeStyle = palette.grid; ctx.lineWidth = 1;
+    for (let x = -80; x < W + 160; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 60; y < H; y += 80) { ctx.beginPath(); ctx.moveTo(-80, y); ctx.lineTo(W + 160, y); ctx.stroke(); }
+    ctx.restore();
+
+    if (save.backgroundMode === "dynamic") {
+      for (let i = 0; i < 12; i += 1) {
+        const x = ((i * 179 - cameraX * (.05 + i % 3 * .02)) % (W + 180) + W + 180) % (W + 180) - 90;
+        const y = 70 + (i * 97 + levelIndex * 31) % 320;
+        const size = 18 + (i * 7 + levelIndex * 3) % 42;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(time * .06 * (i % 2 ? 1 : -1) + i); ctx.globalAlpha = .09 + (i % 3) * .025; ctx.fillStyle = palette.accent;
+        ctx.beginPath();
+        if ((i + levelIndex) % 3 === 0) ctx.arc(0, 0, size, 0, Math.PI * 2);
+        else if ((i + levelIndex) % 3 === 1) { ctx.moveTo(0, -size); ctx.lineTo(size, size); ctx.lineTo(-size, size); ctx.closePath(); }
+        else { ctx.moveTo(0, -size); ctx.lineTo(size, 0); ctx.lineTo(0, size); ctx.lineTo(-size, 0); ctx.closePath(); }
+        ctx.fill(); ctx.restore();
+      }
+    }
+
+    for (let i = 0; i < 20; i += 1) {
       const x = ((i * 157 - cameraX * .08) % (W + 120) + W + 120) % (W + 120) - 60;
       const y = 45 + (i * 83) % 310;
-      ctx.fillStyle = i % 3 ? "rgba(54,229,255,.16)" : "rgba(184,255,87,.18)";
-      ctx.fillRect(x, y, 2, 2);
+      ctx.fillStyle = i % 3 ? palette.spark : "rgba(184,255,87,.18)"; ctx.fillRect(x, y, 2, 2);
     }
+    drawHeritageBackground(palette);
   }
 
   function drawPlatform(platform, color = "#263a58") {
@@ -1194,6 +1324,27 @@
     ctx.restore();
   }
 
+  function drawTamerName() {
+    const x = player.x - cameraX + player.w / 2;
+    ctx.fillStyle = "rgba(234,244,255,.78)"; ctx.font = "900 9px Orbitron"; ctx.textAlign = "center";
+    ctx.fillText("TAMER", x, player.y - 8);
+  }
+
+  function drawPeri(time) {
+    if (levelIndex !== LEVELS.length - 1) return;
+    const x = level.door.x - cameraX - 50;
+    const y = level.door.y + 24 + Math.sin(time * 2.2) * 1.5;
+    ctx.save(); ctx.translate(x, y); ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = "rgba(255,98,111,.5)"; ctx.lineWidth = 8; ctx.shadowColor = "rgba(255,98,111,.65)"; ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.arc(0, 10, 9, 0, Math.PI * 2); ctx.moveTo(0,19); ctx.lineTo(0,39); ctx.moveTo(0,26); ctx.lineTo(-12,35); ctx.moveTo(0,26); ctx.lineTo(12,35); ctx.moveTo(0,39); ctx.lineTo(-9,55); ctx.moveTo(0,39); ctx.lineTo(9,55); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.strokeStyle = "#fffdf7"; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(0, 10, 9, 0, Math.PI * 2); ctx.moveTo(0,19); ctx.lineTo(0,39); ctx.moveTo(0,26); ctx.lineTo(-12,35); ctx.moveTo(0,26); ctx.lineTo(12,35); ctx.moveTo(0,39); ctx.lineTo(-9,55); ctx.moveTo(0,39); ctx.lineTo(9,55); ctx.stroke();
+    ctx.strokeStyle = "#e33d52"; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(0, 8, 11, Math.PI * 1.05, Math.PI * 1.95); ctx.moveTo(-10,8); ctx.lineTo(-12,22); ctx.moveTo(10,8); ctx.lineTo(12,22); ctx.stroke();
+    ctx.fillStyle = "#ff6676"; ctx.font = "900 9px Orbitron"; ctx.textAlign = "center"; ctx.fillText("PERI", 0, -8);
+    ctx.restore();
+  }
+
   let introAnimationFrame = null;
   let introWhistlePlayed = false;
 
@@ -1264,7 +1415,7 @@
   }
 
   function draw(time) {
-    drawBackground();
+    drawBackground(time);
     level.platforms.forEach(p => drawPlatform(p));
     level.moving.forEach(p => drawPlatform(p, "#244f66"));
     level.falling.filter(p => p.state !== "gone").forEach(p => {
@@ -1280,7 +1431,9 @@
     level.enemies.forEach(enemy => drawEnemy(enemy, time));
     level.shadows.forEach(shadow => drawShadow(shadow, time));
     drawDoor(time);
+    drawPeri(time);
     drawPlayer();
+    drawTamerName();
     drawYoyo();
 
     ctx.fillStyle = "rgba(255,255,255,.45)";
@@ -1306,8 +1459,55 @@
     if (!paused) canvas.focus();
   }
 
+  function handleDeviceOrientation(event) {
+    if (!tiltEnabled) return;
+    const angle = window.screen?.orientation?.angle ?? window.orientation ?? 0;
+    const rawTilt = Math.abs(angle) === 90 ? (angle === 90 ? -event.beta : event.beta) : event.gamma;
+    if (!Number.isFinite(rawTilt)) return;
+    if (tiltNeutral === null) {
+      tiltNeutral = rawTilt;
+      showToast("Tilt calibrated — lean left or right", 2.5);
+      return;
+    }
+    const tilt = rawTilt - tiltNeutral;
+    tiltLeft = tilt < -6;
+    tiltRight = tilt > 6;
+  }
+
+  async function toggleTiltControls() {
+    if (tiltEnabled) {
+      tiltEnabled = false;
+      tiltLeft = tiltRight = false;
+      tiltNeutral = null;
+      updateHud();
+      showToast("Tilt controls off");
+      return;
+    }
+    const Orientation = window.DeviceOrientationEvent;
+    if (!Orientation) {
+      showToast("Tilt controls are not supported on this device", 3);
+      return;
+    }
+    try {
+      if (typeof Orientation.requestPermission === "function") {
+        const permission = await Orientation.requestPermission();
+        if (permission !== "granted") {
+          showToast("Motion permission is required for tilt controls", 3);
+          return;
+        }
+      }
+      tiltEnabled = true;
+      tiltNeutral = null;
+      tiltLeft = tiltRight = false;
+      updateHud();
+      showToast("Hold your phone comfortably to calibrate tilt", 3);
+    } catch (_) {
+      showToast("Could not enable tilt controls", 3);
+    }
+  }
+
   function bindHold(button, key) {
-    const press = event => { event.preventDefault(); keys[key] = true; button.classList.add("active"); if (key === "jump") keys.jumpQueued = true; };
+    const press = event => { event.preventDefault(); button.setPointerCapture?.(event.pointerId); keys[key] = true; button.classList.add("active"); if (key === "jump") keys.jumpQueued = true; };
     const release = event => { event.preventDefault(); keys[key] = false; button.classList.remove("active"); };
     button.addEventListener("pointerdown", press);
     button.addEventListener("pointerup", release);
@@ -1334,11 +1534,22 @@
     if (["ArrowRight","KeyD"].includes(event.code)) keys.right = false;
     if (["ArrowUp","KeyW","Space"].includes(event.code)) keys.jump = false;
   });
-  window.addEventListener("blur", () => { keys.left = keys.right = keys.jump = false; if (running && !completed) setPaused(true); });
+  window.addEventListener("blur", () => { keys.left = keys.right = keys.jump = tiltLeft = tiltRight = false; if (running && !completed) setPaused(true); });
+  window.addEventListener("deviceorientation", handleDeviceOrientation);
+  window.addEventListener("orientationchange", () => { if (tiltEnabled) { tiltNeutral = null; tiltLeft = tiltRight = false; } });
 
   bindHold(document.getElementById("leftButton"), "left");
   bindHold(document.getElementById("rightButton"), "right");
   bindHold(document.getElementById("jumpButton"), "jump");
+  dom.tiltButton.addEventListener("click", toggleTiltControls);
+  window.addEventListener("pointerup", () => {
+    keys.left = keys.right = keys.jump = false;
+    document.querySelectorAll(".touch-button.active").forEach(button => button.classList.remove("active"));
+  });
+  window.addEventListener("pointercancel", () => {
+    keys.left = keys.right = keys.jump = false;
+    document.querySelectorAll(".touch-button.active").forEach(button => button.classList.remove("active"));
+  });
   dom.yoyoButton.addEventListener("click", () => { throwYoyo(); canvas.focus(); });
   dom.whistleButton.addEventListener("click", () => { gameplayWhistle(); canvas.focus(); });
   dom.whistleToolbar.addEventListener("click", () => { gameplayWhistle(); canvas.focus(); });
@@ -1350,6 +1561,11 @@
   dom.next.addEventListener("click", () => loadLevel(levelIndex + 1));
   dom.replayLevel.addEventListener("click", () => loadLevel(levelIndex));
   dom.menu.addEventListener("click", () => loadLevel(levelIndex, true));
+  dom.background.addEventListener("change", () => {
+    save.backgroundMode = ["night", "day", "dynamic"].includes(dom.background.value) ? dom.background.value : "night";
+    writeSave();
+    showToast(`${dom.background.options[dom.background.selectedIndex].text} background`, 1.8);
+  });
   dom.sound.addEventListener("click", () => {
     soundOn = !soundOn;
     save.sound = soundOn;
