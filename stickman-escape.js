@@ -190,7 +190,7 @@
     gameCompleteStats: document.getElementById("gameCompleteStats"), playAgain: document.getElementById("playAgainButton"), gameLevelSelect: document.getElementById("gameLevelSelectButton"), confetti: document.getElementById("confettiLayer"),
     introOverlay: document.getElementById("introOverlay"), introCanvas: document.getElementById("introCanvas"), introTitle: document.getElementById("introTitleCard"), introStart: document.getElementById("introStartButton"), skipIntro: document.getElementById("skipIntroButton"),
     replayIntro: document.getElementById("replayIntroButton"), endingReplayIntro: document.getElementById("endingReplayIntroButton"),
-    yoyoStatus: document.getElementById("yoyoStatus"), yoyoFill: document.getElementById("yoyoCooldownFill"), yoyoText: document.getElementById("yoyoCooldownText"), yoyoButton: document.getElementById("yoyoButton"), whistleButton: document.getElementById("whistleButton"), whistleToolbar: document.getElementById("whistleToolbarButton"), background: document.getElementById("backgroundMode")
+    yoyoStatus: document.getElementById("yoyoStatus"), yoyoFill: document.getElementById("yoyoCooldownFill"), yoyoText: document.getElementById("yoyoCooldownText"), yoyoButton: document.getElementById("yoyoButton"), whistleButton: document.getElementById("whistleButton"), whistleToolbar: document.getElementById("whistleToolbarButton"), background: document.getElementById("backgroundMode"), mobileControls: document.querySelector(".mobile-controls"), fullscreen: document.getElementById("fullscreenButton"), landscapePause: document.getElementById("landscapePauseButton")
   };
 
   const YOYO_FALLBACK_LEVEL = 21;
@@ -300,6 +300,7 @@
     completed = false;
     paused = false;
     running = !showMenu;
+    document.body.classList.toggle("mobile-playing", !showMenu);
     dom.startOverlay.classList.toggle("visible", showMenu);
     dom.pauseOverlay.classList.remove("visible");
     dom.completeOverlay.classList.remove("visible");
@@ -1476,6 +1477,48 @@
     button.addEventListener("lostpointercapture", release);
   }
 
+  function bindTap(button, action) {
+    const press = event => {
+      event.preventDefault();
+      if (button.disabled) return;
+      button.setPointerCapture?.(event.pointerId);
+      button.classList.add("active");
+      action();
+      canvas.focus();
+    };
+    const release = event => {
+      event.preventDefault();
+      button.classList.remove("active");
+    };
+    button.addEventListener("pointerdown", press);
+    button.addEventListener("pointerup", release);
+    button.addEventListener("pointercancel", release);
+    button.addEventListener("lostpointercapture", release);
+  }
+
+  async function toggleFullscreen() {
+    const active = document.fullscreenElement || document.webkitFullscreenElement;
+    try {
+      if (active) {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) await exit.call(document);
+      } else {
+        const target = document.querySelector(".game-card");
+        const enter = target.requestFullscreen || target.webkitRequestFullscreen;
+        if (enter) await enter.call(target);
+        else showToast("Rotate your phone sideways for full-screen play", 3);
+      }
+    } catch (_) {
+      showToast("Rotate your phone sideways for full-screen play", 3);
+    }
+  }
+
+  function updateFullscreenButton() {
+    const active = document.fullscreenElement || document.webkitFullscreenElement;
+    dom.fullscreen.textContent = active ? "Exit Fullscreen" : "⛶ Fullscreen";
+    dom.fullscreen.setAttribute("aria-label", active ? "Exit fullscreen" : "Enter fullscreen");
+  }
+
   window.addEventListener("keydown", event => {
     const code = event.code;
     if (["ArrowLeft","ArrowRight","ArrowUp","Space","KeyA","KeyD","KeyW","KeyF","KeyG"].includes(code)) event.preventDefault();
@@ -1500,8 +1543,13 @@
   bindHold(document.getElementById("leftButton"), "left");
   bindHold(document.getElementById("rightButton"), "right");
   bindHold(document.getElementById("jumpButton"), "jump");
-  dom.yoyoButton.addEventListener("click", () => { throwYoyo(); canvas.focus(); });
-  dom.whistleButton.addEventListener("click", () => { gameplayWhistle(); canvas.focus(); });
+  bindTap(dom.yoyoButton, throwYoyo);
+  bindTap(dom.whistleButton, gameplayWhistle);
+  ["touchstart", "touchmove"].forEach(type => dom.mobileControls.addEventListener(type, event => event.preventDefault(), { passive: false }));
+  dom.fullscreen.addEventListener("click", toggleFullscreen);
+  dom.landscapePause.addEventListener("click", () => setPaused(true));
+  document.addEventListener("fullscreenchange", updateFullscreenButton);
+  document.addEventListener("webkitfullscreenchange", updateFullscreenButton);
   dom.whistleToolbar.addEventListener("click", () => { gameplayWhistle(); canvas.focus(); });
 
   dom.start.addEventListener("click", () => loadLevel(levelIndex));
