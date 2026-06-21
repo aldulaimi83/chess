@@ -190,6 +190,7 @@
   let campaignElapsed = save.campaignTime;
   let saveTimer = 0;
   let audioContext = null;
+  let audioUnlocked = false;
   let soundOn = save.sound !== false;
   const keys = { left: false, right: false, jump: false, jumpQueued: false };
 
@@ -311,31 +312,116 @@
     showToast(`Achievement: ${message}`);
   }
 
-  function beep(frequency, duration = .08, type = "sine", volume = .05) {
-    if (!soundOn) return;
+  function unlockAudio() {
     try {
       audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      oscillator.type = type;
-      oscillator.frequency.value = frequency;
-      gain.gain.setValueAtTime(volume, audioContext.currentTime);
-      gain.gain.exponentialRampToValueAtTime(.0001, audioContext.currentTime + duration);
-      oscillator.connect(gain).connect(audioContext.destination);
-      oscillator.start();
-      oscillator.stop(audioContext.currentTime + duration);
+      if (audioContext.state === "suspended") audioContext.resume();
+      audioUnlocked = true;
+      if (introAnimationFrame && !dom.introOverlay.classList.contains("hidden") && !introWhistlePlayed) {
+        introWhistlePlayed = true;
+        playSound("whistle");
+      }
     } catch (_) { /* Sound is an enhancement. */ }
   }
 
-  function playSound(name) {
-    const sounds = {
-      jump: [280,.08,"square",.035], coin: [720,.09,"sine",.05], checkpoint: [520,.14,"triangle",.05],
-      death: [115,.2,"sawtooth",.045], complete: [660,.13,"triangle",.05], achievement: [940,.16,"triangle",.045],
-      gameComplete: [1040,.28,"sine",.05], button: [390,.04,"square",.018]
-    };
-    const sound = sounds[name];
-    if (sound) beep(...sound);
+  function scheduleTone(frequency, endFrequency, duration, type, volume, delay = 0) {
+    if (!soundOn || !audioUnlocked || !audioContext) return;
+    const start = audioContext.currentTime + delay;
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, start);
+    oscillator.frequency.exponentialRampToValueAtTime(endFrequency, start + duration);
+    gain.gain.setValueAtTime(.0001, start);
+    gain.gain.exponentialRampToValueAtTime(volume, start + Math.min(.012, duration * .2));
+    gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
+    oscillator.connect(gain).connect(audioContext.destination);
+    oscillator.start(start);
+    oscillator.stop(start + duration + .01);
   }
+
+  function scheduleWhistleNote(frequency, duration, volume, delay = 0) {
+    if (!soundOn || !audioUnlocked || !audioContext) return;
+    const start = audioContext.currentTime + delay;
+    const end = start + duration;
+    const whistle = audioContext.createOscillator();
+    const harmonic = audioContext.createOscillator();
+    const harmonicGain = audioContext.createGain();
+    const envelope = audioContext.createGain();
+    const vibrato = audioContext.createOscillator();
+    const vibratoDepth = audioContext.createGain();
+    const echo = audioContext.createDelay();
+    const echoGain = audioContext.createGain();
+    whistle.type = "sine";
+    harmonic.type = "sine";
+    vibrato.type = "sine";
+    whistle.frequency.setValueAtTime(frequency * .985, start);
+    whistle.frequency.exponentialRampToValueAtTime(frequency, start + Math.min(.09, duration * .3));
+    harmonic.frequency.setValueAtTime(frequency * 2, start);
+    harmonicGain.gain.setValueAtTime(.06, start);
+    vibrato.frequency.setValueAtTime(5.4, start);
+    vibratoDepth.gain.setValueAtTime(frequency * .008, start);
+    echo.delayTime.setValueAtTime(.19, start);
+    echoGain.gain.setValueAtTime(.13, start);
+    envelope.gain.setValueAtTime(.0001, start);
+    envelope.gain.exponentialRampToValueAtTime(volume, start + Math.min(.055, duration * .25));
+    envelope.gain.setValueAtTime(volume * .88, Math.max(start + .06, end - .09));
+    envelope.gain.exponentialRampToValueAtTime(.0001, end);
+    vibrato.connect(vibratoDepth).connect(whistle.frequency);
+    whistle.connect(envelope);
+    harmonic.connect(harmonicGain).connect(envelope);
+    envelope.connect(audioContext.destination);
+    envelope.connect(echo).connect(echoGain).connect(audioContext.destination);
+    whistle.start(start); harmonic.start(start); vibrato.start(start);
+    whistle.stop(end + .01); harmonic.stop(end + .01); vibrato.stop(end + .01);
+  }
+
+  function playSound(name) {
+    if (!soundOn || !audioUnlocked) return;
+    const tone = (from, to, duration, type, volume, delay = 0) => scheduleTone(from, to, duration, type, volume, delay);
+    if (name === "jump") tone(240, 520, .11, "square", .035);
+    if (name === "coin") {
+      tone(880, 1320, .07, "sine", .05);
+      tone(1480, 1960, .06, "triangle", .035, .045);
+    }
+    if (name === "checkpoint") {
+      tone(440, 520, .16, "sine", .035);
+      tone(660, 784, .2, "sine", .04, .1);
+    }
+    if (name === "death") tone(190, 65, .32, "sawtooth", .045);
+    if (name === "complete") {
+      tone(523, 523, .11, "triangle", .04);
+      tone(659, 659, .12, "triangle", .045, .1);
+      tone(784, 880, .2, "triangle", .05, .2);
+    }
+    if (name === "achievement") {
+      tone(587, 659, .1, "triangle", .035);
+      tone(784, 880, .12, "triangle", .04, .08);
+      tone(1047, 1319, .23, "sine", .05, .17);
+    }
+    if (name === "gameComplete") {
+      tone(523, 587, .16, "triangle", .04);
+      tone(659, 698, .16, "triangle", .045, .14);
+      tone(784, 880, .18, "triangle", .05, .28);
+      tone(1047, 1175, .2, "sine", .05, .43);
+      tone(1319, 1568, .42, "sine", .055, .61);
+    }
+    if (name === "whistle") {
+      scheduleWhistleNote(1174.66, .62, .026);
+      scheduleWhistleNote(1318.51, .62, .027, .54);
+      scheduleWhistleNote(1396.91, 1.15, .028, 1.08);
+      scheduleWhistleNote(1396.91, .62, .026, 2.15);
+      scheduleWhistleNote(1318.51, .62, .025, 2.69);
+      scheduleWhistleNote(1174.66, .72, .024, 3.23);
+      scheduleWhistleNote(1318.51, .75, .025, 3.87);
+      scheduleWhistleNote(1174.66, 1.45, .026, 4.54);
+    }
+    if (name === "button") tone(300, 220, .035, "square", .018);
+  }
+
+  window.addEventListener("pointerdown", unlockAudio, { passive: true });
+  window.addEventListener("touchstart", unlockAudio, { passive: true });
+  window.addEventListener("keydown", unlockAudio);
 
   function renderAchievements() {
     dom.achievementList.innerHTML = "";
@@ -605,7 +691,6 @@
     dom.next.textContent = `Continue to Level ${levelIndex + 2}`;
     dom.completeOverlay.classList.add("visible");
     playSound("complete");
-    window.setTimeout(() => beep(880, .18, "triangle", .045), 100);
   }
 
   function update(dt, time) {
@@ -757,6 +842,7 @@
   }
 
   let introAnimationFrame = null;
+  let introWhistlePlayed = false;
 
   function drawIntroStickman(introContext, x, y, runTime) {
     const swing = Math.sin(runTime * 5.5) * 11;
@@ -771,10 +857,14 @@
 
   function playIntro() {
     if (introAnimationFrame) cancelAnimationFrame(introAnimationFrame);
+    introWhistlePlayed = false;
     dom.introOverlay.classList.remove("hidden");
     dom.introTitle.classList.remove("visible");
+    if (audioUnlocked) { introWhistlePlayed = true; playSound("whistle"); }
     const introContext = dom.introCanvas.getContext("2d");
     const startedAt = performance.now();
+    const walkDuration = 3.2;
+    const introDuration = 6.1;
     const animate = now => {
       const elapsed = (now - startedAt) / 1000;
       const gradient = introContext.createLinearGradient(0, 0, 0, 540);
@@ -783,19 +873,24 @@
       introContext.strokeStyle = "rgba(54,229,255,.07)"; introContext.lineWidth = 1;
       for (let line = 0; line < 960; line += 64) { introContext.beginPath(); introContext.moveTo(line,0); introContext.lineTo(line,540); introContext.stroke(); }
       for (let line = 0; line < 540; line += 64) { introContext.beginPath(); introContext.moveTo(0,line); introContext.lineTo(960,line); introContext.stroke(); }
-      const walking = elapsed < 2.2;
-      const x = walking ? -30 + Math.min(1, elapsed / 2.2) * 510 : 480;
-      const runTime = walking ? elapsed * 2.2 : 0;
+      const groundY = 356;
+      introContext.fillStyle = "rgba(13,25,44,.96)"; introContext.fillRect(0, groundY, 960, 184);
+      introContext.fillStyle = "rgba(54,229,255,.75)"; introContext.fillRect(0, groundY, 960, 3);
+      introContext.fillStyle = "rgba(184,255,87,.18)";
+      for (let mark = 0; mark < 960; mark += 64) introContext.fillRect(mark + 16, groundY + 14, 32, 3);
+      const walking = elapsed < walkDuration;
+      const x = walking ? -30 + Math.min(1, elapsed / walkDuration) * 510 : 480;
+      const runTime = walking ? elapsed * 1.5 : 0;
       drawIntroStickman(introContext, x, 300, runTime);
-      if (!walking && elapsed < 5.1) {
-        const yoTime = elapsed - 2.2;
-        const drop = 24 + Math.abs(Math.sin(yoTime * Math.PI)) * 105;
+      if (!walking && elapsed < introDuration) {
+        const yoTime = elapsed - walkDuration;
+        const drop = 24 + Math.abs(Math.sin(yoTime * Math.PI * .55)) * 105;
         introContext.strokeStyle = "rgba(234,244,255,.8)"; introContext.lineWidth = 1.5;
-        introContext.beginPath(); introContext.moveTo(x - 12, 335); introContext.lineTo(x - 12, 335 + drop); introContext.stroke();
+        introContext.beginPath(); introContext.moveTo(x + 12, 335); introContext.lineTo(x + 12, 335 + drop); introContext.stroke();
         introContext.fillStyle = "#36e5ff"; introContext.shadowColor = "#36e5ff"; introContext.shadowBlur = 12;
-        introContext.beginPath(); introContext.arc(x - 12, 335 + drop, 10, 0, Math.PI * 2); introContext.fill(); introContext.shadowBlur = 0;
+        introContext.beginPath(); introContext.arc(x + 12, 335 + drop, 10, 0, Math.PI * 2); introContext.fill(); introContext.shadowBlur = 0;
       }
-      if (elapsed >= 5.1) {
+      if (elapsed >= introDuration) {
         dom.introTitle.classList.add("visible");
         introAnimationFrame = null;
         return;
@@ -891,7 +986,7 @@
   dom.next.addEventListener("click", () => loadLevel(levelIndex + 1));
   dom.replayLevel.addEventListener("click", () => loadLevel(levelIndex));
   dom.menu.addEventListener("click", () => loadLevel(levelIndex, true));
-  dom.sound.addEventListener("click", () => { soundOn = !soundOn; save.sound = soundOn; writeSave(); updateHud(); if (soundOn) beep(520); });
+  dom.sound.addEventListener("click", () => { soundOn = !soundOn; save.sound = soundOn; writeSave(); updateHud(); });
   dom.introStart.addEventListener("click", () => closeIntro(true));
   dom.skipIntro.addEventListener("click", () => closeIntro(false));
   dom.replayIntro.addEventListener("click", playIntro);
