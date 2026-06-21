@@ -190,7 +190,7 @@
     gameCompleteStats: document.getElementById("gameCompleteStats"), playAgain: document.getElementById("playAgainButton"), gameLevelSelect: document.getElementById("gameLevelSelectButton"), confetti: document.getElementById("confettiLayer"),
     introOverlay: document.getElementById("introOverlay"), introCanvas: document.getElementById("introCanvas"), introTitle: document.getElementById("introTitleCard"), introStart: document.getElementById("introStartButton"), skipIntro: document.getElementById("skipIntroButton"),
     replayIntro: document.getElementById("replayIntroButton"), endingReplayIntro: document.getElementById("endingReplayIntroButton"),
-    yoyoStatus: document.getElementById("yoyoStatus"), yoyoFill: document.getElementById("yoyoCooldownFill"), yoyoText: document.getElementById("yoyoCooldownText"), yoyoButton: document.getElementById("yoyoButton"), whistleButton: document.getElementById("whistleButton"), whistleToolbar: document.getElementById("whistleToolbarButton"), background: document.getElementById("backgroundMode"), tiltButton: document.getElementById("tiltButton")
+    yoyoStatus: document.getElementById("yoyoStatus"), yoyoFill: document.getElementById("yoyoCooldownFill"), yoyoText: document.getElementById("yoyoCooldownText"), yoyoButton: document.getElementById("yoyoButton"), whistleButton: document.getElementById("whistleButton"), whistleToolbar: document.getElementById("whistleToolbarButton"), background: document.getElementById("backgroundMode")
   };
 
   const YOYO_FALLBACK_LEVEL = 21;
@@ -223,10 +223,6 @@
   let soundOn = save.sound !== false;
   let yoyo;
   let whistleCooldown = 0;
-  let tiltEnabled = false;
-  let tiltNeutral = null;
-  let tiltLeft = false;
-  let tiltRight = false;
   const keys = { left: false, right: false, jump: false, jumpQueued: false };
 
   function loadSave() {
@@ -365,9 +361,6 @@
     dom.whistleToolbar.disabled = whistleCooldown > 0;
     dom.whistleToolbar.textContent = whistleCooldown > 0 ? `Whistle ${Math.ceil(whistleCooldown)}s` : "Whistle (G)";
     dom.background.value = save.backgroundMode;
-    dom.tiltButton.classList.toggle("active", tiltEnabled);
-    dom.tiltButton.setAttribute("aria-pressed", String(tiltEnabled));
-    dom.tiltButton.textContent = tiltEnabled ? "Tilt On" : "Tilt";
   }
 
   function showToast(message, duration = 1.8) {
@@ -826,8 +819,8 @@
   function moveHorizontal(dt) {
     const hooked = yoyo?.state === "hooked";
     const acceleration = hooked ? 3600 : player.grounded ? 2500 : 1450;
-    const left = keys.left || tiltLeft;
-    const right = keys.right || tiltRight;
+    const left = keys.left;
+    const right = keys.right;
     const target = hooked ? yoyo.direction * 520 : (left ? -320 : 0) + (right ? 320 : 0);
     if (target) {
       player.vx += Math.sign(target - player.vx) * Math.min(Math.abs(target - player.vx), acceleration * dt);
@@ -1459,60 +1452,28 @@
     if (!paused) canvas.focus();
   }
 
-  function handleDeviceOrientation(event) {
-    if (!tiltEnabled) return;
-    const angle = window.screen?.orientation?.angle ?? window.orientation ?? 0;
-    const rawTilt = Math.abs(angle) === 90 ? (angle === 90 ? -event.beta : event.beta) : event.gamma;
-    if (!Number.isFinite(rawTilt)) return;
-    if (tiltNeutral === null) {
-      tiltNeutral = rawTilt;
-      showToast("Tilt calibrated — lean left or right", 2.5);
-      return;
-    }
-    const tilt = rawTilt - tiltNeutral;
-    tiltLeft = tilt < -6;
-    tiltRight = tilt > 6;
-  }
-
-  async function toggleTiltControls() {
-    if (tiltEnabled) {
-      tiltEnabled = false;
-      tiltLeft = tiltRight = false;
-      tiltNeutral = null;
-      updateHud();
-      showToast("Tilt controls off");
-      return;
-    }
-    const Orientation = window.DeviceOrientationEvent;
-    if (!Orientation) {
-      showToast("Tilt controls are not supported on this device", 3);
-      return;
-    }
-    try {
-      if (typeof Orientation.requestPermission === "function") {
-        const permission = await Orientation.requestPermission();
-        if (permission !== "granted") {
-          showToast("Motion permission is required for tilt controls", 3);
-          return;
-        }
-      }
-      tiltEnabled = true;
-      tiltNeutral = null;
-      tiltLeft = tiltRight = false;
-      updateHud();
-      showToast("Hold your phone comfortably to calibrate tilt", 3);
-    } catch (_) {
-      showToast("Could not enable tilt controls", 3);
-    }
-  }
-
   function bindHold(button, key) {
-    const press = event => { event.preventDefault(); button.setPointerCapture?.(event.pointerId); keys[key] = true; button.classList.add("active"); if (key === "jump") keys.jumpQueued = true; };
-    const release = event => { event.preventDefault(); keys[key] = false; button.classList.remove("active"); };
+    let activePointer = null;
+    const press = event => {
+      event.preventDefault();
+      if (activePointer !== null) return;
+      activePointer = event.pointerId;
+      button.setPointerCapture?.(event.pointerId);
+      keys[key] = true;
+      button.classList.add("active");
+      if (key === "jump") keys.jumpQueued = true;
+    };
+    const release = event => {
+      if (event.pointerId !== activePointer) return;
+      event.preventDefault();
+      activePointer = null;
+      keys[key] = false;
+      button.classList.remove("active");
+    };
     button.addEventListener("pointerdown", press);
     button.addEventListener("pointerup", release);
     button.addEventListener("pointercancel", release);
-    button.addEventListener("pointerleave", release);
+    button.addEventListener("lostpointercapture", release);
   }
 
   window.addEventListener("keydown", event => {
@@ -1534,22 +1495,11 @@
     if (["ArrowRight","KeyD"].includes(event.code)) keys.right = false;
     if (["ArrowUp","KeyW","Space"].includes(event.code)) keys.jump = false;
   });
-  window.addEventListener("blur", () => { keys.left = keys.right = keys.jump = tiltLeft = tiltRight = false; if (running && !completed) setPaused(true); });
-  window.addEventListener("deviceorientation", handleDeviceOrientation);
-  window.addEventListener("orientationchange", () => { if (tiltEnabled) { tiltNeutral = null; tiltLeft = tiltRight = false; } });
+  window.addEventListener("blur", () => { keys.left = keys.right = keys.jump = false; if (running && !completed) setPaused(true); });
 
   bindHold(document.getElementById("leftButton"), "left");
   bindHold(document.getElementById("rightButton"), "right");
   bindHold(document.getElementById("jumpButton"), "jump");
-  dom.tiltButton.addEventListener("click", toggleTiltControls);
-  window.addEventListener("pointerup", () => {
-    keys.left = keys.right = keys.jump = false;
-    document.querySelectorAll(".touch-button.active").forEach(button => button.classList.remove("active"));
-  });
-  window.addEventListener("pointercancel", () => {
-    keys.left = keys.right = keys.jump = false;
-    document.querySelectorAll(".touch-button.active").forEach(button => button.classList.remove("active"));
-  });
   dom.yoyoButton.addEventListener("click", () => { throwYoyo(); canvas.focus(); });
   dom.whistleButton.addEventListener("click", () => { gameplayWhistle(); canvas.focus(); });
   dom.whistleToolbar.addEventListener("click", () => { gameplayWhistle(); canvas.focus(); });
