@@ -51,6 +51,16 @@
     <div class="escape-glow glow-two"></div>
   </div>
 
+  <div class="intro-overlay" id="introOverlay" aria-label="Stickman Escape intro">
+    <canvas id="introCanvas" width="960" height="540" aria-hidden="true"></canvas>
+    <button class="intro-skip" id="skipIntroButton" type="button">Skip Intro</button>
+    <div class="intro-title-card" id="introTitleCard">
+      <span class="overlay-kicker">An Original YouOOO Game</span>
+      <h2>Stickman Escape</h2>
+      <button class="primary-action" id="introStartButton" type="button">Start Game</button>
+    </div>
+  </div>
+
   <header class="game-header">
     <a class="hub-link" href="index.html" aria-label="Back to YouOOO Games">← Games</a>
     <div class="game-brand">
@@ -67,8 +77,10 @@
     <section class="game-card" aria-label="Stickman Escape game">
       <div class="game-toolbar">
         <div class="toolbar-stat"><span>Level</span><strong id="levelReadout">1 / 30</strong></div>
-        <div class="toolbar-stat"><span>Coins</span><strong id="coinReadout">0 / 0</strong></div>
-        <div class="toolbar-stat"><span>Lives</span><strong id="lifeReadout">● ● ●</strong></div>
+        <div class="toolbar-stat"><span>Level Coins</span><strong id="coinReadout">0 / 0</strong></div>
+        <div class="toolbar-stat"><span>Total Coins</span><strong id="totalCoinReadout">0</strong></div>
+        <div class="toolbar-stat"><span>Deaths</span><strong id="deathReadout">0</strong></div>
+        <div class="toolbar-stat"><span>Time</span><strong id="timerReadout">00:00</strong></div>
         <div class="toolbar-actions">
           <button id="restartButton" type="button">Restart</button>
           <button id="pauseButton" type="button">Pause</button>
@@ -86,6 +98,14 @@
             <p>Collect coins, activate checkpoints, and reach the glowing portal. Your progress saves automatically.</p>
             <div class="level-picker" id="levelPicker" aria-label="Choose an unlocked level"></div>
             <button class="primary-action" id="startButton" type="button">Start Level 1</button>
+            <button class="secondary-action" id="replayIntroButton" type="button">Replay Intro</button>
+            <section class="achievement-panel" aria-labelledby="achievementTitle">
+              <div class="achievement-heading">
+                <h3 id="achievementTitle">Achievements</h3>
+                <strong id="achievementCount">0 / 9</strong>
+              </div>
+              <div class="achievement-list" id="achievementList"></div>
+            </section>
             <p class="controls-copy"><strong>Keyboard:</strong> A/D or ←/→ to move · W, ↑, or Space to jump · R to restart · Esc to pause</p>
           </div>
         </div>
@@ -99,12 +119,27 @@
         </div>
 
         <div class="game-overlay" id="completeOverlay">
-          <div class="overlay-panel compact-panel">
+          <div class="overlay-panel completion-panel">
             <span class="overlay-kicker" id="completeKicker">Level Clear</span>
             <h2 id="completeTitle">Portal reached!</h2>
-            <p id="completeSummary"></p>
+            <div class="earned-stars" id="earnedStars" aria-label="Stars earned">☆ ☆ ☆</div>
+            <div class="completion-stats" id="completionStats"></div>
             <button class="primary-action" id="nextButton" type="button">Next Level</button>
+            <button class="secondary-action" id="replayLevelButton" type="button">Replay Level</button>
             <button class="secondary-action" id="levelMenuButton" type="button">Level Select</button>
+          </div>
+        </div>
+
+        <div class="game-overlay celebration-overlay" id="gameCompleteOverlay">
+          <div class="overlay-panel game-complete-panel">
+            <span class="master-badge">Master Escape</span>
+            <h2>Congratulations!</h2>
+            <p>All thirty doors are open.</p>
+            <div class="completion-stats" id="gameCompleteStats"></div>
+            <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
+            <button class="primary-action" id="playAgainButton" type="button">Play Again</button>
+            <button class="secondary-action" id="gameLevelSelectButton" type="button">Level Select</button>
+            <button class="secondary-action" id="endingReplayIntroButton" type="button">Replay Intro</button>
           </div>
         </div>
       </div>

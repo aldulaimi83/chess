@@ -148,13 +148,30 @@
     });
   }
 
+  const ACHIEVEMENTS = [
+    { id: "first_escape", label: "First Escape" },
+    { id: "coin_hunter", label: "Coin Hunter" },
+    { id: "treasure_master", label: "Treasure Master" },
+    { id: "survivor", label: "Survivor" },
+    { id: "perfectionist", label: "Perfectionist" },
+    { id: "speed_runner", label: "Speed Runner" },
+    { id: "explorer", label: "Explorer" },
+    { id: "veteran", label: "Veteran Escapee" },
+    { id: "master_escape", label: "Master Escape" }
+  ];
+
   const dom = {
-    level: document.getElementById("levelReadout"), coin: document.getElementById("coinReadout"), lives: document.getElementById("lifeReadout"),
-    startOverlay: document.getElementById("startOverlay"), pauseOverlay: document.getElementById("pauseOverlay"), completeOverlay: document.getElementById("completeOverlay"),
+    level: document.getElementById("levelReadout"), coin: document.getElementById("coinReadout"), totalCoins: document.getElementById("totalCoinReadout"),
+    deaths: document.getElementById("deathReadout"), timer: document.getElementById("timerReadout"),
+    startOverlay: document.getElementById("startOverlay"), pauseOverlay: document.getElementById("pauseOverlay"), completeOverlay: document.getElementById("completeOverlay"), gameCompleteOverlay: document.getElementById("gameCompleteOverlay"),
     start: document.getElementById("startButton"), pause: document.getElementById("pauseButton"), resume: document.getElementById("resumeButton"), restart: document.getElementById("restartButton"),
-    next: document.getElementById("nextButton"), menu: document.getElementById("levelMenuButton"), picker: document.getElementById("levelPicker"),
+    next: document.getElementById("nextButton"), replayLevel: document.getElementById("replayLevelButton"), menu: document.getElementById("levelMenuButton"), picker: document.getElementById("levelPicker"),
     toast: document.getElementById("statusToast"), sound: document.getElementById("soundButton"),
-    completeKicker: document.getElementById("completeKicker"), completeTitle: document.getElementById("completeTitle"), completeSummary: document.getElementById("completeSummary")
+    completeKicker: document.getElementById("completeKicker"), completeTitle: document.getElementById("completeTitle"), earnedStars: document.getElementById("earnedStars"), completionStats: document.getElementById("completionStats"),
+    achievementList: document.getElementById("achievementList"), achievementCount: document.getElementById("achievementCount"),
+    gameCompleteStats: document.getElementById("gameCompleteStats"), playAgain: document.getElementById("playAgainButton"), gameLevelSelect: document.getElementById("gameLevelSelectButton"), confetti: document.getElementById("confettiLayer"),
+    introOverlay: document.getElementById("introOverlay"), introCanvas: document.getElementById("introCanvas"), introTitle: document.getElementById("introTitleCard"), introStart: document.getElementById("introStartButton"), skipIntro: document.getElementById("skipIntroButton"),
+    replayIntro: document.getElementById("replayIntroButton"), endingReplayIntro: document.getElementById("endingReplayIntroButton")
   };
 
   let save = loadSave();
@@ -167,6 +184,11 @@
   let completed = false;
   let lastTime = 0;
   let toastTimer = 0;
+  let sessionDeaths = 0;
+  let levelDeaths = 0;
+  let levelElapsed = 0;
+  let campaignElapsed = save.campaignTime;
+  let saveTimer = 0;
   let audioContext = null;
   let soundOn = save.sound !== false;
   const keys = { left: false, right: false, jump: false, jumpQueued: false };
@@ -174,18 +196,40 @@
   function loadSave() {
     try {
       const data = JSON.parse(localStorage.getItem(SAVE_KEY));
+      const coins = Array.isArray(data?.coins) ? [...new Set(data.coins)] : [];
       return {
         unlocked: Math.max(1, Math.min(LEVELS.length, Number(data?.unlocked) || 1)),
-        coins: Array.isArray(data?.coins) ? data.coins : [],
-        sound: data?.sound !== false
+        coins,
+        sound: data?.sound !== false,
+        introSeen: data?.introSeen === true,
+        totalDeaths: Math.max(0, Number(data?.totalDeaths) || 0),
+        deathsByLevel: data?.deathsByLevel && typeof data.deathsByLevel === "object" ? data.deathsByLevel : {},
+        bestTimes: data?.bestTimes && typeof data.bestTimes === "object" ? data.bestTimes : {},
+        bestGameTime: Number(data?.bestGameTime) > 0 ? Number(data.bestGameTime) : null,
+        stars: data?.stars && typeof data.stars === "object" ? data.stars : {},
+        achievements: Array.isArray(data?.achievements) ? [...new Set(data.achievements)] : [],
+        lifetimeCoins: Math.max(coins.length, Number(data?.lifetimeCoins) || 0),
+        campaignTime: Math.max(0, Number(data?.campaignTime) || 0)
       };
     } catch (_) {
-      return { unlocked: 1, coins: [], sound: true };
+      return { unlocked: 1, coins: [], sound: true, introSeen: false, totalDeaths: 0, deathsByLevel: {}, bestTimes: {}, bestGameTime: null, stars: {}, achievements: [], lifetimeCoins: 0, campaignTime: 0 };
     }
   }
 
   function writeSave() {
+    save.lifetimeCoins = Math.max(save.lifetimeCoins, save.coins.length);
+    save.campaignTime = campaignElapsed;
     localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+  }
+
+  function formatTime(seconds) {
+    const total = Math.max(0, Math.floor(Number(seconds) || 0));
+    const minutes = Math.floor(total / 60);
+    return `${String(minutes).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+  }
+
+  function totalStars() {
+    return Object.values(save.stars).reduce((sum, value) => sum + Math.max(0, Math.min(3, Number(value) || 0)), 0);
   }
 
   function cloneLevel(source) {
@@ -209,12 +253,15 @@
       lives: 3, invulnerable: 0, runTime: 0
     };
     cameraX = 0;
+    levelDeaths = 0;
+    levelElapsed = 0;
     completed = false;
     paused = false;
     running = !showMenu;
     dom.startOverlay.classList.toggle("visible", showMenu);
     dom.pauseOverlay.classList.remove("visible");
     dom.completeOverlay.classList.remove("visible");
+    dom.gameCompleteOverlay.classList.remove("visible");
     dom.pause.textContent = "Pause";
     renderLevelPicker();
     updateHud();
@@ -227,7 +274,8 @@
       const button = document.createElement("button");
       button.className = `level-choice${index < save.unlocked ? " unlocked" : ""}${index === levelIndex ? " selected" : ""}`;
       button.type = "button";
-      button.textContent = String(index + 1);
+      const stars = Math.max(0, Math.min(3, Number(save.stars[index]) || 0));
+      button.innerHTML = `<span class="level-choice-number">${index + 1}</span><span class="level-stars${stars ? " earned" : ""}">${"★".repeat(stars)}${"☆".repeat(3 - stars)}</span>`;
       button.title = index < save.unlocked ? `Level ${index + 1}: ${item.name}` : `Level ${index + 1} locked`;
       button.disabled = index >= save.unlocked;
       button.addEventListener("click", () => {
@@ -238,13 +286,16 @@
       dom.picker.appendChild(button);
     });
     dom.start.textContent = `Start Level ${levelIndex + 1}`;
+    renderAchievements();
   }
 
   function updateHud() {
     const collected = level.coins.filter(c => c.collected).length;
     dom.level.textContent = `${levelIndex + 1} / ${LEVELS.length}`;
     dom.coin.textContent = `${collected} / ${level.coins.length}`;
-    dom.lives.textContent = Array.from({ length: 3 }, (_, i) => i < player.lives ? "●" : "○").join(" ");
+    dom.totalCoins.textContent = String(save.coins.length);
+    dom.deaths.textContent = String(sessionDeaths);
+    dom.timer.textContent = formatTime(levelElapsed);
     dom.sound.textContent = soundOn ? "Sound: On" : "Sound: Off";
     dom.sound.setAttribute("aria-pressed", String(soundOn));
   }
@@ -253,6 +304,11 @@
     dom.toast.textContent = message;
     dom.toast.classList.add("visible");
     toastTimer = 1.8;
+  }
+
+  function showAchievementToast(message) {
+    dom.toast.classList.add("achievement-toast");
+    showToast(`Achievement: ${message}`);
   }
 
   function beep(frequency, duration = .08, type = "sine", volume = .05) {
@@ -269,6 +325,91 @@
       oscillator.start();
       oscillator.stop(audioContext.currentTime + duration);
     } catch (_) { /* Sound is an enhancement. */ }
+  }
+
+  function playSound(name) {
+    const sounds = {
+      jump: [280,.08,"square",.035], coin: [720,.09,"sine",.05], checkpoint: [520,.14,"triangle",.05],
+      death: [115,.2,"sawtooth",.045], complete: [660,.13,"triangle",.05], achievement: [940,.16,"triangle",.045],
+      gameComplete: [1040,.28,"sine",.05], button: [390,.04,"square",.018]
+    };
+    const sound = sounds[name];
+    if (sound) beep(...sound);
+  }
+
+  function renderAchievements() {
+    dom.achievementList.innerHTML = "";
+    ACHIEVEMENTS.forEach(item => {
+      const badge = document.createElement("span");
+      const unlocked = save.achievements.includes(item.id);
+      badge.className = `achievement-badge${unlocked ? " unlocked" : ""}`;
+      badge.textContent = `${unlocked ? "✓" : "○"} ${item.label}`;
+      dom.achievementList.appendChild(badge);
+    });
+    dom.achievementCount.textContent = `${save.achievements.length} / ${ACHIEVEMENTS.length}`;
+  }
+
+  function unlockAchievement(id) {
+    if (save.achievements.includes(id)) return;
+    const achievement = ACHIEVEMENTS.find(item => item.id === id);
+    if (!achievement) return;
+    save.achievements.push(id);
+    writeSave();
+    renderAchievements();
+    showAchievementToast(achievement.label);
+    playSound("achievement");
+  }
+
+  function checkCoinAchievements() {
+    if (save.coins.length >= 25) unlockAchievement("coin_hunter");
+    if (save.coins.length >= 50) unlockAchievement("treasure_master");
+  }
+
+  function starTarget(index) {
+    return 35 + index * 3;
+  }
+
+  function calculateStars() {
+    const coins = level.coins.filter(coin => coin.collected).length;
+    if (coins === level.coins.length && levelDeaths === 0 && levelElapsed <= starTarget(levelIndex)) return 3;
+    if (coins >= Math.ceil(level.coins.length * .7) && levelDeaths <= 2) return 2;
+    return 1;
+  }
+
+  function completionStatsHtml(items) {
+    return items.map(([label, value]) => `<div class="completion-stat"><span>${label}</span><strong>${value}</strong></div>`).join("");
+  }
+
+  function completionPercentage() {
+    const levelProgress = Math.min(30, save.unlocked) / 30;
+    const starProgress = totalStars() / 90;
+    const achievementProgress = save.achievements.length / ACHIEVEMENTS.length;
+    return Math.round((levelProgress * .6 + starProgress * .25 + achievementProgress * .15) * 100);
+  }
+
+  function createConfetti() {
+    dom.confetti.innerHTML = "";
+    const colors = ["#36e5ff", "#b8ff57", "#ff4f9a", "#ffd54a"];
+    for (let i = 0; i < 28; i += 1) {
+      const piece = document.createElement("span");
+      piece.className = "confetti";
+      piece.style.left = `${(i * 37) % 100}%`;
+      piece.style.background = colors[i % colors.length];
+      piece.style.animationDelay = `${(i % 9) * .13}s`;
+      dom.confetti.appendChild(piece);
+    }
+  }
+
+  function showGameComplete() {
+    dom.completeOverlay.classList.remove("visible");
+    dom.gameCompleteStats.innerHTML = completionStatsHtml([
+      ["Total Time", formatTime(campaignElapsed)], ["Best Time", formatTime(save.bestGameTime)],
+      ["Total Deaths", String(save.totalDeaths)], ["Total Coins", String(save.coins.length)],
+      ["Total Stars", `${totalStars()} / 90`], ["Achievements", `${save.achievements.length} / ${ACHIEVEMENTS.length}`],
+      ["Completion", `${completionPercentage()}%`], ["Badge", "Master Escape"]
+    ]);
+    createConfetti();
+    dom.gameCompleteOverlay.classList.add("visible");
   }
 
   function overlap(a, b) {
@@ -349,7 +490,7 @@
       player.vy = -790;
       player.grounded = false;
       player.coyote = 0;
-      beep(280, .08, "square", .035);
+      playSound("jump");
     }
   }
 
@@ -378,9 +519,10 @@
         coin.collected = true;
         const id = `${levelIndex}:${coin.id}`;
         if (!save.coins.includes(id)) save.coins.push(id);
+        checkCoinAchievements();
         writeSave();
         updateHud();
-        beep(720, .09, "sine", .05);
+        playSound("coin");
       }
     });
 
@@ -393,7 +535,7 @@
         player.spawnX = checkpoint.x;
         player.spawnY = checkpoint.y - player.h;
         showToast("Checkpoint activated");
-        beep(520, .14, "triangle", .05);
+        playSound("checkpoint");
       }
     });
 
@@ -404,7 +546,12 @@
   function die() {
     if (player.invulnerable > 0 || completed) return;
     player.lives -= 1;
-    beep(115, .2, "sawtooth", .045);
+    sessionDeaths += 1;
+    levelDeaths += 1;
+    save.totalDeaths += 1;
+    save.deathsByLevel[levelIndex] = Math.max(0, Number(save.deathsByLevel[levelIndex]) || 0) + 1;
+    writeSave();
+    playSound("death");
     if (player.lives <= 0) {
       player.lives = 3;
       showToast("Three more tries");
@@ -425,21 +572,48 @@
     completed = true;
     running = false;
     const count = level.coins.filter(c => c.collected).length;
+    const stars = calculateStars();
+    const previousBest = Number(save.bestTimes[levelIndex]) || Infinity;
+    save.bestTimes[levelIndex] = Math.min(previousBest, levelElapsed);
+    save.stars[levelIndex] = Math.max(Number(save.stars[levelIndex]) || 0, stars);
     if (levelIndex < LEVELS.length - 1) save.unlocked = Math.max(save.unlocked, levelIndex + 2);
     else save.unlocked = LEVELS.length;
+    if (levelIndex === 0) unlockAchievement("first_escape");
+    if (levelDeaths === 0) unlockAchievement("survivor");
+    if (stars === 3) unlockAchievement("perfectionist");
+    if (levelElapsed <= starTarget(levelIndex)) unlockAchievement("speed_runner");
+    if (levelIndex + 1 >= 10) unlockAchievement("explorer");
+    if (levelIndex + 1 >= 20) unlockAchievement("veteran");
     writeSave();
     renderLevelPicker();
-    dom.completeKicker.textContent = levelIndex === LEVELS.length - 1 ? "Escape Complete" : "Level Clear";
-    dom.completeTitle.textContent = levelIndex === LEVELS.length - 1 ? "Every door is open." : "Portal reached!";
-    dom.completeSummary.textContent = `${level.name} cleared with ${count} of ${level.coins.length} coins.`;
-    dom.next.textContent = levelIndex === LEVELS.length - 1 ? "Play Again" : `Continue to Level ${levelIndex + 2}`;
+    if (levelIndex === LEVELS.length - 1) {
+      unlockAchievement("master_escape");
+      save.bestGameTime = save.bestGameTime ? Math.min(save.bestGameTime, campaignElapsed) : campaignElapsed;
+      writeSave();
+      showGameComplete();
+      playSound("gameComplete");
+      return;
+    }
+    dom.completeKicker.textContent = `Level ${levelIndex + 1} Complete`;
+    dom.completeTitle.textContent = "Portal reached!";
+    dom.earnedStars.textContent = `${"★".repeat(stars)}${"☆".repeat(3 - stars)}`;
+    dom.completionStats.innerHTML = completionStatsHtml([
+      ["Time", formatTime(levelElapsed)], ["Best", formatTime(save.bestTimes[levelIndex])],
+      ["Coins", `${count} / ${level.coins.length}`], ["Deaths", String(levelDeaths)],
+      ["Stars", `${stars} / 3`], ["Total Stars", `${totalStars()} / 90`]
+    ]);
+    dom.next.textContent = `Continue to Level ${levelIndex + 2}`;
     dom.completeOverlay.classList.add("visible");
-    beep(660, .12, "triangle", .05);
+    playSound("complete");
     window.setTimeout(() => beep(880, .18, "triangle", .045), 100);
   }
 
   function update(dt, time) {
     if (!running || paused || completed) return;
+    levelElapsed += dt;
+    campaignElapsed += dt;
+    saveTimer += dt;
+    if (saveTimer >= 1) { saveTimer = 0; writeSave(); }
     player.invulnerable = Math.max(0, player.invulnerable - dt);
     player.runTime += dt * Math.abs(player.vx) / 160;
     updatePlatforms(dt, time);
@@ -449,9 +623,10 @@
     checkWorld(time);
     const targetCamera = Math.max(0, Math.min(level.width - W, player.x - W * .38));
     cameraX += (targetCamera - cameraX) * Math.min(1, dt * 7);
+    updateHud();
     if (toastTimer > 0) {
       toastTimer -= dt;
-      if (toastTimer <= 0) dom.toast.classList.remove("visible");
+      if (toastTimer <= 0) dom.toast.classList.remove("visible", "achievement-toast");
     }
   }
 
@@ -581,6 +756,64 @@
     ctx.restore();
   }
 
+  let introAnimationFrame = null;
+
+  function drawIntroStickman(introContext, x, y, runTime) {
+    const swing = Math.sin(runTime * 5.5) * 11;
+    introContext.save(); introContext.translate(x, y);
+    introContext.strokeStyle = "rgba(80,220,255,.45)"; introContext.lineWidth = 8; introContext.lineCap = "round"; introContext.lineJoin = "round";
+    introContext.beginPath(); introContext.arc(0, 10, 9, 0, Math.PI * 2); introContext.moveTo(0,19); introContext.lineTo(0,39); introContext.moveTo(0,26); introContext.lineTo(-12 - swing*.25,35); introContext.moveTo(0,26); introContext.lineTo(12 + swing*.25,35); introContext.moveTo(0,39); introContext.lineTo(-9 + swing,55); introContext.moveTo(0,39); introContext.lineTo(9 - swing,55); introContext.stroke();
+    introContext.strokeStyle = "#020308"; introContext.lineWidth = 5;
+    introContext.beginPath(); introContext.arc(0, 10, 9, 0, Math.PI * 2); introContext.moveTo(0,19); introContext.lineTo(0,39); introContext.moveTo(0,26); introContext.lineTo(-12 - swing*.25,35); introContext.moveTo(0,26); introContext.lineTo(12 + swing*.25,35); introContext.moveTo(0,39); introContext.lineTo(-9 + swing,55); introContext.moveTo(0,39); introContext.lineTo(9 - swing,55); introContext.stroke();
+    introContext.fillStyle = "#36e5ff"; introContext.font = "900 8px Orbitron"; introContext.textAlign = "center"; introContext.fillText("Y", 0, 33);
+    introContext.restore();
+  }
+
+  function playIntro() {
+    if (introAnimationFrame) cancelAnimationFrame(introAnimationFrame);
+    dom.introOverlay.classList.remove("hidden");
+    dom.introTitle.classList.remove("visible");
+    const introContext = dom.introCanvas.getContext("2d");
+    const startedAt = performance.now();
+    const animate = now => {
+      const elapsed = (now - startedAt) / 1000;
+      const gradient = introContext.createLinearGradient(0, 0, 0, 540);
+      gradient.addColorStop(0, "#111b36"); gradient.addColorStop(1, "#050912");
+      introContext.fillStyle = gradient; introContext.fillRect(0, 0, 960, 540);
+      introContext.strokeStyle = "rgba(54,229,255,.07)"; introContext.lineWidth = 1;
+      for (let line = 0; line < 960; line += 64) { introContext.beginPath(); introContext.moveTo(line,0); introContext.lineTo(line,540); introContext.stroke(); }
+      for (let line = 0; line < 540; line += 64) { introContext.beginPath(); introContext.moveTo(0,line); introContext.lineTo(960,line); introContext.stroke(); }
+      const walking = elapsed < 2.2;
+      const x = walking ? -30 + Math.min(1, elapsed / 2.2) * 510 : 480;
+      const runTime = walking ? elapsed * 2.2 : 0;
+      drawIntroStickman(introContext, x, 300, runTime);
+      if (!walking && elapsed < 5.1) {
+        const yoTime = elapsed - 2.2;
+        const drop = 24 + Math.abs(Math.sin(yoTime * Math.PI)) * 105;
+        introContext.strokeStyle = "rgba(234,244,255,.8)"; introContext.lineWidth = 1.5;
+        introContext.beginPath(); introContext.moveTo(x - 12, 335); introContext.lineTo(x - 12, 335 + drop); introContext.stroke();
+        introContext.fillStyle = "#36e5ff"; introContext.shadowColor = "#36e5ff"; introContext.shadowBlur = 12;
+        introContext.beginPath(); introContext.arc(x - 12, 335 + drop, 10, 0, Math.PI * 2); introContext.fill(); introContext.shadowBlur = 0;
+      }
+      if (elapsed >= 5.1) {
+        dom.introTitle.classList.add("visible");
+        introAnimationFrame = null;
+        return;
+      }
+      introAnimationFrame = requestAnimationFrame(animate);
+    };
+    introAnimationFrame = requestAnimationFrame(animate);
+  }
+
+  function closeIntro(startGame) {
+    if (introAnimationFrame) cancelAnimationFrame(introAnimationFrame);
+    introAnimationFrame = null;
+    save.introSeen = true;
+    writeSave();
+    dom.introOverlay.classList.add("hidden");
+    if (startGame) loadLevel(levelIndex);
+  }
+
   function draw(time) {
     drawBackground();
     level.platforms.forEach(p => drawPlatform(p));
@@ -655,15 +888,28 @@
   dom.pause.addEventListener("click", () => setPaused(!paused));
   dom.resume.addEventListener("click", () => setPaused(false));
   dom.restart.addEventListener("click", () => loadLevel(levelIndex));
-  dom.next.addEventListener("click", () => loadLevel(levelIndex === LEVELS.length - 1 ? 0 : levelIndex + 1));
+  dom.next.addEventListener("click", () => loadLevel(levelIndex + 1));
+  dom.replayLevel.addEventListener("click", () => loadLevel(levelIndex));
   dom.menu.addEventListener("click", () => loadLevel(levelIndex, true));
   dom.sound.addEventListener("click", () => { soundOn = !soundOn; save.sound = soundOn; writeSave(); updateHud(); if (soundOn) beep(520); });
+  dom.introStart.addEventListener("click", () => closeIntro(true));
+  dom.skipIntro.addEventListener("click", () => closeIntro(false));
+  dom.replayIntro.addEventListener("click", playIntro);
+  dom.endingReplayIntro.addEventListener("click", () => { dom.gameCompleteOverlay.classList.remove("visible"); loadLevel(levelIndex, true); playIntro(); });
+  dom.playAgain.addEventListener("click", () => { campaignElapsed = 0; save.campaignTime = 0; writeSave(); loadLevel(0); });
+  dom.gameLevelSelect.addEventListener("click", () => loadLevel(levelIndex, true));
+  document.querySelectorAll("button").forEach(button => button.addEventListener("click", () => playSound("button")));
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && running && !completed) setPaused(true);
   });
+  window.addEventListener("beforeunload", writeSave);
 
   validateAdvancedLevels();
+  checkCoinAchievements();
   loadLevel(levelIndex, true);
+  renderAchievements();
+  if (save.introSeen) dom.introOverlay.classList.add("hidden");
+  else playIntro();
   requestAnimationFrame(loop);
 })();
