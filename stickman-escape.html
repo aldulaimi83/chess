@@ -82,6 +82,7 @@
         <div class="toolbar-stat"><span>Deaths</span><strong id="deathReadout">0</strong></div>
         <div class="toolbar-stat"><span>Time</span><strong id="timerReadout">00:00</strong></div>
         <div class="toolbar-actions">
+          <button id="whistleToolbarButton" type="button">Whistle (G)</button>
           <button id="restartButton" type="button">Restart</button>
           <button id="pauseButton" type="button">Pause</button>
         </div>
@@ -111,7 +112,7 @@
               </div>
               <div class="achievement-list" id="achievementList"></div>
             </section>
-            <p class="controls-copy"><strong>Keyboard:</strong> A/D or ←/→ to move · W, ↑, or Space to jump · F to throw yo-yo · R to restart · Esc to pause</p>
+            <p class="controls-copy"><strong>Keyboard:</strong> A/D or ←/→ to move · W, ↑, or Space to jump · F to throw yo-yo · G to whistle · R to restart · Esc to pause</p>
           </div>
         </div>
 
@@ -155,6 +156,7 @@
           <button class="touch-button" id="rightButton" type="button" aria-label="Move right">▶</button>
         </div>
         <div class="action-controls">
+          <button class="touch-button whistle-button" id="whistleButton" type="button" aria-label="Whistle">Whistle</button>
           <button class="touch-button yoyo-button" id="yoyoButton" type="button" aria-label="Throw yo-yo">Yo-Yo</button>
           <button class="touch-button jump-button" id="jumpButton" type="button" aria-label="Jump">Jump</button>
         </div>

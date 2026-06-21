@@ -16,6 +16,7 @@
   const T = (x, y, axis = "x", range = 55, speed = 2) => ({ x, y, axis, range, speed });
   const Y = (x, y) => ({ x, y });
   const E = (x, y, range = 55, speed = 1.5) => ({ x, y, range, speed });
+  const SH = (x, y, rangeX = 70, rangeY = 30, speed = 1.3) => ({ x, y, rangeX, rangeY, speed });
 
   const LEVELS = [
     {
@@ -101,7 +102,7 @@
   function buildAdvancedLevel(number) {
     const difficulty = number - 11;
     const islandCount = 9 + Math.floor(difficulty / 7);
-    const platforms = [], moving = [], falling = [], spikes = [], traps = [], checkpoints = [], coins = [], yoyoHooks = [], enemies = [];
+    const platforms = [], moving = [], falling = [], spikes = [], traps = [], checkpoints = [], coins = [], yoyoHooks = [], enemies = [], shadows = [];
     let x = 0;
 
     for (let i = 0; i < islandCount; i += 1) {
@@ -133,10 +134,15 @@
     }
 
     const last = platforms[platforms.length - 1];
+    const shadowCount = number >= 21 ? 2 : 1;
+    for (let i = 0; i < shadowCount; i += 1) {
+      const platform = platforms[Math.floor((i + 1) * platforms.length / (shadowCount + 1))];
+      shadows.push(SH(platform.x + platform.w * .55, 285 - i * 24, 58 + difficulty * 2, 24 + difficulty, 1.15 + difficulty * .025 + i * .12));
+    }
     return {
       name: ADVANCED_LEVEL_NAMES[difficulty], width: last.x + last.w,
       start: { x: 70, y: 414 }, door: { x: last.x + last.w - 86, y: 390 },
-      platforms, moving, falling, spikes, traps, checkpoints, coins, yoyoHooks, enemies
+      platforms, moving, falling, spikes, traps, checkpoints, coins, yoyoHooks, enemies, shadows
     };
   }
 
@@ -179,12 +185,13 @@
     gameCompleteStats: document.getElementById("gameCompleteStats"), playAgain: document.getElementById("playAgainButton"), gameLevelSelect: document.getElementById("gameLevelSelectButton"), confetti: document.getElementById("confettiLayer"),
     introOverlay: document.getElementById("introOverlay"), introCanvas: document.getElementById("introCanvas"), introTitle: document.getElementById("introTitleCard"), introStart: document.getElementById("introStartButton"), skipIntro: document.getElementById("skipIntroButton"),
     replayIntro: document.getElementById("replayIntroButton"), endingReplayIntro: document.getElementById("endingReplayIntroButton"),
-    yoyoStatus: document.getElementById("yoyoStatus"), yoyoFill: document.getElementById("yoyoCooldownFill"), yoyoText: document.getElementById("yoyoCooldownText"), yoyoButton: document.getElementById("yoyoButton")
+    yoyoStatus: document.getElementById("yoyoStatus"), yoyoFill: document.getElementById("yoyoCooldownFill"), yoyoText: document.getElementById("yoyoCooldownText"), yoyoButton: document.getElementById("yoyoButton"), whistleButton: document.getElementById("whistleButton"), whistleToolbar: document.getElementById("whistleToolbarButton")
   };
 
   const YOYO_FALLBACK_LEVEL = 21;
   const YOYO_COOLDOWN = .7;
   const YOYO_RANGE = 380;
+  const WHISTLE_COOLDOWN = 6.2;
   let save = loadSave();
   let levelIndex = Math.min(save.unlocked - 1, LEVELS.length - 1);
   let level;
@@ -204,6 +211,7 @@
   let audioUnlocked = false;
   let soundOn = save.sound !== false;
   let yoyo;
+  let whistleCooldown = 0;
   const keys = { left: false, right: false, jump: false, jumpQueued: false };
 
   function loadSave() {
@@ -258,6 +266,7 @@
       traps: source.traps.map((p, i) => ({ ...p, baseX: p.x, baseY: p.y, id: i })),
       yoyoHooks: (source.yoyoHooks || []).map((p, i) => ({ ...p, id: i })),
       enemies: (source.enemies || []).map((p, i) => ({ ...p, baseX: p.x, id: i, disabled: false, knockback: 0 })),
+      shadows: (source.shadows || []).map((p, i) => ({ ...p, baseX: p.x, baseY: p.y, id: i, defeated: false, knockback: 0 })),
       yoyoPickup: source.yoyoPickup ? { ...source.yoyoPickup, collected: save.yoyoUnlocked } : null
     };
   }
@@ -271,6 +280,7 @@
       lives: 3, invulnerable: 0, runTime: 0
     };
     resetYoyo();
+    whistleCooldown = 0;
     cameraX = 0;
     levelDeaths = 0;
     levelElapsed = 0;
@@ -331,6 +341,10 @@
     dom.yoyoText.textContent = !available ? "Locked" : ready ? "Ready" : yoyo.state === "hooked" ? "Hooked" : "Busy";
     dom.yoyoStatus.classList.toggle("ready", ready);
     dom.yoyoButton.disabled = !available;
+    dom.whistleButton.disabled = whistleCooldown > 0;
+    dom.whistleButton.textContent = whistleCooldown > 0 ? `${Math.ceil(whistleCooldown)}s` : "Whistle";
+    dom.whistleToolbar.disabled = whistleCooldown > 0;
+    dom.whistleToolbar.textContent = whistleCooldown > 0 ? `Whistle ${Math.ceil(whistleCooldown)}s` : "Whistle (G)";
   }
 
   function showToast(message, duration = 1.8) {
@@ -547,6 +561,14 @@
     return save.yoyoUnlocked || levelIndex >= YOYO_FALLBACK_LEVEL;
   }
 
+  function gameplayWhistle() {
+    if (!running || paused || completed || whistleCooldown > 0) return;
+    whistleCooldown = WHISTLE_COOLDOWN;
+    showToast("♪ Whistling...", 1.5);
+    playSound("whistle");
+    updateHud();
+  }
+
   function yoyoHand() {
     return { x: player.x + player.w / 2 + player.facing * 12, y: player.y + 35 };
   }
@@ -559,9 +581,13 @@
   function throwYoyo() {
     if (!running || paused || completed || !yoyoAvailable() || yoyo.state !== "ready" || yoyo.cooldown > 0) return;
     const hand = yoyoHand();
-    const target = level.yoyoHooks
+    const hookTarget = level.yoyoHooks
       .filter(hook => (hook.x - hand.x) * player.facing > 12 && Math.hypot(hook.x - hand.x, hook.y - hand.y) <= YOYO_RANGE)
       .sort((a, b) => Math.hypot(a.x - hand.x, a.y - hand.y) - Math.hypot(b.x - hand.x, b.y - hand.y))[0];
+    const combatTarget = [...level.shadows.filter(shadow => !shadow.defeated), ...level.enemies.filter(enemy => !enemy.disabled)]
+      .filter(item => (item.x - hand.x) * player.facing > 12 && Math.hypot(item.x - hand.x, item.y - hand.y) <= YOYO_RANGE)
+      .sort((a, b) => Math.hypot(a.x - hand.x, a.y - hand.y) - Math.hypot(b.x - hand.x, b.y - hand.y))[0];
+    const target = hookTarget || combatTarget;
     const dx = target ? target.x - hand.x : player.facing;
     const dy = target ? target.y - hand.y : 0;
     const length = Math.max(1, Math.hypot(dx, dy));
@@ -594,6 +620,55 @@
     });
   }
 
+  function updateShadows(dt, time) {
+    level.shadows.forEach(shadow => {
+      if (shadow.defeated) {
+        shadow.x += shadow.knockback * dt;
+        shadow.y -= 70 * dt;
+        shadow.knockback *= Math.pow(.02, dt);
+      } else {
+        shadow.x = shadow.baseX + Math.sin(time * shadow.speed + shadow.id * 1.7) * shadow.rangeX;
+        shadow.y = shadow.baseY + Math.cos(time * shadow.speed * .8 + shadow.id) * shadow.rangeY;
+      }
+    });
+  }
+
+  function collectCoin(coin) {
+    if (coin.collected) return;
+    coin.collected = true;
+    const id = `${levelIndex}:${coin.id}`;
+    if (!save.coins.includes(id)) save.coins.push(id);
+    checkCoinAchievements();
+    writeSave();
+    updateHud();
+    playSound("coin");
+  }
+
+  function checkYoyoTargets() {
+    if (yoyo.state === "ready") return;
+    level.coins.forEach(coin => {
+      if (!coin.collected && Math.hypot(yoyo.x - coin.x, yoyo.y - coin.y) < 27) collectCoin(coin);
+    });
+    const enemy = level.enemies.find(item => !item.disabled && Math.hypot(yoyo.x - item.x, yoyo.y - item.y) < 28);
+    if (enemy) {
+      enemy.disabled = true;
+      enemy.knockback = yoyo.direction * 260;
+      enemy.x += yoyo.direction * 18;
+      showToast("Hazard disabled", 1.8);
+      playSound("yoyoHit");
+      returnYoyo();
+      return;
+    }
+    const shadow = level.shadows.find(item => !item.defeated && Math.hypot(yoyo.x - item.x, yoyo.y - item.y) < 32);
+    if (shadow) {
+      shadow.defeated = true;
+      shadow.knockback = yoyo.direction * 300;
+      showToast("Flying shadow defeated", 1.8);
+      playSound("yoyoHit");
+      returnYoyo();
+    }
+  }
+
   function updateYoyo(dt) {
     yoyo.cooldown = Math.max(0, yoyo.cooldown - dt);
     const hand = yoyoHand();
@@ -621,16 +696,6 @@
         player.vy = Math.min(player.vy, -560);
         showToast("Yo-yo hook connected!", 2.2);
         playSound("yoyoHook");
-        return;
-      }
-      const enemy = level.enemies.find(item => !item.disabled && Math.hypot(yoyo.x - item.x, yoyo.y - item.y) < 28);
-      if (enemy) {
-        enemy.disabled = true;
-        enemy.knockback = yoyo.direction * 260;
-        enemy.x += yoyo.direction * 18;
-        showToast("Hazard disabled", 1.8);
-        playSound("yoyoHit");
-        returnYoyo();
         return;
       }
       if (yoyo.distance >= YOYO_RANGE) returnYoyo();
@@ -755,6 +820,9 @@
     for (const enemy of level.enemies) {
       if (!enemy.disabled && overlap(hitbox, { x: enemy.x - 18, y: enemy.y - 20, w: 36, h: 40 })) return die();
     }
+    for (const shadow of level.shadows) {
+      if (!shadow.defeated && overlap(hitbox, { x: shadow.x - 23, y: shadow.y - 15, w: 46, h: 30 })) return die();
+    }
     if (player.y > H + 150) return die();
 
     if (level.yoyoPickup && !level.yoyoPickup.collected && Math.hypot(player.x + player.w / 2 - level.yoyoPickup.x, player.y + player.h / 2 - level.yoyoPickup.y) < 34) {
@@ -769,15 +837,7 @@
 
     level.coins.forEach(coin => {
       if (coin.collected) return;
-      if (Math.hypot(player.x + player.w / 2 - coin.x, player.y + player.h / 2 - coin.y) < 30) {
-        coin.collected = true;
-        const id = `${levelIndex}:${coin.id}`;
-        if (!save.coins.includes(id)) save.coins.push(id);
-        checkCoinAchievements();
-        writeSave();
-        updateHud();
-        playSound("coin");
-      }
+      if (Math.hypot(player.x + player.w / 2 - coin.x, player.y + player.h / 2 - coin.y) < 30) collectCoin(coin);
     });
 
     level.checkpoints.forEach(checkpoint => {
@@ -869,10 +929,13 @@
     saveTimer += dt;
     if (saveTimer >= 1) { saveTimer = 0; writeSave(); }
     player.invulnerable = Math.max(0, player.invulnerable - dt);
+    whistleCooldown = Math.max(0, whistleCooldown - dt);
     player.runTime += dt * Math.abs(player.vx) / 160;
     updatePlatforms(dt, time);
     updateEnemies(dt, time);
+    updateShadows(dt, time);
     updateYoyo(dt);
+    checkYoyoTargets();
     tryJump();
     moveHorizontal(dt);
     moveVertical(dt);
@@ -1020,6 +1083,22 @@
     ctx.restore();
   }
 
+  function drawShadow(shadow, time) {
+    const x = shadow.x - cameraX;
+    const flap = 8 + Math.sin(time * 7 + shadow.id) * 5;
+    ctx.save(); ctx.translate(x, shadow.y); ctx.globalAlpha = shadow.defeated ? .18 : .9;
+    ctx.fillStyle = "#080713"; ctx.strokeStyle = "#704c9f"; ctx.lineWidth = 2;
+    ctx.shadowColor = "#8f5de7"; ctx.shadowBlur = shadow.defeated ? 0 : 15;
+    ctx.beginPath(); ctx.moveTo(-15, -4); ctx.quadraticCurveTo(-34, -20 - flap, -28, 7); ctx.quadraticCurveTo(-20, 2, -14, 8); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(15, -4); ctx.quadraticCurveTo(34, -20 - flap, 28, 7); ctx.quadraticCurveTo(20, 2, 14, 8); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, 0, 18, 14, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    if (!shadow.defeated) {
+      ctx.fillStyle = "#36e5ff";
+      ctx.beginPath(); ctx.arc(-6, -2, 2.5, 0, Math.PI * 2); ctx.arc(6, -2, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
   function drawYoyo() {
     if (!yoyoAvailable()) return;
     const hand = yoyoHand();
@@ -1148,6 +1227,7 @@
     if (level.yoyoPickup) drawYoyoPickup(level.yoyoPickup, time);
     level.yoyoHooks.forEach(hook => drawYoyoHook(hook, time));
     level.enemies.forEach(enemy => drawEnemy(enemy, time));
+    level.shadows.forEach(shadow => drawShadow(shadow, time));
     drawDoor(time);
     drawPlayer();
     drawYoyo();
@@ -1186,7 +1266,7 @@
 
   window.addEventListener("keydown", event => {
     const code = event.code;
-    if (["ArrowLeft","ArrowRight","ArrowUp","Space","KeyA","KeyD","KeyW","KeyF"].includes(code)) event.preventDefault();
+    if (["ArrowLeft","ArrowRight","ArrowUp","Space","KeyA","KeyD","KeyW","KeyF","KeyG"].includes(code)) event.preventDefault();
     if (["ArrowLeft","KeyA"].includes(code)) keys.left = true;
     if (["ArrowRight","KeyD"].includes(code)) keys.right = true;
     if (["ArrowUp","KeyW","Space"].includes(code)) {
@@ -1194,6 +1274,7 @@
       keys.jump = true;
     }
     if (code === "KeyF" && !event.repeat) throwYoyo();
+    if (code === "KeyG" && !event.repeat) gameplayWhistle();
     if (code === "KeyR" && running) loadLevel(levelIndex);
     if (code === "Escape") setPaused(!paused);
   });
@@ -1208,6 +1289,8 @@
   bindHold(document.getElementById("rightButton"), "right");
   bindHold(document.getElementById("jumpButton"), "jump");
   dom.yoyoButton.addEventListener("click", () => { throwYoyo(); canvas.focus(); });
+  dom.whistleButton.addEventListener("click", () => { gameplayWhistle(); canvas.focus(); });
+  dom.whistleToolbar.addEventListener("click", () => { gameplayWhistle(); canvas.focus(); });
 
   dom.start.addEventListener("click", () => loadLevel(levelIndex));
   dom.pause.addEventListener("click", () => setPaused(!paused));
@@ -1223,7 +1306,7 @@
   dom.endingReplayIntro.addEventListener("click", () => { dom.gameCompleteOverlay.classList.remove("visible"); loadLevel(levelIndex, true); playIntro(); });
   dom.playAgain.addEventListener("click", () => { campaignElapsed = 0; save.campaignTime = 0; writeSave(); loadLevel(0); });
   dom.gameLevelSelect.addEventListener("click", () => loadLevel(levelIndex, true));
-  document.querySelectorAll("button").forEach(button => button.addEventListener("click", () => { if (button !== dom.yoyoButton) playSound("button"); }));
+  document.querySelectorAll("button").forEach(button => button.addEventListener("click", () => { if (![dom.yoyoButton, dom.whistleButton, dom.whistleToolbar].includes(button)) playSound("button"); }));
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && running && !completed) setPaused(true);
