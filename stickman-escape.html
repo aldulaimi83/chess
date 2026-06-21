@@ -90,6 +90,11 @@
       <div class="canvas-shell" id="canvasShell">
         <canvas id="gameCanvas" width="960" height="540" aria-label="Stickman Escape platform game" tabindex="0"></canvas>
         <div class="status-toast" id="statusToast" role="status" aria-live="polite"></div>
+        <div class="yoyo-status" id="yoyoStatus" aria-live="polite">
+          <span>Yo-Yo</span>
+          <div class="yoyo-meter" aria-hidden="true"><i id="yoyoCooldownFill"></i></div>
+          <strong id="yoyoCooldownText">Locked</strong>
+        </div>
 
         <div class="game-overlay visible" id="startOverlay">
           <div class="overlay-panel">
@@ -106,7 +111,7 @@
               </div>
               <div class="achievement-list" id="achievementList"></div>
             </section>
-            <p class="controls-copy"><strong>Keyboard:</strong> A/D or ←/→ to move · W, ↑, or Space to jump · R to restart · Esc to pause</p>
+            <p class="controls-copy"><strong>Keyboard:</strong> A/D or ←/→ to move · W, ↑, or Space to jump · F to throw yo-yo · R to restart · Esc to pause</p>
           </div>
         </div>
 
@@ -149,7 +154,10 @@
           <button class="touch-button" id="leftButton" type="button" aria-label="Move left">◀</button>
           <button class="touch-button" id="rightButton" type="button" aria-label="Move right">▶</button>
         </div>
-        <button class="touch-button jump-button" id="jumpButton" type="button" aria-label="Jump">Jump</button>
+        <div class="action-controls">
+          <button class="touch-button yoyo-button" id="yoyoButton" type="button" aria-label="Throw yo-yo">Yo-Yo</button>
+          <button class="touch-button jump-button" id="jumpButton" type="button" aria-label="Jump">Jump</button>
+        </div>
       </div>
     </section>
 

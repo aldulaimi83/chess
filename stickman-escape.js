@@ -14,6 +14,8 @@
   const C = (x, y) => ({ x, y });
   const K = (x, y) => ({ x, y });
   const T = (x, y, axis = "x", range = 55, speed = 2) => ({ x, y, axis, range, speed });
+  const Y = (x, y) => ({ x, y });
+  const E = (x, y, range = 55, speed = 1.5) => ({ x, y, range, speed });
 
   const LEVELS = [
     {
@@ -28,7 +30,8 @@
       platforms: [P(0,470,390,70),P(530,470,310,70),P(980,470,300,70),P(1430,470,630,70),P(220,355,110),P(680,335,105),P(1120,340,110),P(1600,350,120)],
       moving: [M(390,420,115,"x",130,1.5),M(1280,400,120,"x",145,1.9)], falling: [F(850,405,100),F(1320,330,90)],
       spikes: [S(590,470,2),S(1040,470,2),S(1690,470,3)], traps: [T(1510,420,"y",42,2.2)],
-      checkpoints: [K(1005,410)], coins: [C(265,315),C(445,365),C(720,295),C(890,360),C(1165,300),C(1360,290),C(1655,310),C(1900,425)]
+      checkpoints: [K(1005,410)], coins: [C(265,315),C(445,365),C(720,295),C(890,360),C(1165,300),C(1360,290),C(1655,310),C(1900,425)],
+      yoyoPickup: { x: 770, y: 300 }
     },
     {
       name: "Lift Shaft", width: 2200, start: { x: 70, y: 414 }, door: { x: 2100, y: 210 },
@@ -98,7 +101,7 @@
   function buildAdvancedLevel(number) {
     const difficulty = number - 11;
     const islandCount = 9 + Math.floor(difficulty / 7);
-    const platforms = [], moving = [], falling = [], spikes = [], traps = [], checkpoints = [], coins = [];
+    const platforms = [], moving = [], falling = [], spikes = [], traps = [], checkpoints = [], coins = [], yoyoHooks = [], enemies = [];
     let x = 0;
 
     for (let i = 0; i < islandCount; i += 1) {
@@ -115,12 +118,15 @@
         traps.push(T(x + width * .52, 420, "y", 28 + difficulty * 1.4, 2.2 + difficulty * .055));
         if (difficulty > 6) traps.push(T(x + width * .76, 405, "x", 24 + difficulty, 2.5 + difficulty * .05));
       }
+      if (number === 25 && i === 4) enemies.push(E(x + width * .62, 444, 48, 1.65));
 
       if (i < islandCount - 1) {
-        const gap = Math.min(172, 116 + difficulty * 2 + (i % 3) * 10);
+        const yoyoGap = (number === 22 && i === 4) || (number === 28 && i === 6);
+        const gap = yoyoGap ? 300 : Math.min(172, 116 + difficulty * 2 + (i % 3) * 10);
         const gapStart = x + width;
         spikes.push(S(gapStart, 535, Math.max(4, Math.ceil(gap / 28))));
-        if (i % 2 === 0) moving.push(M(gapStart + gap / 2 - 43, 400 - (i % 3) * 20, 86, i % 4 ? "x" : "y", 28 + difficulty * 2, 1.8 + difficulty * .06, i));
+        if (yoyoGap) yoyoHooks.push(Y(gapStart + gap * .58, 320));
+        else if (i % 2 === 0) moving.push(M(gapStart + gap / 2 - 43, 400 - (i % 3) * 20, 86, i % 4 ? "x" : "y", 28 + difficulty * 2, 1.8 + difficulty * .06, i));
         else falling.push(F(gapStart + gap / 2 - 38, 402 - (i % 3) * 22, 76));
         x += width + gap;
       }
@@ -130,7 +136,7 @@
     return {
       name: ADVANCED_LEVEL_NAMES[difficulty], width: last.x + last.w,
       start: { x: 70, y: 414 }, door: { x: last.x + last.w - 86, y: 390 },
-      platforms, moving, falling, spikes, traps, checkpoints, coins
+      platforms, moving, falling, spikes, traps, checkpoints, coins, yoyoHooks, enemies
     };
   }
 
@@ -142,7 +148,8 @@
       const ground = level.platforms.filter(platform => platform.y === 470).sort((a, b) => a.x - b.x);
       for (let i = 1; i < ground.length; i += 1) {
         const gap = ground[i].x - (ground[i - 1].x + ground[i - 1].w);
-        if (gap > 172) throw new Error(`Level ${index + 11} has an unreachable jump`);
+        const hasHook = level.yoyoHooks?.some(hook => hook.x > ground[i - 1].x + ground[i - 1].w && hook.x < ground[i].x);
+        if (gap > 172 && (!hasHook || gap > 300)) throw new Error(`Level ${index + 11} has an unreachable gap`);
       }
       if (!level.moving.length || !level.falling.length || !level.spikes.length || !level.traps.length) throw new Error(`Level ${index + 11} is missing advanced obstacles`);
     });
@@ -171,9 +178,13 @@
     achievementList: document.getElementById("achievementList"), achievementCount: document.getElementById("achievementCount"),
     gameCompleteStats: document.getElementById("gameCompleteStats"), playAgain: document.getElementById("playAgainButton"), gameLevelSelect: document.getElementById("gameLevelSelectButton"), confetti: document.getElementById("confettiLayer"),
     introOverlay: document.getElementById("introOverlay"), introCanvas: document.getElementById("introCanvas"), introTitle: document.getElementById("introTitleCard"), introStart: document.getElementById("introStartButton"), skipIntro: document.getElementById("skipIntroButton"),
-    replayIntro: document.getElementById("replayIntroButton"), endingReplayIntro: document.getElementById("endingReplayIntroButton")
+    replayIntro: document.getElementById("replayIntroButton"), endingReplayIntro: document.getElementById("endingReplayIntroButton"),
+    yoyoStatus: document.getElementById("yoyoStatus"), yoyoFill: document.getElementById("yoyoCooldownFill"), yoyoText: document.getElementById("yoyoCooldownText"), yoyoButton: document.getElementById("yoyoButton")
   };
 
+  const YOYO_FALLBACK_LEVEL = 21;
+  const YOYO_COOLDOWN = .7;
+  const YOYO_RANGE = 380;
   let save = loadSave();
   let levelIndex = Math.min(save.unlocked - 1, LEVELS.length - 1);
   let level;
@@ -192,6 +203,7 @@
   let audioContext = null;
   let audioUnlocked = false;
   let soundOn = save.sound !== false;
+  let yoyo;
   const keys = { left: false, right: false, jump: false, jumpQueued: false };
 
   function loadSave() {
@@ -210,10 +222,12 @@
         stars: data?.stars && typeof data.stars === "object" ? data.stars : {},
         achievements: Array.isArray(data?.achievements) ? [...new Set(data.achievements)] : [],
         lifetimeCoins: Math.max(coins.length, Number(data?.lifetimeCoins) || 0),
-        campaignTime: Math.max(0, Number(data?.campaignTime) || 0)
+        campaignTime: Math.max(0, Number(data?.campaignTime) || 0),
+        yoyoTutorialSeen: data?.yoyoTutorialSeen === true,
+        yoyoUnlocked: data?.yoyoUnlocked === true || (Number(data?.unlocked) || 1) >= YOYO_FALLBACK_LEVEL + 1
       };
     } catch (_) {
-      return { unlocked: 1, coins: [], sound: true, introSeen: false, totalDeaths: 0, deathsByLevel: {}, bestTimes: {}, bestGameTime: null, stars: {}, achievements: [], lifetimeCoins: 0, campaignTime: 0 };
+      return { unlocked: 1, coins: [], sound: true, introSeen: false, totalDeaths: 0, deathsByLevel: {}, bestTimes: {}, bestGameTime: null, stars: {}, achievements: [], lifetimeCoins: 0, campaignTime: 0, yoyoTutorialSeen: false, yoyoUnlocked: false };
     }
   }
 
@@ -241,7 +255,10 @@
       falling: source.falling.map((p, i) => ({ ...p, baseY: p.y, state: "idle", timer: 0, type: "falling", id: i })),
       checkpoints: source.checkpoints.map((p, i) => ({ ...p, active: false, id: i })),
       coins: source.coins.map((p, i) => ({ ...p, id: i, collected: save.coins.includes(`${levelIndex}:${i}`) })),
-      traps: source.traps.map((p, i) => ({ ...p, baseX: p.x, baseY: p.y, id: i }))
+      traps: source.traps.map((p, i) => ({ ...p, baseX: p.x, baseY: p.y, id: i })),
+      yoyoHooks: (source.yoyoHooks || []).map((p, i) => ({ ...p, id: i })),
+      enemies: (source.enemies || []).map((p, i) => ({ ...p, baseX: p.x, id: i, disabled: false, knockback: 0 })),
+      yoyoPickup: source.yoyoPickup ? { ...source.yoyoPickup, collected: save.yoyoUnlocked } : null
     };
   }
 
@@ -253,6 +270,7 @@
       grounded: false, coyote: 0, facing: 1, spawnX: level.start.x, spawnY: level.start.y,
       lives: 3, invulnerable: 0, runTime: 0
     };
+    resetYoyo();
     cameraX = 0;
     levelDeaths = 0;
     levelElapsed = 0;
@@ -266,7 +284,14 @@
     dom.pause.textContent = "Pause";
     renderLevelPicker();
     updateHud();
-    if (!showMenu) canvas.focus();
+    if (!showMenu) {
+      canvas.focus();
+      if (yoyoAvailable() && !save.yoyoTutorialSeen) {
+        save.yoyoTutorialSeen = true;
+        writeSave();
+        showToast("Press F to throw yo-yo. Hit hooks to cross big gaps.", 5);
+      }
+    }
   }
 
   function renderLevelPicker() {
@@ -299,12 +324,19 @@
     dom.timer.textContent = formatTime(levelElapsed);
     dom.sound.textContent = soundOn ? "Sound: On" : "Sound: Off";
     dom.sound.setAttribute("aria-pressed", String(soundOn));
+    const available = yoyoAvailable();
+    const ready = available && yoyo?.state === "ready" && yoyo.cooldown <= 0;
+    const cooldownProgress = available ? Math.max(0, Math.min(1, 1 - yoyo.cooldown / YOYO_COOLDOWN)) : 0;
+    dom.yoyoFill.style.width = `${cooldownProgress * 100}%`;
+    dom.yoyoText.textContent = !available ? "Locked" : ready ? "Ready" : yoyo.state === "hooked" ? "Hooked" : "Busy";
+    dom.yoyoStatus.classList.toggle("ready", ready);
+    dom.yoyoButton.disabled = !available;
   }
 
-  function showToast(message) {
+  function showToast(message, duration = 1.8) {
     dom.toast.textContent = message;
     dom.toast.classList.add("visible");
-    toastTimer = 1.8;
+    toastTimer = duration;
   }
 
   function showAchievementToast(message) {
@@ -406,6 +438,15 @@
       tone(1047, 1175, .2, "sine", .05, .43);
       tone(1319, 1568, .42, "sine", .055, .61);
     }
+    if (name === "yoyoThrow") tone(240, 620, .14, "triangle", .035);
+    if (name === "yoyoHook") {
+      tone(520, 720, .12, "sine", .04);
+      tone(880, 1040, .18, "triangle", .035, .08);
+    }
+    if (name === "yoyoHit") {
+      tone(210, 95, .16, "square", .035);
+      tone(420, 300, .1, "triangle", .025, .04);
+    }
     if (name === "whistle") {
       scheduleWhistleNote(1174.66, .62, .026);
       scheduleWhistleNote(1318.51, .62, .027, .54);
@@ -502,6 +543,118 @@
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   }
 
+  function yoyoAvailable() {
+    return save.yoyoUnlocked || levelIndex >= YOYO_FALLBACK_LEVEL;
+  }
+
+  function yoyoHand() {
+    return { x: player.x + player.w / 2 + player.facing * 12, y: player.y + 35 };
+  }
+
+  function resetYoyo() {
+    const hand = yoyoHand();
+    yoyo = { state: "ready", x: hand.x, y: hand.y, vx: 0, vy: 0, distance: 0, cooldown: 0, direction: player.facing, hook: null, hookTime: 0 };
+  }
+
+  function throwYoyo() {
+    if (!running || paused || completed || !yoyoAvailable() || yoyo.state !== "ready" || yoyo.cooldown > 0) return;
+    const hand = yoyoHand();
+    const target = level.yoyoHooks
+      .filter(hook => (hook.x - hand.x) * player.facing > 12 && Math.hypot(hook.x - hand.x, hook.y - hand.y) <= YOYO_RANGE)
+      .sort((a, b) => Math.hypot(a.x - hand.x, a.y - hand.y) - Math.hypot(b.x - hand.x, b.y - hand.y))[0];
+    const dx = target ? target.x - hand.x : player.facing;
+    const dy = target ? target.y - hand.y : 0;
+    const length = Math.max(1, Math.hypot(dx, dy));
+    yoyo.state = "outbound";
+    yoyo.x = hand.x;
+    yoyo.y = hand.y;
+    yoyo.vx = dx / length * 820;
+    yoyo.vy = dy / length * 820;
+    yoyo.distance = 0;
+    yoyo.direction = player.facing;
+    yoyo.cooldown = YOYO_COOLDOWN;
+    playSound("yoyoThrow");
+  }
+
+  function returnYoyo() {
+    if (yoyo.state !== "ready") {
+      yoyo.state = "returning";
+      yoyo.hook = null;
+    }
+  }
+
+  function updateEnemies(dt, time) {
+    level.enemies.forEach(enemy => {
+      if (enemy.disabled) {
+        enemy.x += enemy.knockback * dt;
+        enemy.knockback *= Math.pow(.01, dt);
+      } else {
+        enemy.x = enemy.baseX + Math.sin(time * enemy.speed + enemy.id) * enemy.range;
+      }
+    });
+  }
+
+  function updateYoyo(dt) {
+    yoyo.cooldown = Math.max(0, yoyo.cooldown - dt);
+    const hand = yoyoHand();
+    if (yoyo.state === "ready") {
+      yoyo.x = hand.x;
+      yoyo.y = hand.y;
+      return;
+    }
+    if (yoyo.state === "outbound") {
+      const stepX = yoyo.vx * dt;
+      const stepY = yoyo.vy * dt;
+      yoyo.x += stepX;
+      yoyo.y += stepY;
+      yoyo.distance += Math.hypot(stepX, stepY);
+      const hook = level.yoyoHooks.find(item => Math.hypot(yoyo.x - item.x, yoyo.y - item.y) < 30);
+      if (hook) {
+        yoyo.state = "hooked";
+        yoyo.hook = hook;
+        yoyo.hookTime = .86;
+        yoyo.x = hook.x;
+        yoyo.y = hook.y;
+        yoyo.direction = Math.sign(hook.x - hand.x) || player.facing;
+        player.facing = yoyo.direction;
+        player.vx = yoyo.direction * 500;
+        player.vy = Math.min(player.vy, -560);
+        showToast("Yo-yo hook connected!", 2.2);
+        playSound("yoyoHook");
+        return;
+      }
+      const enemy = level.enemies.find(item => !item.disabled && Math.hypot(yoyo.x - item.x, yoyo.y - item.y) < 28);
+      if (enemy) {
+        enemy.disabled = true;
+        enemy.knockback = yoyo.direction * 260;
+        enemy.x += yoyo.direction * 18;
+        showToast("Hazard disabled", 1.8);
+        playSound("yoyoHit");
+        returnYoyo();
+        return;
+      }
+      if (yoyo.distance >= YOYO_RANGE) returnYoyo();
+    } else if (yoyo.state === "hooked") {
+      yoyo.x = yoyo.hook.x;
+      yoyo.y = yoyo.hook.y;
+      yoyo.hookTime -= dt;
+      if (yoyo.hookTime <= 0) returnYoyo();
+    } else if (yoyo.state === "returning") {
+      const dx = hand.x - yoyo.x;
+      const dy = hand.y - yoyo.y;
+      const distance = Math.hypot(dx, dy);
+      if (distance < 18) {
+        yoyo.state = "ready";
+        yoyo.x = hand.x;
+        yoyo.y = hand.y;
+      } else {
+        const step = Math.min(distance, 1050 * dt);
+        yoyo.x += dx / distance * step;
+        yoyo.y += dy / distance * step;
+      }
+    }
+  }
+
   function solids() {
     return [...level.platforms, ...level.moving, ...level.falling.filter(p => p.state !== "gone")];
   }
@@ -526,8 +679,9 @@
   }
 
   function moveHorizontal(dt) {
-    const acceleration = player.grounded ? 2500 : 1450;
-    const target = (keys.left ? -320 : 0) + (keys.right ? 320 : 0);
+    const hooked = yoyo?.state === "hooked";
+    const acceleration = hooked ? 3600 : player.grounded ? 2500 : 1450;
+    const target = hooked ? yoyo.direction * 520 : (keys.left ? -320 : 0) + (keys.right ? 320 : 0);
     if (target) {
       player.vx += Math.sign(target - player.vx) * Math.min(Math.abs(target - player.vx), acceleration * dt);
       player.facing = Math.sign(target);
@@ -547,7 +701,8 @@
 
   function moveVertical(dt) {
     const previousBottom = player.y + player.h;
-    player.vy = Math.min(980, player.vy + 2200 * dt);
+    const gravity = yoyo?.state === "hooked" ? 900 : 2200;
+    player.vy = Math.min(980, player.vy + gravity * dt);
     player.y += player.vy * dt;
     player.grounded = false;
     let standingOn = null;
@@ -597,7 +752,20 @@
       const dy = player.y + player.h / 2 - pos.y;
       if (Math.hypot(dx, dy) < 28) return die();
     }
+    for (const enemy of level.enemies) {
+      if (!enemy.disabled && overlap(hitbox, { x: enemy.x - 18, y: enemy.y - 20, w: 36, h: 40 })) return die();
+    }
     if (player.y > H + 150) return die();
+
+    if (level.yoyoPickup && !level.yoyoPickup.collected && Math.hypot(player.x + player.w / 2 - level.yoyoPickup.x, player.y + player.h / 2 - level.yoyoPickup.y) < 34) {
+      level.yoyoPickup.collected = true;
+      save.yoyoUnlocked = true;
+      save.yoyoTutorialSeen = true;
+      writeSave();
+      updateHud();
+      showToast("Yo-yo found! Press F to throw yo-yo. Hit hooks to cross big gaps.", 5);
+      playSound("yoyoHook");
+    }
 
     level.coins.forEach(coin => {
       if (coin.collected) return;
@@ -650,6 +818,7 @@
     player.vx = 0;
     player.vy = 0;
     player.invulnerable = 1;
+    resetYoyo();
     updateHud();
   }
 
@@ -702,6 +871,8 @@
     player.invulnerable = Math.max(0, player.invulnerable - dt);
     player.runTime += dt * Math.abs(player.vx) / 160;
     updatePlatforms(dt, time);
+    updateEnemies(dt, time);
+    updateYoyo(dt);
     tryJump();
     moveHorizontal(dt);
     moveVertical(dt);
@@ -809,6 +980,59 @@
     ctx.closePath(); ctx.fill();
     ctx.fillStyle = "#111827"; ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
     ctx.restore(); ctx.shadowBlur = 0;
+  }
+
+  function drawYoyoHook(hook, time) {
+    const x = hook.x - cameraX;
+    const pulse = 1 + Math.sin(time * 4 + hook.id) * .08;
+    ctx.save(); ctx.translate(x, hook.y); ctx.scale(pulse, pulse);
+    ctx.strokeStyle = "#ffd54a"; ctx.lineWidth = 5; ctx.shadowColor = "#ffd54a"; ctx.shadowBlur = 16;
+    ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = "rgba(255,240,165,.8)"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(0, -32); ctx.lineTo(12, -42); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawYoyoPickup(pickup, time) {
+    if (pickup.collected) return;
+    const x = pickup.x - cameraX;
+    const bob = Math.sin(time * 3.5) * 5;
+    ctx.save(); ctx.translate(x, pickup.y + bob);
+    ctx.fillStyle = "rgba(54,229,255,.12)"; ctx.shadowColor = "#36e5ff"; ctx.shadowBlur = 22;
+    ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#36e5ff";
+    ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#eaffff"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = "#eaffff"; ctx.font = "900 10px Orbitron"; ctx.textAlign = "center"; ctx.fillText("YO-YO", 0, -29);
+    ctx.restore();
+  }
+
+  function drawEnemy(enemy, time) {
+    const x = enemy.x - cameraX;
+    ctx.save(); ctx.translate(x, enemy.y); ctx.globalAlpha = enemy.disabled ? .3 : 1;
+    if (!enemy.disabled) ctx.rotate(Math.sin(time * 4 + enemy.id) * .08);
+    ctx.fillStyle = enemy.disabled ? "#53627a" : "#ff4f9a";
+    ctx.shadowColor = enemy.disabled ? "transparent" : "#ff4f9a"; ctx.shadowBlur = enemy.disabled ? 0 : 14;
+    ctx.fillRect(-17, -17, 34, 28);
+    ctx.strokeStyle = "#eaffff"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-10, 12); ctx.lineTo(-14, 21); ctx.moveTo(10, 12); ctx.lineTo(14, 21); ctx.stroke();
+    ctx.fillStyle = "#111827"; ctx.beginPath(); ctx.arc(7, -5, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawYoyo() {
+    if (!yoyoAvailable()) return;
+    const hand = yoyoHand();
+    const handX = hand.x - cameraX;
+    const yoyoX = yoyo.x - cameraX;
+    if (yoyo.state !== "ready") {
+      ctx.strokeStyle = "rgba(234,244,255,.82)"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(handX, hand.y); ctx.lineTo(yoyoX, yoyo.y); ctx.stroke();
+    }
+    ctx.fillStyle = "#36e5ff"; ctx.shadowColor = "#36e5ff"; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(yoyoX, yoyo.y, yoyo.state === "ready" ? 7 : 10, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#eaffff"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.shadowBlur = 0;
   }
 
   function drawDoor(time) {
@@ -921,8 +1145,12 @@
     level.coins.forEach(c => drawCoin(c, time));
     level.checkpoints.forEach(c => drawCheckpoint(c, time));
     level.traps.forEach(t => drawTrap(t, time));
+    if (level.yoyoPickup) drawYoyoPickup(level.yoyoPickup, time);
+    level.yoyoHooks.forEach(hook => drawYoyoHook(hook, time));
+    level.enemies.forEach(enemy => drawEnemy(enemy, time));
     drawDoor(time);
     drawPlayer();
+    drawYoyo();
 
     ctx.fillStyle = "rgba(255,255,255,.45)";
     ctx.font = "700 12px Inter";
@@ -958,13 +1186,14 @@
 
   window.addEventListener("keydown", event => {
     const code = event.code;
-    if (["ArrowLeft","ArrowRight","ArrowUp","Space","KeyA","KeyD","KeyW"].includes(code)) event.preventDefault();
+    if (["ArrowLeft","ArrowRight","ArrowUp","Space","KeyA","KeyD","KeyW","KeyF"].includes(code)) event.preventDefault();
     if (["ArrowLeft","KeyA"].includes(code)) keys.left = true;
     if (["ArrowRight","KeyD"].includes(code)) keys.right = true;
     if (["ArrowUp","KeyW","Space"].includes(code)) {
       if (!keys.jump) keys.jumpQueued = true;
       keys.jump = true;
     }
+    if (code === "KeyF" && !event.repeat) throwYoyo();
     if (code === "KeyR" && running) loadLevel(levelIndex);
     if (code === "Escape") setPaused(!paused);
   });
@@ -978,6 +1207,7 @@
   bindHold(document.getElementById("leftButton"), "left");
   bindHold(document.getElementById("rightButton"), "right");
   bindHold(document.getElementById("jumpButton"), "jump");
+  dom.yoyoButton.addEventListener("click", () => { throwYoyo(); canvas.focus(); });
 
   dom.start.addEventListener("click", () => loadLevel(levelIndex));
   dom.pause.addEventListener("click", () => setPaused(!paused));
@@ -993,7 +1223,7 @@
   dom.endingReplayIntro.addEventListener("click", () => { dom.gameCompleteOverlay.classList.remove("visible"); loadLevel(levelIndex, true); playIntro(); });
   dom.playAgain.addEventListener("click", () => { campaignElapsed = 0; save.campaignTime = 0; writeSave(); loadLevel(0); });
   dom.gameLevelSelect.addEventListener("click", () => loadLevel(levelIndex, true));
-  document.querySelectorAll("button").forEach(button => button.addEventListener("click", () => playSound("button")));
+  document.querySelectorAll("button").forEach(button => button.addEventListener("click", () => { if (button !== dom.yoyoButton) playSound("button"); }));
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && running && !completed) setPaused(true);
