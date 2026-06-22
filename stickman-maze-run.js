@@ -1,42 +1,699 @@
 (() => {
   "use strict";
-  const canvas=document.getElementById("mazeCanvas"),ctx=canvas.getContext("2d"),W=canvas.width,H=canvas.height;
-  const COLS=17,ROWS=11,CELL=46,OX=(W-COLS*CELL)/2,OY=(H-ROWS*CELL)/2,N=1,E=2,S=4,WW=8,SAVE_KEY="youooo_stickman_maze_run_v1";
-  const dom={level:document.getElementById("levelReadout"),coin:document.getElementById("coinReadout"),deaths:document.getElementById("deathReadout"),time:document.getElementById("timeReadout"),objective:document.getElementById("objectiveReadout"),startOverlay:document.getElementById("startOverlay"),pauseOverlay:document.getElementById("pauseOverlay"),completeOverlay:document.getElementById("completeOverlay"),start:document.getElementById("startButton"),pause:document.getElementById("pauseButton"),resume:document.getElementById("resumeButton"),restart:document.getElementById("restartButton"),next:document.getElementById("nextButton"),replay:document.getElementById("replayButton"),menuLevel:document.getElementById("menuLevel"),menuCoins:document.getElementById("menuCoins"),menuBest:document.getElementById("menuBest"),completeStats:document.getElementById("completeStats"),toast:document.getElementById("statusToast"),sound:document.getElementById("soundButton"),mobile:document.querySelector(".mobile-controls"),fullscreen:document.getElementById("fullscreenButton"),mobilePause:document.getElementById("mobilePauseButton"),hint:document.getElementById("hintButton")};
-  const keys={left:false,right:false,up:false,down:false};
-  let save=loadSave(),mazeLevel=save.highestLevel,maze,solution=[],walls=[],player,cameraX=0,keyItem,switchItem,checkpoint,exit,gate,coins=[],spikes=[],lasers=[],orbs=[],crumbles=[],teleporters=[],running=false,paused=false,completed=false,lastTime=0,elapsed=0,levelCoins=0,sessionDeaths=0,toastTimer=0,hintTimer=0,hintCooldown=0,audioContext=null,teleportLock=0;
 
-  function loadSave(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY))||{};return{highestLevel:Math.max(1,Number(d.highestLevel)||1),coins:Math.max(0,Number(d.coins)||0),deaths:Math.max(0,Number(d.deaths)||0),bestTimes:d.bestTimes&&typeof d.bestTimes==="object"?d.bestTimes:{},sound:d.sound!==false}}catch(_){return{highestLevel:1,coins:0,deaths:0,bestTimes:{},sound:true}}}
-  function writeSave(){localStorage.setItem(SAVE_KEY,JSON.stringify(save))}
-  function formatTime(value){const m=Math.floor(value/60),s=Math.floor(value%60);return`${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`}
-  function tone(f,d=.08,type="sine"){if(!save.sound)return;try{audioContext||=new(window.AudioContext||window.webkitAudioContext)();if(audioContext.state==="suspended")audioContext.resume();const o=audioContext.createOscillator(),g=audioContext.createGain();o.type=type;o.frequency.setValueAtTime(f,audioContext.currentTime);g.gain.setValueAtTime(.045,audioContext.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+d);o.connect(g).connect(audioContext.destination);o.start();o.stop(audioContext.currentTime+d)}catch(_){}}
-  function showToast(text,duration=2){dom.toast.textContent=text;dom.toast.classList.add("visible");toastTimer=duration}
-  function cellCenter(index){return{x:OX+(index%COLS)*CELL+CELL/2,y:OY+Math.floor(index/COLS)*CELL+CELL/2}}
-  function seeded(seed){let state=seed>>>0;return()=>{state=(state*1664525+1013904223)>>>0;return state/4294967296}}
+  const canvas = document.getElementById("mazeCanvas");
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width;
+  const H = canvas.height;
+  const GROUND_Y = 472;
+  const SAVE_KEY = "youooo_stickman_maze_run_v1";
+  const PLAYER_W = 28;
+  const PLAYER_H = 56;
+  const RUN_SPEED = 255;
+  const JUMP_SPEED = 590;
+  const GRAVITY = 1550;
+  const MAX_JUMP_GAP = 205;
 
-  function generateMaze(seed){const random=seeded(seed),cells=Array(COLS*ROWS).fill(15),visited=new Set([0]),stack=[0];while(stack.length){const current=stack[stack.length-1],x=current%COLS,y=Math.floor(current/COLS),options=[];if(y>0&&!visited.has(current-COLS))options.push([current-COLS,N,S]);if(x<COLS-1&&!visited.has(current+1))options.push([current+1,E,WW]);if(y<ROWS-1&&!visited.has(current+COLS))options.push([current+COLS,S,N]);if(x>0&&!visited.has(current-1))options.push([current-1,WW,E]);if(!options.length){stack.pop();continue}const[next,out,inward]=options[Math.floor(random()*options.length)];cells[current]&=~out;cells[next]&=~inward;visited.add(next);stack.push(next)}return cells}
-  function neighbors(index){const cell=maze[index],x=index%COLS,y=Math.floor(index/COLS),result=[];if(!(cell&N)&&y>0)result.push(index-COLS);if(!(cell&E)&&x<COLS-1)result.push(index+1);if(!(cell&S)&&y<ROWS-1)result.push(index+COLS);if(!(cell&WW)&&x>0)result.push(index-1);return result}
-  function pathToFarthest(){const queue=[0],parent=new Map([[0,-1]]),distance=new Map([[0,0]]);let far=0;while(queue.length){const current=queue.shift();if(distance.get(current)>distance.get(far))far=current;neighbors(current).forEach(next=>{if(parent.has(next))return;parent.set(next,current);distance.set(next,distance.get(current)+1);queue.push(next)})}const path=[];for(let at=far;at!==-1;at=parent.get(at))path.push(at);return path.reverse()}
-  function buildWalls(){const result=[],t=6;maze.forEach((cell,index)=>{const x=OX+(index%COLS)*CELL,y=OY+Math.floor(index/COLS)*CELL;if(cell&N)result.push({x,y,w:CELL,h:t});if(cell&WW)result.push({x,y,w:t,h:CELL});if(index%COLS===COLS-1&&(cell&E))result.push({x:x+CELL-t,y,w:t,h:CELL});if(Math.floor(index/COLS)===ROWS-1&&(cell&S))result.push({x,y:y+CELL-t,w:CELL,h:t})});return result}
-  function gateBetween(a,b){const ca=cellCenter(a),cb=cellCenter(b),vertical=Math.abs(ca.x-cb.x)>0;return vertical?{x:(ca.x+cb.x)/2-4,y:ca.y-CELL/2+6,w:8,h:CELL-12}:{x:ca.x-CELL/2+6,y:(ca.y+cb.y)/2-4,w:CELL-12,h:8}}
-  function pickCells(random,count,blocked){const available=Array.from({length:maze.length},(_,i)=>i).filter(i=>!blocked.has(i));const chosen=[];while(chosen.length<count&&available.length){const i=Math.floor(random()*available.length);chosen.push(available.splice(i,1)[0])}return chosen}
+  const dom = {
+    level: document.getElementById("levelReadout"), coin: document.getElementById("coinReadout"),
+    deaths: document.getElementById("deathReadout"), time: document.getElementById("timeReadout"),
+    objective: document.getElementById("objectiveReadout"), startOverlay: document.getElementById("startOverlay"),
+    pauseOverlay: document.getElementById("pauseOverlay"), completeOverlay: document.getElementById("completeOverlay"),
+    start: document.getElementById("startButton"), pause: document.getElementById("pauseButton"),
+    resume: document.getElementById("resumeButton"), restart: document.getElementById("restartButton"),
+    next: document.getElementById("nextButton"), replay: document.getElementById("replayButton"),
+    menuLevel: document.getElementById("menuLevel"), menuCoins: document.getElementById("menuCoins"),
+    menuBest: document.getElementById("menuBest"), completeStats: document.getElementById("completeStats"),
+    toast: document.getElementById("statusToast"), sound: document.getElementById("soundButton"),
+    mobile: document.querySelector(".mobile-controls"), fullscreen: document.getElementById("fullscreenButton"),
+    mobilePause: document.getElementById("mobilePauseButton"), hint: document.getElementById("hintButton"),
+    jump: document.getElementById("jumpButton")
+  };
 
-  function buildMaze(level,showMenu=false){mazeLevel=Math.max(1,level);const seed=(Date.now()&0xfffffff)^(mazeLevel*2654435761);maze=generateMaze(seed);solution=pathToFarthest();walls=buildWalls();const random=seeded(seed^0x9e3779b9),at=p=>solution[Math.min(solution.length-2,Math.max(1,Math.floor(solution.length*p)))];keyItem={cell:at(.3),collected:false};checkpoint={cell:at(.43),active:false};switchItem={cell:at(.55),active:false};const gateAt=Math.max(2,Math.floor(solution.length*.68));gate={...gateBetween(solution[gateAt-1],solution[gateAt]),open:false};exit={cell:solution[solution.length-1]};const blocked=new Set([0,exit.cell,keyItem.cell,checkpoint.cell,switchItem.cell,...solution.slice(0,3)]);coins=pickCells(random,Math.min(18,8+mazeLevel),blocked).map(cell=>({cell,collected:false}));const hazardCells=pickCells(random,Math.min(20,6+mazeLevel*2),new Set([...blocked,...coins.map(c=>c.cell)]));spikes=hazardCells.slice(0,Math.min(7,2+mazeLevel)).map((cell,i)=>({cell,phase:i*.7}));lasers=hazardCells.slice(7,7+Math.min(4,Math.max(0,mazeLevel-1))).map((cell,i)=>({cell,phase:i*1.1,vertical:i%2===0}));crumbles=hazardCells.slice(11,11+Math.min(4,Math.max(0,mazeLevel-2))).map(cell=>({cell,timer:0}));orbs=pickCells(random,Math.min(5,1+Math.floor(mazeLevel/2)),blocked).map((cell,i)=>({cell,phase:i*1.7,axis:i%2}));teleporters=mazeLevel>=2?pickCells(random,2,blocked).map((cell,i)=>({cell,id:i})):[];const start=cellCenter(0);player={x:start.x-14,y:start.y-28,w:28,h:56,vx:0,vy:0,grounded:true,coyote:0,facing:1,health:1,invulnerable:0,runTime:0,spawnX:start.x-14,spawnY:start.y-28};elapsed=0;levelCoins=0;completed=false;paused=false;running=!showMenu;hintTimer=0;hintCooldown=0;teleportLock=0;dom.startOverlay.classList.toggle("visible",showMenu);dom.pauseOverlay.classList.remove("visible");dom.completeOverlay.classList.remove("visible");document.body.classList.toggle("playing",!showMenu);updateHud();if(!showMenu){canvas.focus();showToast(`Maze ${mazeLevel} rebuilt — routes are unpredictable`,2.6)}}
+  const input = { left: false, right: false, jumpBuffer: 0 };
+  let save = loadSave();
+  let mazeLevel = save.highestLevel;
+  let player;
+  let course;
+  let cameraX = 0;
+  let running = false;
+  let paused = false;
+  let completed = false;
+  let elapsed = 0;
+  let levelCoins = 0;
+  let sessionDeaths = 0;
+  let lastTime = 0;
+  let toastTimer = 0;
+  let hintTimer = 0;
+  let hintCooldown = 0;
+  let audioContext = null;
+  let userInteracted = false;
 
-  function updateHud(){dom.level.textContent=mazeLevel;dom.coin.textContent=`${levelCoins} / ${coins.length}`;dom.deaths.textContent=sessionDeaths;dom.time.textContent=formatTime(elapsed);dom.objective.textContent=!keyItem.collected?"Find the key":!switchItem.active?"Find the switch":"Reach the portal";dom.menuLevel.textContent=save.highestLevel;dom.menuCoins.textContent=save.coins;dom.menuBest.textContent=save.bestTimes[mazeLevel]?formatTime(save.bestTimes[mazeLevel]):"—";dom.start.textContent=`Enter Maze ${mazeLevel}`;dom.sound.textContent=save.sound?"Sound: On":"Sound: Off";dom.sound.setAttribute("aria-pressed",String(save.sound));dom.hint.disabled=hintCooldown>0;dom.hint.textContent=hintCooldown>0?`${Math.ceil(hintCooldown)}s`:"Hint"}
-  function circleRect(cx,cy,r,rect){const nx=Math.max(rect.x,Math.min(cx,rect.x+rect.w)),ny=Math.max(rect.y,Math.min(cy,rect.y+rect.h));return(cx-nx)**2+(cy-ny)**2<r*r}
-  function collides(x,y){const cx=x+14,cy=y+28,activeWalls=gate.open?walls:[...walls,gate];return activeWalls.some(rect=>circleRect(cx,cy,10,rect))}
-  function currentCell(){const x=Math.max(0,Math.min(COLS-1,Math.floor((player.x+14-OX)/CELL))),y=Math.max(0,Math.min(ROWS-1,Math.floor((player.y+28-OY)/CELL)));return y*COLS+x}
-  function respawn(message){sessionDeaths+=1;save.deaths+=1;writeSave();const target={x:player.spawnX,y:player.spawnY};player.x=target.x;player.y=target.y;player.invulnerable=.8;crumbles.forEach(c=>c.timer=0);showToast(message,1.7);tone(95,.2,"sawtooth")}
-  function updatePlayer(dt){let dx=(keys.right?1:0)-(keys.left?1:0),dy=(keys.down?1:0)-(keys.up?1:0);const length=Math.hypot(dx,dy)||1;dx/=length;dy/=length;const speed=148;let nx=player.x+dx*speed*dt,ny=player.y;if(!collides(nx,ny))player.x=nx;ny=player.y+dy*speed*dt;if(!collides(player.x,ny))player.y=ny;player.vx=Math.hypot(dx,dy)*speed;player.vy=dy*speed;player.facing=dx?Math.sign(dx):player.facing;player.runTime+=player.vx*dt/52;player.invulnerable=Math.max(0,player.invulnerable-dt)}
-  function nearCell(item,radius=16){const c=cellCenter(item.cell);return Math.hypot(player.x+14-c.x,player.y+28-c.y)<radius}
-  function updateObjects(dt,time){if(!keyItem.collected&&nearCell(keyItem,18)){keyItem.collected=true;showToast("Key found — now activate the switch",2.2);tone(740,.12,"triangle")}if(!checkpoint.active&&nearCell(checkpoint,18)){checkpoint.active=true;const c=cellCenter(checkpoint.cell);player.spawnX=c.x-14;player.spawnY=c.y-28;showToast("Checkpoint activated",1.8);tone(520,.12,"sine")}if(!switchItem.active&&nearCell(switchItem,18)){switchItem.active=true;gate.open=true;showToast("Switch activated — gate opened",2);tone(650,.14,"triangle")}coins.forEach(coin=>{if(!coin.collected&&nearCell(coin,17)){coin.collected=true;levelCoins+=1;save.coins+=1;writeSave();tone(880,.07,"sine")}});if(player.invulnerable<=0&&spikes.some(s=>nearCell(s,17)&&Math.sin(time*2.8+s.phase)>.05))respawn("Spikes! Back to checkpoint");if(player.invulnerable<=0&&lasers.some(l=>nearCell(l,19)&&Math.sin(time*2.2+l.phase)>.15))respawn("Laser trap! Back to checkpoint");if(player.invulnerable<=0&&orbs.some(o=>{const c=cellCenter(o.cell),x=c.x+(o.axis?0:Math.sin(time*1.7+o.phase)*15),y=c.y+(o.axis?Math.sin(time*1.7+o.phase)*15:0);return Math.hypot(player.x+14-x,player.y+28-y)<16}))respawn("Moving sentry caught Tamer");crumbles.forEach(c=>{if(nearCell(c,18)){c.timer+=dt;if(c.timer>.7)respawn("The floor collapsed")}else c.timer=Math.max(0,c.timer-dt*2)});teleportLock=Math.max(0,teleportLock-dt);if(teleporters.length===2&&teleportLock<=0){const hit=teleporters.findIndex(t=>nearCell(t,16));if(hit>=0){const destination=cellCenter(teleporters[1-hit].cell);player.x=destination.x-14;player.y=destination.y-28;teleportLock=1;showToast("Teleported!",1);tone(420,.14,"sine")}}if(nearCell(exit,19)){if(!keyItem.collected)showToast("The portal needs a key",1.2);else if(!switchItem.active)showToast("A switch still controls the gate",1.2);else finishMaze()}}
-  function finishMaze(){if(completed)return;completed=true;running=false;document.body.classList.remove("playing");save.highestLevel=Math.max(save.highestLevel,mazeLevel+1);save.bestTimes[mazeLevel]=save.bestTimes[mazeLevel]?Math.min(save.bestTimes[mazeLevel],elapsed):elapsed;writeSave();dom.completeStats.innerHTML=`<span>Time <strong>${formatTime(elapsed)}</strong></span><span>Coins <strong>${levelCoins}/${coins.length}</strong></span><span>Deaths <strong>${sessionDeaths}</strong></span>`;dom.completeOverlay.classList.add("visible");tone(880,.28,"triangle");updateHud()}
-  function showHint(){if(!running||paused||completed||hintCooldown>0)return;hintTimer=2.4;hintCooldown=7;showToast("The cyan trail shows the route forward",2);tone(600,.08,"triangle")}
-  function update(dt,time){if(!running||paused||completed)return;elapsed+=dt;hintTimer=Math.max(0,hintTimer-dt);hintCooldown=Math.max(0,hintCooldown-dt);toastTimer=Math.max(0,toastTimer-dt);if(!toastTimer)dom.toast.classList.remove("visible");updatePlayer(dt);updateObjects(dt,time);updateHud()}
+  function loadSave() {
+    try {
+      const data = JSON.parse(localStorage.getItem(SAVE_KEY)) || {};
+      return {
+        highestLevel: Math.max(1, Number(data.highestLevel) || 1),
+        coins: Math.max(0, Number(data.coins) || 0),
+        deaths: Math.max(0, Number(data.deaths) || 0),
+        bestTimes: data.bestTimes && typeof data.bestTimes === "object" ? data.bestTimes : {},
+        sound: data.sound !== false
+      };
+    } catch (_) {
+      return { highestLevel: 1, coins: 0, deaths: 0, bestTimes: {}, sound: true };
+    }
+  }
 
-  function drawMaze(time){ctx.fillStyle="#091522";ctx.fillRect(0,0,W,H);ctx.fillStyle="rgba(54,229,255,.025)";for(let i=0;i<maze.length;i++){const c=cellCenter(i);ctx.fillRect(c.x-CELL/2+3,c.y-CELL/2+3,CELL-6,CELL-6)}if(hintTimer>0){ctx.strokeStyle="rgba(54,229,255,.5)";ctx.lineWidth=4;ctx.beginPath();solution.forEach((index,i)=>{const c=cellCenter(index);i?ctx.lineTo(c.x,c.y):ctx.moveTo(c.x,c.y)});ctx.stroke()}ctx.fillStyle="#21384e";walls.forEach(w=>ctx.fillRect(w.x,w.y,w.w,w.h));if(!gate.open){ctx.fillStyle="#ff4f9a";ctx.shadowColor="#ff4f9a";ctx.shadowBlur=12;ctx.fillRect(gate.x,gate.y,gate.w,gate.h);ctx.shadowBlur=0}spikes.forEach(s=>{const c=cellCenter(s.cell),active=Math.sin(time*2.8+s.phase)>.05;ctx.fillStyle=active?"#ff4f9a":"#5b3349";for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(c.x+i*9-5,c.y+8);ctx.lineTo(c.x+i*9,c.y+(active?-9:3));ctx.lineTo(c.x+i*9+5,c.y+8);ctx.fill()}});lasers.forEach(l=>{const c=cellCenter(l.cell),active=Math.sin(time*2.2+l.phase)>.15;ctx.strokeStyle=active?"#ff315f":"rgba(255,49,95,.18)";ctx.lineWidth=active?4:2;ctx.beginPath();l.vertical?(ctx.moveTo(c.x,c.y-18),ctx.lineTo(c.x,c.y+18)):(ctx.moveTo(c.x-18,c.y),ctx.lineTo(c.x+18,c.y));ctx.stroke()});crumbles.forEach(c=>{const p=cellCenter(c.cell);ctx.strokeStyle=c.timer>.4?"#ff4f9a":"#c98b5c";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(p.x-14,p.y-14);ctx.lineTo(p.x+5,p.y);ctx.lineTo(p.x-8,p.y+15);ctx.moveTo(p.x+12,p.y-14);ctx.lineTo(p.x+5,p.y);ctx.stroke()});orbs.forEach(o=>{const c=cellCenter(o.cell),x=c.x+(o.axis?0:Math.sin(time*1.7+o.phase)*15),y=c.y+(o.axis?Math.sin(time*1.7+o.phase)*15:0);ctx.fillStyle="#b284ff";ctx.shadowColor="#b284ff";ctx.shadowBlur=12;ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0});teleporters.forEach((t,i)=>{const c=cellCenter(t.cell);ctx.strokeStyle=i?"#ff9be1":"#36e5ff";ctx.lineWidth=3;ctx.beginPath();ctx.arc(c.x,c.y,12+Math.sin(time*4+i)*2,0,Math.PI*2);ctx.stroke()});coins.forEach(c=>{if(c.collected)return;const p=cellCenter(c.cell);ctx.fillStyle="#ffd54a";ctx.beginPath();ctx.arc(p.x,p.y,6,0,Math.PI*2);ctx.fill()});drawItem(keyItem,"#ffd54a","K");drawItem(switchItem,switchItem.active?"#b8ff57":"#ff9f43","S");drawItem(checkpoint,checkpoint.active?"#b8ff57":"#36e5ff","C");const portal=cellCenter(exit.cell),open=keyItem.collected&&switchItem.active;ctx.strokeStyle=open?"#36e5ff":"#61728a";ctx.lineWidth=4;ctx.shadowColor=open?"#36e5ff":"transparent";ctx.shadowBlur=open?18:0;ctx.beginPath();ctx.arc(portal.x,portal.y,16,0,Math.PI*2);ctx.stroke();ctx.fillStyle=open?"#eaffff":"#61728a";ctx.font="900 11px Orbitron";ctx.textAlign="center";ctx.fillText("Y",portal.x,portal.y+4);ctx.shadowBlur=0}
-  function drawItem(item,color,label){if(item.collected)return;const c=cellCenter(item.cell);ctx.fillStyle=color;ctx.shadowColor=color;ctx.shadowBlur=10;ctx.beginPath();ctx.roundRect(c.x-10,c.y-10,20,20,6);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle="#07111b";ctx.font="900 10px Orbitron";ctx.textAlign="center";ctx.fillText(label,c.x,c.y+4)}
+  function writeSave() {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (_) {}
+  }
+
+  function formatTime(value) {
+    const minutes = Math.floor(value / 60);
+    const seconds = Math.floor(value % 60);
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  function seeded(seed) {
+    let state = seed >>> 0;
+    return () => {
+      state = (state * 1664525 + 1013904223) >>> 0;
+      return state / 4294967296;
+    };
+  }
+
+  function tone(frequency, duration = .08, type = "sine", endFrequency = frequency) {
+    if (!save.sound || !userInteracted) return;
+    try {
+      audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+      if (audioContext.state === "suspended") audioContext.resume();
+      const now = audioContext.currentTime;
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, now);
+      oscillator.frequency.exponentialRampToValueAtTime(Math.max(30, endFrequency), now + duration);
+      gain.gain.setValueAtTime(.045, now);
+      gain.gain.exponentialRampToValueAtTime(.001, now + duration);
+      oscillator.connect(gain).connect(audioContext.destination);
+      oscillator.start(now);
+      oscillator.stop(now + duration);
+    } catch (_) {}
+  }
+
+  function melody(notes) {
+    notes.forEach(([frequency, delay, duration]) => setTimeout(() => tone(frequency, duration, "triangle"), delay * 1000));
+  }
+
+  function showToast(text, duration = 2) {
+    dom.toast.textContent = text;
+    dom.toast.classList.add("visible");
+    toastTimer = duration;
+  }
+
+  function rect(x, y, w, h, type = "solid") { return { x, y, w, h, type }; }
+  function overlaps(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
+  function center(item) { return { x: item.x + item.w / 2, y: item.y + item.h / 2 }; }
+
+  function addGround(target, x, width) {
+    if (width > 0) target.platforms.push(rect(x, GROUND_Y, width, H - GROUND_Y, "ground"));
+  }
+
+  function createCourse(level, seed) {
+    const random = seeded(seed);
+    const result = {
+      seed, width: 700 + 7 * 590 + 700, platforms: [], route: [], spikes: [], hiddenSpikes: [], lasers: [],
+      movingWalls: [], movingPlatforms: [], fakeFloors: [], movingHoles: [], coins: [],
+      key: null, switch: null, checkpoint: null, door: null, portal: null
+    };
+    addGround(result, 0, 700);
+    result.route.push({ x: 90, y: GROUND_Y, kind: "ground" });
+    const patterns = [buildPit, buildSteps, buildMovingGap, buildTrapHall, buildHighRoad, buildShiftingFloor];
+    let previous = -1;
+
+    for (let section = 0; section < 7; section += 1) {
+      const start = 620 + section * 590;
+      let choice = Math.floor(random() * patterns.length);
+      if (choice === previous) choice = (choice + 1 + Math.floor(random() * (patterns.length - 1))) % patterns.length;
+      previous = choice;
+      patterns[choice](result, start, section, random, level);
+    }
+
+    addGround(result, 620 + 7 * 590, 780);
+    [4860, 5010, 5160].forEach(x => safeNode(result, x));
+    const routeAt = ratio => result.route[Math.min(result.route.length - 2, Math.max(1, Math.floor(result.route.length * ratio)))];
+    const keyNode = routeAt(.25);
+    const checkpointNode = routeAt(.44);
+    const switchNode = routeAt(.61);
+    result.key = pickupAt(keyNode, "key");
+    result.checkpoint = pickupAt(checkpointNode, "checkpoint");
+    result.switch = pickupAt(switchNode, "switch");
+    const doorX = Math.max(switchNode.x + 220, 620 + 5.2 * 590);
+    result.door = rect(doorX, GROUND_Y - 132, 26, 132, "door");
+    result.portal = { x: result.width - 165, y: GROUND_Y - 84, w: 52, h: 84 };
+    result.route.push({ x: result.portal.x, y: GROUND_Y, kind: "portal" });
+
+    const blocked = [result.key, result.checkpoint, result.switch, result.door, result.portal];
+    result.coins = result.route.filter((_, index) => index % 2 === 1).slice(1, 20 + Math.min(level, 8)).map((node, index) => ({
+      x: node.x + (index % 2 ? 22 : -18), y: node.y - 62 - (index % 3) * 8, w: 16, h: 16, collected: false
+    })).filter(coin => !blocked.some(item => Math.abs(center(item).x - center(coin).x) < 55));
+
+    result.valid = validateCourse(result);
+    return result.valid ? result : createFallbackCourse(level, seed);
+  }
+
+  function pickupAt(node, type) {
+    return { x: node.x - 14, y: node.y - 70, w: 28, h: 32, type, collected: false, active: false };
+  }
+
+  function safeNode(target, x, y = GROUND_Y, kind = "ground") {
+    target.route.push({ x, y, kind });
+  }
+
+  function buildPit(target, x, section, random, level) {
+    const gap = 115 + Math.floor(random() * 45);
+    const left = 205 + Math.floor(random() * 35);
+    addGround(target, x, left);
+    addGround(target, x + left + gap, 590 - left - gap + 2);
+    target.spikes.push({ x: x + left + 8, y: GROUND_Y + 18, w: gap - 16, h: 32 });
+    safeNode(target, x + 90);
+    safeNode(target, x + left - 28);
+    safeNode(target, x + left + gap + 40);
+    if (section > 1) target.hiddenSpikes.push({ x: x + 430, y: GROUND_Y - 2, w: 44, h: 24, reveal: 0 });
+  }
+
+  function buildSteps(target, x, section, random) {
+    addGround(target, x, 590);
+    const up = random() > .5;
+    const heights = up ? [410, 350, 292, 350] : [390, 322, 376, 310];
+    safeNode(target, x + 36);
+    heights.forEach((y, index) => {
+      const px = x + 95 + index * 112;
+      target.platforms.push(rect(px, y, 90, 18));
+      safeNode(target, px + 45, y, "platform");
+    });
+    target.spikes.push({ x: x + 205, y: GROUND_Y - 22, w: 66, h: 22 });
+    target.spikes.push({ x: x + 430, y: GROUND_Y - 22, w: 58, h: 22 });
+    safeNode(target, x + 554);
+  }
+
+  function buildMovingGap(target, x, section, random) {
+    const left = 180;
+    const gap = 190;
+    addGround(target, x, left);
+    addGround(target, x + left + gap, 590 - left - gap + 2);
+    target.spikes.push({ x: x + left + 5, y: GROUND_Y + 12, w: gap - 10, h: 34 });
+    target.movingPlatforms.push({ x: x + left + 32, baseX: x + left + 32, y: 406, baseY: 406, w: 112, h: 16, axis: "x", range: 28, speed: .85 + section * .03, phase: random() * 6.28, dx: 0, dy: 0 });
+    safeNode(target, x + 80);
+    safeNode(target, x + left - 25);
+    safeNode(target, x + left + 88, 406, "moving");
+    safeNode(target, x + left + gap + 40);
+  }
+
+  function buildTrapHall(target, x, section, random) {
+    addGround(target, x, 590);
+    target.platforms.push(rect(x + 82, 340, 130, 18));
+    target.platforms.push(rect(x + 366, 322, 126, 18));
+    target.lasers.push({ x: x + 270, y1: 252, y2: GROUND_Y, phase: random() * 4, cycle: 2.2 + random() * .5 });
+    target.movingWalls.push({ x: x + 505, baseY: 282, y: 282, w: 24, h: 132, range: 76, speed: .85, phase: random() * 6.28 });
+    target.hiddenSpikes.push({ x: x + 115, y: GROUND_Y - 2, w: 46, h: 24, reveal: 0 });
+    if (section > 3) target.hiddenSpikes.push({ x: x + 390, y: GROUND_Y - 2, w: 40, h: 24, reveal: 0 });
+    safeNode(target, x + 40);
+    safeNode(target, x + 310);
+    safeNode(target, x + 558);
+  }
+
+  function buildHighRoad(target, x, section, random) {
+    addGround(target, x, 142);
+    addGround(target, x + 458, 132);
+    target.spikes.push({ x: x + 142, y: GROUND_Y + 12, w: 316, h: 34 });
+    const ys = [404, 346, 294, 346, 402];
+    safeNode(target, x + 44);
+    ys.forEach((y, index) => {
+      const px = x + 116 + index * 90;
+      target.platforms.push(rect(px, y, 80, 17));
+      safeNode(target, px + 40, y, "platform");
+    });
+    safeNode(target, x + 540);
+    if (section > 2) target.lasers.push({ x: x + 327, y1: 205, y2: 346, phase: random() * 4, cycle: 2.7 });
+  }
+
+  function buildShiftingFloor(target, x, section, random) {
+    addGround(target, x, 378);
+    addGround(target, x + 470, 120);
+    target.movingHoles.push({ baseX: x + 185, x: x + 185, y: GROUND_Y - 5, w: 82, h: 18, range: 72, speed: .7 + section * .03, phase: random() * 6.28 });
+    target.fakeFloors.push({ x: x + 378, y: GROUND_Y - 10, w: 92, h: 18, timer: 0, fallen: false, baseY: GROUND_Y - 10 });
+    target.platforms.push(rect(x + 340, 362, 168, 18));
+    safeNode(target, x + 50);
+    safeNode(target, x + 150);
+    safeNode(target, x + 310);
+    safeNode(target, x + 424, 362, "platform");
+    safeNode(target, x + 548);
+  }
+
+  function validateCourse(target) {
+    if (!target.route.length || !target.key || !target.switch || !target.checkpoint || !target.portal) return false;
+    if (!(target.key.x < target.switch.x && target.switch.x < target.door.x && target.door.x < target.portal.x)) return false;
+    for (let index = 1; index < target.route.length; index += 1) {
+      const previous = target.route[index - 1];
+      const current = target.route[index];
+      const horizontal = Math.abs(current.x - previous.x);
+      const upward = previous.y - current.y;
+      const continuousGround = previous.kind === "ground" && current.kind === "ground" && previous.y === current.y;
+      if ((!continuousGround && horizontal > MAX_JUMP_GAP) || (continuousGround && horizontal > 700) || upward > 115) return false;
+    }
+    return target.platforms.every(platform => platform.w >= 18 && platform.h > 0);
+  }
+
+  function createFallbackCourse(level, seed) {
+    const target = { seed, width: 4830, platforms: [], route: [], spikes: [], hiddenSpikes: [], lasers: [], movingWalls: [], movingPlatforms: [], fakeFloors: [], movingHoles: [], coins: [] };
+    addGround(target, 0, target.width);
+    for (let x = 100; x < target.width - 250; x += 150) safeNode(target, x);
+    [820, 1480, 2260, 3020, 3740].forEach((x, index) => target.spikes.push({ x, y: GROUND_Y - 22, w: 48 + index * 3, h: 22 }));
+    target.key = pickupAt(target.route[7], "key");
+    target.checkpoint = pickupAt(target.route[14], "checkpoint");
+    target.switch = pickupAt(target.route[21], "switch");
+    target.door = rect(3860, GROUND_Y - 132, 26, 132, "door");
+    target.portal = { x: target.width - 165, y: GROUND_Y - 84, w: 52, h: 84 };
+    target.coins = target.route.filter((_, index) => index % 2).slice(0, 18).map(node => ({ x: node.x, y: node.y - 70, w: 16, h: 16, collected: false }));
+    target.valid = true;
+    return target;
+  }
+
+  function buildRun(level, showMenu = false) {
+    mazeLevel = Math.max(1, level);
+    const seed = ((Date.now() & 0xfffffff) ^ Math.imul(mazeLevel, 2654435761)) >>> 0;
+    course = createCourse(mazeLevel, seed);
+    player = {
+      x: 86, y: GROUND_Y - PLAYER_H, w: PLAYER_W, h: PLAYER_H, vx: 0, vy: 0,
+      grounded: true, coyote: .1, facing: 1, invulnerable: 0, runTime: 0,
+      spawnX: 86, spawnY: GROUND_Y - PLAYER_H, standingOn: null
+    };
+    cameraX = 0;
+    elapsed = 0;
+    levelCoins = 0;
+    completed = false;
+    paused = false;
+    running = !showMenu;
+    hintTimer = 0;
+    hintCooldown = 0;
+    input.left = false;
+    input.right = false;
+    input.jumpBuffer = 0;
+    dom.startOverlay.classList.toggle("visible", showMenu);
+    dom.pauseOverlay.classList.remove("visible");
+    dom.completeOverlay.classList.remove("visible");
+    document.body.classList.toggle("playing", !showMenu);
+    updateHud();
+    if (!showMenu) {
+      canvas.focus();
+      showToast(`Run ${mazeLevel} generated — the traps moved`, 2.5);
+    }
+  }
+
+  function updateHud() {
+    dom.level.textContent = mazeLevel;
+    dom.coin.textContent = `${levelCoins} / ${course.coins.length}`;
+    dom.deaths.textContent = sessionDeaths;
+    dom.time.textContent = formatTime(elapsed);
+    dom.objective.textContent = !course.key.collected ? "Find the key" : !course.switch.active ? "Find the switch" : "Reach the portal";
+    dom.menuLevel.textContent = save.highestLevel;
+    dom.menuCoins.textContent = save.coins;
+    dom.menuBest.textContent = save.bestTimes[mazeLevel] ? formatTime(save.bestTimes[mazeLevel]) : "—";
+    dom.start.textContent = `Start Run ${mazeLevel}`;
+    dom.sound.textContent = save.sound ? "Sound: On" : "Sound: Off";
+    dom.sound.setAttribute("aria-pressed", String(save.sound));
+    dom.hint.disabled = hintCooldown > 0;
+    dom.hint.textContent = hintCooldown > 0 ? `${Math.ceil(hintCooldown)}s` : "Hint";
+  }
+
+  function movingRects() {
+    const platforms = course.movingPlatforms.map(item => rect(item.x, item.y, item.w, item.h, "moving"));
+    const walls = course.movingWalls.map(item => rect(item.x, item.y, item.w, item.h, "wall"));
+    const fakes = course.fakeFloors.filter(item => !item.fallen).map(item => rect(item.x, item.y, item.w, item.h, "fake"));
+    return [...course.platforms, ...platforms, ...walls, ...fakes, ...(course.door.open ? [] : [course.door])];
+  }
+
+  function requestJump() {
+    if (!running || paused || completed) return;
+    input.jumpBuffer = .14;
+  }
+
+  function updateMovingObjects(time) {
+    course.movingPlatforms.forEach(item => {
+      const oldX = item.x;
+      const oldY = item.y;
+      if (item.axis === "x") item.x = item.baseX + Math.sin(time * item.speed + item.phase) * item.range;
+      else item.y = item.baseY + Math.sin(time * item.speed + item.phase) * item.range;
+      item.dx = item.x - oldX;
+      item.dy = item.y - oldY;
+    });
+    course.movingWalls.forEach(item => { item.y = item.baseY + Math.sin(time * item.speed + item.phase) * item.range; });
+    course.movingHoles.forEach(item => { item.x = item.baseX + Math.sin(time * item.speed + item.phase) * item.range; });
+  }
+
+  function updatePlayer(dt) {
+    input.jumpBuffer = Math.max(0, input.jumpBuffer - dt);
+    player.invulnerable = Math.max(0, player.invulnerable - dt);
+    player.coyote = player.grounded ? .1 : Math.max(0, player.coyote - dt);
+
+    const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+    const acceleration = player.grounded ? 2200 : 1350;
+    const targetSpeed = direction * RUN_SPEED;
+    if (direction) player.vx += Math.sign(targetSpeed - player.vx) * Math.min(Math.abs(targetSpeed - player.vx), acceleration * dt);
+    else player.vx *= Math.pow(.001, dt);
+    if (direction) player.facing = direction;
+
+    if (input.jumpBuffer > 0 && player.coyote > 0) {
+      player.vy = -JUMP_SPEED;
+      player.grounded = false;
+      player.coyote = 0;
+      input.jumpBuffer = 0;
+      tone(310, .09, "triangle", 540);
+    }
+
+    player.vy = Math.min(900, player.vy + GRAVITY * dt);
+    const solids = movingRects();
+    player.standingOn = null;
+
+    player.x += player.vx * dt;
+    solids.forEach(solid => {
+      if (!overlaps(player, solid)) return;
+      if (player.vx > 0) player.x = solid.x - player.w;
+      else if (player.vx < 0) player.x = solid.x + solid.w;
+      player.vx = 0;
+    });
+
+    const previousBottom = player.y + player.h;
+    player.y += player.vy * dt;
+    player.grounded = false;
+    solids.forEach(solid => {
+      if (!overlaps(player, solid)) return;
+      if (player.vy >= 0 && previousBottom <= solid.y + 10) {
+        player.y = solid.y - player.h;
+        player.vy = 0;
+        player.grounded = true;
+        player.standingOn = solid;
+      } else if (player.vy < 0) {
+        player.y = solid.y + solid.h;
+        player.vy = 0;
+      }
+    });
+
+    if (player.standingOn?.type === "moving") {
+      const source = course.movingPlatforms.find(item => Math.abs(item.x - player.standingOn.x) < 2 && Math.abs(item.y - player.standingOn.y) < 2);
+      if (source) { player.x += source.dx; player.y += source.dy; }
+    }
+
+    player.x = Math.max(0, Math.min(course.width - player.w, player.x));
+    if (Math.abs(player.vx) > 20 && player.grounded) player.runTime += Math.abs(player.vx) * dt / 52;
+    if (player.y > H + 100) respawn("Tamer fell into the maze");
+  }
+
+  function touching(item, padding = 0) {
+    return overlaps(player, { x: item.x - padding, y: item.y - padding, w: item.w + padding * 2, h: item.h + padding * 2 });
+  }
+
+  function respawn(message) {
+    if (player.invulnerable > 0) return;
+    sessionDeaths += 1;
+    save.deaths += 1;
+    writeSave();
+    player.x = player.spawnX;
+    player.y = player.spawnY;
+    player.vx = 0;
+    player.vy = 0;
+    player.invulnerable = 1;
+    course.fakeFloors.forEach(item => { item.timer = 0; item.fallen = false; item.y = item.baseY; });
+    cameraX = Math.max(0, player.x - W * .28);
+    showToast(message, 1.7);
+    tone(180, .22, "sawtooth", 65);
+  }
+
+  function spikeHit(spike) {
+    return overlaps(player, { x: spike.x + 4, y: spike.y, w: spike.w - 8, h: spike.h });
+  }
+
+  function updateObjects(dt, time) {
+    if (!course.key.collected && touching(course.key, 6)) {
+      course.key.collected = true;
+      showToast("Key found — now activate the switch", 2.2);
+      melody([[660, 0, .08], [880, .09, .12]]);
+    }
+    if (!course.checkpoint.active && touching(course.checkpoint, 7)) {
+      course.checkpoint.active = true;
+      player.spawnX = course.checkpoint.x - 8;
+      player.spawnY = course.checkpoint.y + 14;
+      showToast("Checkpoint activated", 1.8);
+      melody([[480, 0, .1], [640, .1, .14]]);
+    }
+    if (!course.switch.active && touching(course.switch, 7)) {
+      course.switch.active = true;
+      showToast("Switch activated — the door opened", 2);
+      melody([[520, 0, .08], [690, .1, .08], [820, .2, .14]]);
+    }
+    course.door.open = course.key.collected && course.switch.active;
+
+    course.coins.forEach(coin => {
+      if (!coin.collected && touching(coin, 5)) {
+        coin.collected = true;
+        levelCoins += 1;
+        save.coins += 1;
+        writeSave();
+        tone(820, .08, "sine", 1260);
+      }
+    });
+
+    course.hiddenSpikes.forEach(spike => {
+      const distance = player.x + player.w - spike.x;
+      if (distance > -105 && distance < spike.w + 100) spike.reveal = Math.min(1, spike.reveal + dt * 5);
+      if (spike.reveal > .55 && spikeHit({ ...spike, y: spike.y - spike.h * spike.reveal })) respawn("Hidden spikes! Back to checkpoint");
+    });
+
+    if (player.invulnerable <= 0 && course.spikes.some(spikeHit)) respawn("Spikes! Back to checkpoint");
+    if (player.invulnerable <= 0 && course.movingHoles.some(hole => player.grounded && player.y + player.h > GROUND_Y - 16 && overlaps(player, hole))) respawn("The ground shifted beneath Tamer");
+    if (player.invulnerable <= 0 && course.lasers.some(laser => laserActive(laser, time) && player.x < laser.x + 5 && player.x + player.w > laser.x - 5 && player.y < laser.y2 && player.y + player.h > laser.y1)) respawn("Laser trap! Back to checkpoint");
+
+    course.fakeFloors.forEach(floor => {
+      if (floor.fallen) { floor.y += 360 * dt; return; }
+      const standing = player.grounded && player.x + player.w > floor.x && player.x < floor.x + floor.w && Math.abs(player.y + player.h - floor.y) < 8;
+      if (standing) floor.timer += dt;
+      if (floor.timer > .48) {
+        floor.fallen = true;
+        showToast("Fake floor!", 1);
+        tone(140, .14, "square", 70);
+      }
+    });
+
+    if (touching(course.portal, 4)) {
+      if (!course.key.collected) showToast("The portal needs the key", 1.3);
+      else if (!course.switch.active) showToast("The exit door is still locked", 1.3);
+      else finishRun();
+    }
+  }
+
+  function laserActive(laser, time) { return ((time + laser.phase) % laser.cycle) < laser.cycle * .62; }
+
+  function finishRun() {
+    if (completed) return;
+    completed = true;
+    running = false;
+    document.body.classList.remove("playing");
+    save.highestLevel = Math.max(save.highestLevel, mazeLevel + 1);
+    save.bestTimes[mazeLevel] = save.bestTimes[mazeLevel] ? Math.min(save.bestTimes[mazeLevel], elapsed) : elapsed;
+    writeSave();
+    dom.completeStats.innerHTML = `<span>Time <strong>${formatTime(elapsed)}</strong></span><span>Coins <strong>${levelCoins}/${course.coins.length}</strong></span><span>Deaths <strong>${sessionDeaths}</strong></span>`;
+    dom.completeOverlay.classList.add("visible");
+    melody([[660, 0, .12], [820, .13, .12], [990, .27, .28]]);
+    updateHud();
+  }
+
+  function showHint() {
+    if (!running || paused || completed || hintCooldown > 0) return;
+    hintTimer = 2.8;
+    hintCooldown = 7;
+    showToast("Cyan markers reveal the safe route", 2);
+    tone(600, .08, "triangle", 820);
+  }
+
+  function update(dt, time) {
+    if (!running || paused || completed) return;
+    elapsed += dt;
+    hintTimer = Math.max(0, hintTimer - dt);
+    hintCooldown = Math.max(0, hintCooldown - dt);
+    toastTimer = Math.max(0, toastTimer - dt);
+    if (!toastTimer) dom.toast.classList.remove("visible");
+    updateMovingObjects(time);
+    updatePlayer(dt);
+    updateObjects(dt, time);
+    const targetCamera = Math.max(0, Math.min(course.width - W, player.x - W * .32));
+    cameraX += (targetCamera - cameraX) * Math.min(1, dt * 5.5);
+    updateHud();
+  }
+
+  function worldX(x) { return x - cameraX; }
+
+  function drawBackground(time) {
+    const night = mazeLevel % 3 === 0;
+    const gradient = ctx.createLinearGradient(0, 0, 0, H);
+    gradient.addColorStop(0, night ? "#081329" : "#67b9db");
+    gradient.addColorStop(.67, night ? "#31445c" : "#d9c989");
+    gradient.addColorStop(1, night ? "#65574b" : "#d2a760");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, W, H);
+    const orbX = 120 + (mazeLevel * 97) % 700;
+    ctx.fillStyle = night ? "rgba(238,246,255,.82)" : "rgba(255,241,159,.88)";
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 28;
+    ctx.beginPath(); ctx.arc(orbX, 92, night ? 34 : 43, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = night ? "rgba(212,229,255,.4)" : "rgba(255,255,220,.42)";
+    for (let index = 0; index < 28; index += 1) {
+      const x = (index * 173 - cameraX * .08) % (W + 80);
+      const y = 38 + (index * 71) % 190;
+      ctx.fillRect(x, y, index % 3 ? 2 : 3, index % 3 ? 2 : 3);
+    }
+    drawHills(.12, 370, night ? "#263b49" : "#8b9877", 96);
+    drawHills(.22, 425, night ? "#182f3c" : "#6f806b", 76);
+    drawRuins();
+    ctx.strokeStyle = night ? "rgba(93,166,202,.12)" : "rgba(45,105,125,.11)";
+    ctx.lineWidth = 1;
+    for (let x = -((cameraX * .3) % 80); x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 80; y < H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  }
+
+  function drawHills(parallax, base, color, height) {
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.moveTo(0, H);
+    for (let x = -120; x <= W + 180; x += 150) {
+      const offset = -((cameraX * parallax) % 150);
+      ctx.lineTo(x + offset, base);
+      ctx.lineTo(x + 75 + offset, base - height - ((x / 150) % 2) * 24);
+      ctx.lineTo(x + 150 + offset, base);
+    }
+    ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  }
+
+  function drawRuins() {
+    const offset = -((cameraX * .17) % 1250);
+    ctx.fillStyle = "rgba(34,61,58,.32)";
+    for (let repeat = -1; repeat < 2; repeat += 1) {
+      const base = offset + repeat * 1250 + 680;
+      ctx.fillRect(base, 270, 250, 180);
+      for (let step = 0; step < 4; step += 1) ctx.fillRect(base + 28 + step * 22, 250 - step * 18, 194 - step * 44, 18);
+      for (let row = 0; row < 3; row += 1) for (let column = 0; column < 5; column += 1) ctx.clearRect(base + 24 + column * 44, 305 + row * 38, 18, 20);
+      drawPalm(base - 90, 450); drawPalm(base + 330, 450);
+    }
+  }
+
+  function drawPalm(x, y) {
+    ctx.strokeStyle = "rgba(28,65,55,.38)"; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - 8, y - 70, x, y - 118); ctx.stroke();
+    ctx.lineWidth = 5;
+    [-1.2, -.6, 0, .6, 1.2].forEach(angle => { ctx.beginPath(); ctx.moveTo(x, y - 118); ctx.quadraticCurveTo(x + Math.sin(angle) * 36, y - 142, x + Math.sin(angle) * 62, y - 120 + Math.cos(angle) * 12); ctx.stroke(); });
+  }
+
+  function drawPlatform(platform) {
+    const x = worldX(platform.x);
+    if (x > W + 50 || x + platform.w < -50) return;
+    const gradient = ctx.createLinearGradient(0, platform.y, 0, platform.y + platform.h);
+    gradient.addColorStop(0, platform.type === "door" ? "#ff4f9a" : "#2b5575");
+    gradient.addColorStop(1, platform.type === "door" ? "#78284d" : "#172d4c");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(x, platform.y, platform.w, platform.h);
+    ctx.fillStyle = platform.type === "door" ? "#ff8abb" : "#36bde0";
+    ctx.fillRect(x, platform.y, platform.w, Math.min(4, platform.h));
+    if (platform.type === "fake") {
+      ctx.strokeStyle = "rgba(255,213,74,.72)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x + 12, platform.y + 2); ctx.lineTo(x + 33, platform.y + 13); ctx.lineTo(x + 53, platform.y + 4); ctx.lineTo(x + 76, platform.y + 15); ctx.stroke();
+    }
+  }
+
+  function drawSpikes(spike, hidden = false) {
+    const x = worldX(spike.x);
+    const rise = hidden ? spike.reveal : 1;
+    const top = spike.y - (hidden ? spike.h * rise : 0);
+    const count = Math.max(2, Math.floor(spike.w / 18));
+    ctx.fillStyle = hidden ? "#ff7db4" : "#ff4f9a";
+    for (let index = 0; index < count; index += 1) {
+      const sx = x + index * (spike.w / count);
+      ctx.beginPath(); ctx.moveTo(sx, spike.y + spike.h); ctx.lineTo(sx + spike.w / count / 2, top); ctx.lineTo(sx + spike.w / count, spike.y + spike.h); ctx.fill();
+    }
+  }
+
+  function drawWorld(time) {
+    drawBackground(time);
+    course.platforms.forEach(drawPlatform);
+    course.movingPlatforms.forEach(item => drawPlatform({ ...item, type: "moving" }));
+    course.movingWalls.forEach(item => drawPlatform({ ...item, type: "wall" }));
+    course.fakeFloors.filter(item => item.y < H + 60).forEach(item => drawPlatform({ ...item, type: "fake" }));
+    if (!course.door.open) drawPlatform(course.door);
+
+    course.movingHoles.forEach(hole => {
+      const x = worldX(hole.x);
+      const gradient = ctx.createRadialGradient(x + hole.w / 2, GROUND_Y, 2, x + hole.w / 2, GROUND_Y, hole.w / 2);
+      gradient.addColorStop(0, "#000"); gradient.addColorStop(1, "rgba(0,0,0,.15)");
+      ctx.fillStyle = gradient; ctx.beginPath(); ctx.ellipse(x + hole.w / 2, GROUND_Y + 2, hole.w / 2, 13, 0, 0, Math.PI * 2); ctx.fill();
+    });
+    course.spikes.forEach(spike => drawSpikes(spike));
+    course.hiddenSpikes.forEach(spike => drawSpikes(spike, true));
+
+    course.lasers.forEach(laser => {
+      const x = worldX(laser.x);
+      const active = laserActive(laser, time);
+      ctx.strokeStyle = active ? "#ff315f" : "rgba(255,49,95,.2)";
+      ctx.lineWidth = active ? 5 : 2;
+      ctx.shadowColor = active ? "#ff315f" : "transparent"; ctx.shadowBlur = active ? 14 : 0;
+      ctx.beginPath(); ctx.moveTo(x, laser.y1); ctx.lineTo(x, laser.y2); ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.fillStyle = "#55233a"; ctx.fillRect(x - 9, laser.y1 - 10, 18, 12); ctx.fillRect(x - 9, laser.y2, 18, 12);
+    });
+
+    if (hintTimer > 0) {
+      ctx.fillStyle = `rgba(54,229,255,${Math.min(.65, hintTimer / 2)})`;
+      course.route.forEach(node => { const x = worldX(node.x); if (x > -20 && x < W + 20) { ctx.beginPath(); ctx.arc(x, node.y - 18, 6, 0, Math.PI * 2); ctx.fill(); } });
+    }
+
+    course.coins.forEach(coin => {
+      if (coin.collected) return;
+      const x = worldX(coin.x + coin.w / 2);
+      ctx.fillStyle = "#ffd54a"; ctx.shadowColor = "#ffd54a"; ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.arc(x, coin.y + 8, 7, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+      ctx.fillStyle = "#8b6414"; ctx.font = "900 8px Orbitron"; ctx.textAlign = "center"; ctx.fillText("Y", x, coin.y + 11);
+    });
+
+    drawItem(course.key, "#ffd54a", "K", course.key.collected);
+    drawItem(course.switch, course.switch.active ? "#b8ff57" : "#ff9f43", "S", false);
+    drawCheckpoint();
+    drawPortal(time);
+  }
+
+  function drawItem(item, color, label, hidden) {
+    if (hidden) return;
+    const x = worldX(item.x);
+    ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.roundRect(x, item.y, item.w, item.h, 7); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = "#07111b"; ctx.font = "900 13px Orbitron"; ctx.textAlign = "center"; ctx.fillText(label, x + item.w / 2, item.y + 21);
+  }
+
+  function drawCheckpoint() {
+    const item = course.checkpoint;
+    const x = worldX(item.x + 14);
+    ctx.strokeStyle = item.active ? "#b8ff57" : "#36e5ff"; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(x, item.y + 34); ctx.lineTo(x, item.y - 22); ctx.stroke();
+    ctx.fillStyle = item.active ? "#b8ff57" : "#36e5ff";
+    ctx.beginPath(); ctx.moveTo(x + 2, item.y - 20); ctx.lineTo(x + 28, item.y - 10); ctx.lineTo(x + 2, item.y); ctx.closePath(); ctx.fill();
+  }
+
+  function drawPortal(time) {
+    const portal = course.portal;
+    const x = worldX(portal.x + portal.w / 2);
+    const open = course.key.collected && course.switch.active;
+    ctx.strokeStyle = open ? "#36e5ff" : "#61728a"; ctx.lineWidth = 6;
+    ctx.shadowColor = open ? "#36e5ff" : "transparent"; ctx.shadowBlur = open ? 20 : 0;
+    ctx.beginPath(); ctx.ellipse(x, portal.y + portal.h / 2, 23 + Math.sin(time * 3) * 2, 40, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = open ? "rgba(54,229,255,.18)" : "rgba(70,82,98,.14)"; ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = open ? "#eaffff" : "#61728a"; ctx.font = "900 13px Orbitron"; ctx.textAlign = "center"; ctx.fillText("Y", x, portal.y + 47);
+  }
+
   function drawPlayer() {
     const x = player.x - cameraX + player.w / 2;
     const y = player.y;
@@ -51,14 +708,133 @@
     ctx.fillStyle = "#36e5ff"; ctx.font = "900 8px Orbitron"; ctx.textAlign = "center"; ctx.fillText("Y", 0, 33);
     ctx.restore();
   }
-  function draw(time){drawMaze(time);drawPlayer();ctx.fillStyle="rgba(234,244,255,.78)";ctx.font="900 8px Orbitron";ctx.textAlign="center";ctx.fillText("TAMER",player.x+14,player.y-7)}
-  function loop(timestamp){const time=timestamp/1000,dt=Math.min(.033,(timestamp-lastTime)/1000||0);lastTime=timestamp;update(dt,time);draw(time);requestAnimationFrame(loop)}
-  function setPaused(value){if(!running||completed)return;paused=value;dom.pauseOverlay.classList.toggle("visible",paused);dom.pause.textContent=paused?"Resume":"Pause";if(!paused)canvas.focus()}
-  function bindHold(button,key){let pointer=null;const press=e=>{e.preventDefault();if(pointer!==null)return;pointer=e.pointerId;button.setPointerCapture?.(e.pointerId);button.classList.add("active");keys[key]=true};const release=e=>{if(e.pointerId!==pointer)return;e.preventDefault();pointer=null;keys[key]=false;button.classList.remove("active")};button.addEventListener("pointerdown",press);button.addEventListener("pointerup",release);button.addEventListener("pointercancel",release);button.addEventListener("lostpointercapture",release)}
-  function bindTap(button,action){const press=e=>{e.preventDefault();button.setPointerCapture?.(e.pointerId);button.classList.add("active");action()};const release=e=>{e.preventDefault();button.classList.remove("active")};button.addEventListener("pointerdown",press);button.addEventListener("pointerup",release);button.addEventListener("pointercancel",release);button.addEventListener("lostpointercapture",release)}
-  async function toggleFullscreen(){const active=document.fullscreenElement||document.webkitFullscreenElement;try{if(active){const exit=document.exitFullscreen||document.webkitExitFullscreen;if(exit)await exit.call(document)}else{const target=document.querySelector(".maze-card"),enter=target.requestFullscreen||target.webkitRequestFullscreen;if(enter)await enter.call(target);else showToast("Rotate sideways for full-screen play",3)}}catch(_){showToast("Rotate sideways for full-screen play",3)}}
-  window.addEventListener("keydown",e=>{const map={ArrowLeft:"left",KeyA:"left",ArrowRight:"right",KeyD:"right",ArrowUp:"up",KeyW:"up",ArrowDown:"down",KeyS:"down"};if(map[e.code]){e.preventDefault();keys[map[e.code]]=true}if(e.code==="KeyH"&&!e.repeat)showHint();if(e.code==="KeyR"&&!e.repeat)buildMaze(mazeLevel);if(e.code==="KeyP"&&!e.repeat)setPaused(!paused)});window.addEventListener("keyup",e=>{const map={ArrowLeft:"left",KeyA:"left",ArrowRight:"right",KeyD:"right",ArrowUp:"up",KeyW:"up",ArrowDown:"down",KeyS:"down"};if(map[e.code])keys[map[e.code]]=false});window.addEventListener("blur",()=>{Object.keys(keys).forEach(k=>keys[k]=false);if(running&&!completed)setPaused(true)});
-  bindHold(document.getElementById("leftButton"),"left");bindHold(document.getElementById("rightButton"),"right");bindHold(document.getElementById("upButton"),"up");bindHold(document.getElementById("downButton"),"down");bindTap(dom.hint,showHint);["touchstart","touchmove"].forEach(type=>dom.mobile.addEventListener(type,e=>e.preventDefault(),{passive:false}));
-  dom.start.addEventListener("click",()=>buildMaze(mazeLevel));dom.pause.addEventListener("click",()=>setPaused(!paused));dom.resume.addEventListener("click",()=>setPaused(false));dom.restart.addEventListener("click",()=>buildMaze(mazeLevel));dom.next.addEventListener("click",()=>buildMaze(mazeLevel+1));dom.replay.addEventListener("click",()=>buildMaze(mazeLevel));dom.mobilePause.addEventListener("click",()=>setPaused(true));dom.fullscreen.addEventListener("click",toggleFullscreen);dom.sound.addEventListener("click",()=>{save.sound=!save.sound;writeSave();updateHud();if(save.sound)tone(520,.07,"triangle")});document.addEventListener("visibilitychange",()=>{if(document.hidden&&running&&!completed)setPaused(true)});window.addEventListener("beforeunload",writeSave);
-  buildMaze(mazeLevel,true);requestAnimationFrame(loop);
+
+  function draw(time) {
+    drawWorld(time);
+    drawPlayer();
+    ctx.fillStyle = "rgba(234,244,255,.8)"; ctx.font = "900 8px Orbitron"; ctx.textAlign = "center";
+    ctx.fillText("TAMER", player.x - cameraX + player.w / 2, player.y - 8);
+    const progress = Math.max(0, Math.min(1, player.x / (course.width - 200)));
+    ctx.fillStyle = "rgba(5,10,20,.68)"; ctx.fillRect(20, H - 18, W - 40, 6);
+    ctx.fillStyle = "#36e5ff"; ctx.fillRect(20, H - 18, (W - 40) * progress, 6);
+  }
+
+  function loop(timestamp) {
+    const time = timestamp / 1000;
+    const dt = Math.min(.033, (timestamp - lastTime) / 1000 || 0);
+    lastTime = timestamp;
+    update(dt, time);
+    draw(time);
+    requestAnimationFrame(loop);
+  }
+
+  function setPaused(value) {
+    if (!running || completed) return;
+    paused = value;
+    dom.pauseOverlay.classList.toggle("visible", paused);
+    dom.pause.textContent = paused ? "Resume" : "Pause";
+    if (!paused) canvas.focus();
+  }
+
+  function bindHold(button, key) {
+    let pointer = null;
+    const press = event => {
+      event.preventDefault();
+      userInteracted = true;
+      if (pointer !== null) return;
+      pointer = event.pointerId;
+      button.setPointerCapture?.(event.pointerId);
+      button.classList.add("active");
+      input[key] = true;
+    };
+    const release = event => {
+      if (event.pointerId !== pointer) return;
+      event.preventDefault();
+      pointer = null;
+      input[key] = false;
+      button.classList.remove("active");
+    };
+    button.addEventListener("pointerdown", press);
+    button.addEventListener("pointerup", release);
+    button.addEventListener("pointercancel", release);
+    button.addEventListener("lostpointercapture", release);
+  }
+
+  function bindTap(button, action) {
+    const press = event => {
+      event.preventDefault();
+      userInteracted = true;
+      button.setPointerCapture?.(event.pointerId);
+      button.classList.add("active");
+      action();
+    };
+    const release = event => { event.preventDefault(); button.classList.remove("active"); };
+    button.addEventListener("pointerdown", press);
+    button.addEventListener("pointerup", release);
+    button.addEventListener("pointercancel", release);
+    button.addEventListener("lostpointercapture", release);
+  }
+
+  async function toggleFullscreen() {
+    userInteracted = true;
+    const active = document.fullscreenElement || document.webkitFullscreenElement;
+    try {
+      if (active) {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) await exit.call(document);
+      } else {
+        const target = document.querySelector(".maze-card");
+        const enter = target.requestFullscreen || target.webkitRequestFullscreen;
+        if (enter) await enter.call(target);
+        else showToast("Rotate sideways for full-screen play", 3);
+      }
+    } catch (_) { showToast("Rotate sideways for full-screen play", 3); }
+  }
+
+  window.addEventListener("keydown", event => {
+    userInteracted = true;
+    const map = { ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right" };
+    if (map[event.code]) { event.preventDefault(); input[map[event.code]] = true; }
+    if (["ArrowUp", "KeyW", "Space"].includes(event.code)) { event.preventDefault(); if (!event.repeat) requestJump(); }
+    if (event.code === "KeyH" && !event.repeat) showHint();
+    if (event.code === "KeyR" && !event.repeat) buildRun(mazeLevel);
+    if (event.code === "KeyP" && !event.repeat) setPaused(!paused);
+  });
+  window.addEventListener("keyup", event => {
+    const map = { ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right" };
+    if (map[event.code]) input[map[event.code]] = false;
+    if (["ArrowUp", "KeyW", "Space"].includes(event.code) && player.vy < -180) player.vy *= .55;
+  });
+  window.addEventListener("blur", () => {
+    input.left = false; input.right = false;
+    if (running && !completed) setPaused(true);
+  });
+
+  bindHold(document.getElementById("leftButton"), "left");
+  bindHold(document.getElementById("rightButton"), "right");
+  bindTap(dom.jump, requestJump);
+  bindTap(dom.hint, showHint);
+  ["touchstart", "touchmove"].forEach(type => dom.mobile.addEventListener(type, event => event.preventDefault(), { passive: false }));
+
+  dom.start.addEventListener("click", () => { userInteracted = true; buildRun(mazeLevel); });
+  dom.pause.addEventListener("click", () => setPaused(!paused));
+  dom.resume.addEventListener("click", () => setPaused(false));
+  dom.restart.addEventListener("click", () => buildRun(mazeLevel));
+  dom.next.addEventListener("click", () => buildRun(mazeLevel + 1));
+  dom.replay.addEventListener("click", () => buildRun(mazeLevel));
+  dom.mobilePause.addEventListener("click", () => setPaused(true));
+  dom.fullscreen.addEventListener("click", toggleFullscreen);
+  dom.sound.addEventListener("click", () => {
+    userInteracted = true;
+    save.sound = !save.sound;
+    writeSave();
+    updateHud();
+    if (save.sound) tone(520, .08, "triangle", 720);
+  });
+  document.addEventListener("pointerdown", () => { userInteracted = true; }, { once: true });
+  document.addEventListener("visibilitychange", () => { if (document.hidden && running && !completed) setPaused(true); });
+  window.addEventListener("beforeunload", writeSave);
+
+  buildRun(mazeLevel, true);
+  requestAnimationFrame(loop);
 })();
