@@ -16,9 +16,116 @@ function genRoomCode() {
 }
 
 // ── HUB NAVIGATION ───────────────────────────────────────────
-document.querySelectorAll('.game-card[data-game]').forEach(card => {
-  card.addEventListener('click', () => showView(card.dataset.game));
+const hubGameCards = [...document.querySelectorAll('.game-card[data-game-id]')];
+const favoriteStorageKey = 'youooo_game_favorites';
+let activeGameFilter = 'all';
+let favoriteGames = new Set();
+
+try {
+  const storedFavorites = JSON.parse(localStorage.getItem(favoriteStorageKey) || '[]');
+  if (Array.isArray(storedFavorites)) favoriteGames = new Set(storedFavorites);
+} catch (_) { favoriteGames = new Set(); }
+
+function openHubGame(card) {
+  if (card.dataset.game) showView(card.dataset.game);
+  else if (card.dataset.href) window.location.href = card.dataset.href;
+}
+
+hubGameCards.forEach(card => {
+  card.addEventListener('click', event => {
+    if (event.target.closest('.favorite-button')) return;
+    if (event.target.closest('a[href]')) return;
+    openHubGame(card);
+  });
+  card.addEventListener('keydown', event => {
+    if (event.target !== card || !['Enter', ' '].includes(event.key)) return;
+    event.preventDefault();
+    openHubGame(card);
+  });
 });
+
+function saveFavorites() {
+  try { localStorage.setItem(favoriteStorageKey, JSON.stringify([...favoriteGames])); } catch (_) {}
+}
+
+function syncFavoriteButtons() {
+  hubGameCards.forEach(card => {
+    const button = card.querySelector('.favorite-button');
+    if (!button) return;
+    const title = card.querySelector('.game-card-name')?.textContent || 'game';
+    const selected = favoriteGames.has(card.dataset.gameId);
+    button.setAttribute('aria-pressed', String(selected));
+    button.setAttribute('aria-label', `${selected ? 'Remove' : 'Add'} ${title} ${selected ? 'from' : 'to'} favorites`);
+    button.textContent = selected ? '♥' : '♡';
+  });
+}
+
+function applyGameFilter(filter = activeGameFilter) {
+  activeGameFilter = filter;
+  let visible = 0;
+  hubGameCards.forEach(card => {
+    const categories = (card.dataset.categories || '').split(/\s+/);
+    const show = filter === 'all' || (filter === 'favorites' ? favoriteGames.has(card.dataset.gameId) : categories.includes(filter));
+    card.classList.toggle('filter-hidden', !show);
+    if (show) visible += 1;
+  });
+  const empty = document.getElementById('favoritesEmpty');
+  if (empty) empty.classList.toggle('hidden', filter !== 'favorites' || visible > 0);
+}
+
+document.querySelectorAll('.favorite-button').forEach(button => {
+  button.addEventListener('click', event => {
+    event.stopPropagation();
+    const card = button.closest('.game-card');
+    const id = card?.dataset.gameId;
+    if (!id) return;
+    favoriteGames.has(id) ? favoriteGames.delete(id) : favoriteGames.add(id);
+    saveFavorites(); syncFavoriteButtons(); applyGameFilter();
+  });
+});
+
+const filterButtons = [...document.querySelectorAll('.category-filter')];
+filterButtons.forEach((button, index) => {
+  button.addEventListener('click', () => {
+    filterButtons.forEach(item => { item.classList.toggle('active', item === button); item.setAttribute('aria-selected', String(item === button)); });
+    applyGameFilter(button.dataset.filter);
+  });
+  button.addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? filterButtons.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + filterButtons.length) % filterButtons.length;
+    filterButtons[nextIndex].focus(); filterButtons[nextIndex].click();
+  });
+});
+
+syncFavoriteButtons();
+applyGameFilter();
+
+document.getElementById('viewAllGames')?.addEventListener('click', () => document.getElementById('gamesHeading')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+document.getElementById('statsLeaderboardButton')?.addEventListener('click', () => document.getElementById('openLeaderBtn')?.click());
+
+let deferredInstallPrompt = null;
+const installBanner = document.getElementById('installBanner');
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  let dismissed = false;
+  try { dismissed = localStorage.getItem('youooo_install_dismissed') === '1'; } catch (_) {}
+  if (!dismissed) installBanner?.classList.remove('hidden');
+});
+document.getElementById('installAppButton')?.addEventListener('click', async () => {
+  if (!deferredInstallPrompt) return;
+  installBanner?.classList.add('hidden');
+  deferredInstallPrompt.prompt();
+  try { await deferredInstallPrompt.userChoice; } catch (_) {}
+  deferredInstallPrompt = null;
+});
+document.getElementById('dismissInstallButton')?.addEventListener('click', () => {
+  installBanner?.classList.add('hidden');
+  try { localStorage.setItem('youooo_install_dismissed', '1'); } catch (_) {}
+});
+window.addEventListener('appinstalled', () => { deferredInstallPrompt = null; installBanner?.classList.add('hidden'); });
+
 document.querySelectorAll('.back-btn').forEach(btn => {
   btn.addEventListener('click', () => showView(btn.dataset.target));
 });

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>Play Free Online Games - Chess, Stickman Escape, Stickman Arena & More | Youooo Games</title>
+  <title>Play Free Online Games - Chess, Stickman Escape, Stickman Arena &amp; More | Youooo Games</title>
   <meta name="description" content="Play free online games with no signup. Enjoy chess, checkers, Snake, 2048, Merge Fruit, Gems Crush, Stickman Escape, and Stickman Arena on desktop or mobile." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://game.youooo.com/" />
@@ -15,20 +15,43 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Youooo Games" />
   <!-- Open Graph (WhatsApp / Facebook / Twitter previews) -->
-  <meta property="og:title" content="Play Free Online Games - Stickman Arena, Stickman Escape & More" />
+  <meta property="og:title" content="Play Free Online Games - Stickman Arena, Stickman Escape &amp; More" />
   <meta property="og:description" content="Free browser games with no signup, including Stickman Arena and Stickman Escape." />
   <meta property="og:image" content="https://game.youooo.com/og-preview.png" />
   <meta property="og:url" content="https://game.youooo.com/" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Play Free Online Games - Stickman Arena, Stickman Escape & More" />
+  <meta name="twitter:title" content="Play Free Online Games - Stickman Arena, Stickman Escape &amp; More" />
   <meta name="twitter:description" content="Play free online games with no signup, including Stickman Arena and Stickman Escape, on desktop or mobile." />
   <meta name="twitter:image" content="https://game.youooo.com/og-preview.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@700;900&family=Rajdhani:wght@700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Orbitron:wght@700;900&amp;family=Rajdhani:wght@700&amp;display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css" />
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" href="youooo_logo.png" />
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"WebSite",
+    "name":"Youooo Games",
+    "url":"https://game.youooo.com/",
+    "description":"A free browser game hub with eight mobile-friendly games.",
+    "mainEntity":{
+      "@type":"ItemList",
+      "numberOfItems":8,
+      "itemListElement":[
+        {"@type":"ListItem","position":1,"name":"Chess","url":"https://game.youooo.com/chess.html"},
+        {"@type":"ListItem","position":2,"name":"Checkers","url":"https://game.youooo.com/checkers.html"},
+        {"@type":"ListItem","position":3,"name":"Gems Crush","url":"https://game.youooo.com/gems-crush.html"},
+        {"@type":"ListItem","position":4,"name":"2048","url":"https://game.youooo.com/2048.html"},
+        {"@type":"ListItem","position":5,"name":"Snake","url":"https://game.youooo.com/snake.html"},
+        {"@type":"ListItem","position":6,"name":"Merge Fruit","url":"https://game.youooo.com/merge-fruit.html"},
+        {"@type":"ListItem","position":7,"name":"Stickman Escape","url":"https://game.youooo.com/stickman-escape.html"},
+        {"@type":"ListItem","position":8,"name":"Stickman Arena","url":"https://game.youooo.com/stickman-arena.html"}
+      ]
+    }
+  }
+  </script>
   <style>
     #splash{position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .8s ease}
     #splash.fade-out{opacity:0;pointer-events:none}
@@ -40,7 +63,7 @@
 
 <!-- ════════════════════ SPLASH ════════════════════ -->
 <div id="splash"><img src="youooo_logo.png" alt="Youooo" /></div>
-<script>(function(){var s=document.getElementById('splash');setTimeout(function(){s.classList.add('fade-out');setTimeout(function(){s.style.display='none'},800)},1500)})()</script>
+<script>(function(){var s=document.getElementById('splash');try{if(localStorage.getItem('youooo_splash_seen')){s.style.display='none';return}localStorage.setItem('youooo_splash_seen','1')}catch(e){}setTimeout(function(){s.classList.add('fade-out');setTimeout(function(){s.style.display='none'},500)},850)})()</script>
 
   <!-- Animated background -->
   <div class="bg-layer" aria-hidden="true">
@@ -83,18 +106,39 @@
         <img src="youooo_logo.png" alt="Youooo" style="height:52px;width:auto;flex-shrink:0;" />
         <div>
           <div class="logo-title" style="font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:2px;">Youooo Games</div>
-          <div class="logo-sub">7 games · Play free · Online & Offline</div>
+          <div class="logo-sub">8 games · Play free · Online &amp; Offline</div>
         </div>
       </div>
     </header>
 
-    <div class="game-hub-grid">
+    <section class="featured-game" aria-labelledby="featuredTitle">
+      <div class="featured-copy">
+        <p class="featured-eyebrow">Featured Game</p>
+        <h2 id="featuredTitle">Stickman Escape</h2>
+        <p>Guide Tamer through thirty handcrafted chambers filled with traps, coins, checkpoints, and mysterious discoveries.</p>
+        <div class="featured-badges" aria-label="Game features"><span>30 Levels</span><span>Mobile Controls</span><span>Achievements</span><span>Save Progress</span></div>
+        <div class="featured-actions"><a class="featured-primary" href="stickman-escape.html">Play Stickman Escape</a><button class="featured-secondary" id="viewAllGames" type="button">View All Games</button></div>
+      </div>
+      <div class="featured-art" aria-hidden="true"><div class="featured-moon"></div><div class="featured-ruins"></div><div class="featured-stickman"><span>Y</span></div><div class="featured-portal">Y</div></div>
+    </section>
 
-      <div class="game-card chess-card" data-game="chess">
+    <div class="hub-stats" aria-label="Game hub features"><span><strong>8</strong> Games</span><button id="statsLeaderboardButton" type="button"><strong>🏆</strong> Global Leaderboard</button><span><strong>✓</strong> Mobile Friendly</span><span><strong>＋</strong> Installable App</span></div>
+
+    <aside class="install-banner hidden" id="installBanner" aria-live="polite"><div><strong>Install Youooo Games</strong><span>Play faster from your home screen.</span></div><button id="installAppButton" type="button">Install Game Hub</button><button id="dismissInstallButton" class="install-dismiss" type="button" aria-label="Dismiss install suggestion">×</button></aside>
+
+    <section class="games-browser" aria-labelledby="gamesHeading">
+      <div class="games-browser-heading"><div><p class="featured-eyebrow">Choose your next game</p><h2 id="gamesHeading">All Games</h2></div><div class="category-tabs" id="gameFilters" role="tablist" aria-label="Filter games by category"><button class="category-filter active" type="button" data-filter="all" role="tab" aria-selected="true">All</button><button class="category-filter" type="button" data-filter="action" role="tab" aria-selected="false">Action</button><button class="category-filter" type="button" data-filter="arcade" role="tab" aria-selected="false">Arcade</button><button class="category-filter" type="button" data-filter="puzzle" role="tab" aria-selected="false">Puzzle</button><button class="category-filter" type="button" data-filter="strategy" role="tab" aria-selected="false">Strategy</button><button class="category-filter" type="button" data-filter="multiplayer" role="tab" aria-selected="false">Multiplayer</button><button class="category-filter favorites-filter" type="button" data-filter="favorites" role="tab" aria-selected="false">♥ My Favorites</button></div></div>
+      <p class="favorites-empty hidden" id="favoritesEmpty">No favorites yet. Tap a heart on any game to save it here.</p>
+    </section>
+
+    <div class="game-hub-grid" id="gamesGrid">
+
+      <div class="game-card chess-card" data-game="chess" data-game-id="chess" data-categories="strategy multiplayer" tabindex="0" role="link" aria-label="Play Chess">
         <div class="card-glow"></div>
-        <div class="game-card-icon">♟</div>
+        <button class="favorite-button" type="button" aria-label="Add Chess to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-chess" aria-hidden="true"><span class="preview-icon">♟</span><span class="preview-title">Chess</span></div>
         <h2 class="game-card-name">Chess</h2>
-        <p class="game-card-desc">Strategy, tactics & AI challenge</p>
+        <p class="game-card-desc">Strategy, tactics &amp; AI challenge</p>
         <div class="game-tags">
           <span class="tag">vs AI</span>
           <span class="tag">2 Players</span>
@@ -103,9 +147,10 @@
         <button class="play-btn">Play Chess</button>
       </div>
 
-      <div class="game-card checkers-card" data-game="checkers">
+      <div class="game-card checkers-card" data-game="checkers" data-game-id="checkers" data-categories="strategy multiplayer" tabindex="0" role="link" aria-label="Play Checkers">
         <div class="card-glow"></div>
-        <div class="game-card-icon">⬡</div>
+        <button class="favorite-button" type="button" aria-label="Add Checkers to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-checkers" aria-hidden="true"><span class="preview-icon">⬡</span><span class="preview-title">Checkers</span></div>
         <h2 class="game-card-name">Checkers</h2>
         <p class="game-card-desc">Classic draughts with online rooms</p>
         <div class="game-tags">
@@ -116,11 +161,12 @@
         <button class="play-btn">Play Checkers</button>
       </div>
 
-      <div class="game-card gems-card" data-game="gems">
+      <div class="game-card gems-card" data-game="gems" data-game-id="gems" data-categories="puzzle arcade" tabindex="0" role="link" aria-label="Play Gems Crush">
         <div class="card-glow"></div>
-        <div class="game-card-icon">💎</div>
+        <button class="favorite-button" type="button" aria-label="Add Gems Crush to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-gems" aria-hidden="true"><span class="preview-icon">💎</span><span class="preview-title">Gems Crush</span></div>
         <h2 class="game-card-name">Gems Crush</h2>
-        <p class="game-card-desc">Swap & match gems to score big!</p>
+        <p class="game-card-desc">Swap &amp; match gems to score big!</p>
         <div class="game-tags">
           <span class="tag">Puzzle</span>
           <span class="tag">Match-3</span>
@@ -129,9 +175,10 @@
         <button class="play-btn">Play Gems</button>
       </div>
 
-      <div class="game-card t2048-card" data-game="t2048">
+      <div class="game-card t2048-card" data-game="t2048" data-game-id="2048" data-categories="puzzle" tabindex="0" role="link" aria-label="Play 2048">
         <div class="card-glow"></div>
-        <div class="game-card-icon">🔢</div>
+        <button class="favorite-button" type="button" aria-label="Add 2048 to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-2048" aria-hidden="true"><span class="preview-icon">2048</span><span class="preview-title">Merge the tiles</span></div>
         <h2 class="game-card-name">2048</h2>
         <p class="game-card-desc">Slide tiles, merge numbers, reach 2048!</p>
         <div class="game-tags">
@@ -142,9 +189,10 @@
         <button class="play-btn">Play 2048</button>
       </div>
 
-      <div class="game-card snake-card" data-game="snake">
+      <div class="game-card snake-card" data-game="snake" data-game-id="snake" data-categories="arcade action" tabindex="0" role="link" aria-label="Play Snake">
         <div class="card-glow"></div>
-        <div class="game-card-icon">🐍</div>
+        <button class="favorite-button" type="button" aria-label="Add Snake to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-snake" aria-hidden="true"><span class="preview-icon">🐍</span><span class="preview-title">Snake</span></div>
         <h2 class="game-card-name">Snake</h2>
         <p class="game-card-desc">Eat, grow, survive — classic arcade!</p>
         <div class="game-tags">
@@ -155,9 +203,10 @@
         <button class="play-btn">Play Snake</button>
       </div>
 
-      <div class="game-card fruit-card" data-game="fruit">
+      <div class="game-card fruit-card" data-game="fruit" data-game-id="merge-fruit" data-categories="arcade puzzle" tabindex="0" role="link" aria-label="Play Merge Fruit">
         <div class="card-glow"></div>
-        <div class="game-card-icon">🍉</div>
+        <button class="favorite-button" type="button" aria-label="Add Merge Fruit to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-fruit" aria-hidden="true"><span class="preview-icon">🍉</span><span class="preview-title">Merge Fruit</span></div>
         <h2 class="game-card-name">Merge Fruit</h2>
         <p class="game-card-desc">Drop, merge, climb the score — viral mobile chaos!</p>
         <div class="game-tags">
@@ -168,9 +217,10 @@
         <button class="play-btn">Play Merge Fruit</button>
       </div>
 
-      <a class="game-card stickman-card" href="stickman-escape.html">
+      <article class="game-card stickman-card" data-game-id="stickman-escape" data-categories="action arcade" data-href="stickman-escape.html" tabindex="0" role="link" aria-label="Play Stickman Escape">
         <div class="card-glow"></div>
-        <div class="game-card-icon stickman-card-icon" aria-hidden="true"><span>Y</span></div>
+        <button class="favorite-button" type="button" aria-label="Add Stickman Escape to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-escape" aria-hidden="true"><div class="preview-stickman"><span>Y</span></div><span class="preview-title">Stickman Escape</span><i class="preview-portal">Y</i></div>
         <h2 class="game-card-name">Stickman Escape</h2>
         <p class="game-card-desc">Run, jump, dodge traps, and find the portal</p>
         <div class="game-tags">
@@ -178,12 +228,13 @@
           <span class="tag">30 Levels</span>
           <span class="tag tag-new">New!</span>
         </div>
-        <span class="play-btn">Play Stickman Escape</span>
-      </a>
+        <a class="play-btn" href="stickman-escape.html">Play Stickman Escape</a>
+      </article>
 
-      <a class="game-card stickman-card" href="stickman-arena.html">
+      <article class="game-card stickman-card" data-game-id="stickman-arena" data-categories="action arcade" data-href="stickman-arena.html" tabindex="0" role="link" aria-label="Play Stickman Arena">
         <div class="card-glow"></div>
-        <div class="game-card-icon stickman-card-icon" aria-hidden="true"><span>Y</span></div>
+        <button class="favorite-button" type="button" aria-label="Add Stickman Arena to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-arena" aria-hidden="true"><div class="preview-stickman"><span>Y</span></div><span class="preview-title">Stickman Arena</span><i class="preview-enemy"></i></div>
         <h2 class="game-card-name">Stickman Arena</h2>
         <p class="game-card-desc">Fight enemy waves, unlock weapons, and chase a high score</p>
         <div class="game-tags">
@@ -191,8 +242,8 @@
           <span class="tag">5 Weapons</span>
           <span class="tag tag-new">New!</span>
         </div>
-        <span class="play-btn">Play Stickman Arena</span>
-      </a>
+        <a class="play-btn" href="stickman-arena.html">Play Stickman Arena</a>
+      </article>
 
     </div>
 
@@ -201,15 +252,10 @@
       <button class="btn-secondary" id="openLeaderBtn" style="padding:12px 32px;font-size:1rem;">🏆 Global Leaderboard</button>
     </div>
 
-    <div class="hub-footer">
-      <a href="https://youooo.com" target="_blank" rel="noopener">Username Checker</a>
-      <span>·</span>
-      <a href="https://resume.youooo.com" target="_blank" rel="noopener">Resume Builder</a>
-      <span>·</span>
-      <a href="https://linux.youooo.com" target="_blank" rel="noopener">Learn Linux</a>
-      <span>·</span>
-      <a href="https://dari.youooo.com" target="_blank" rel="noopener">Dari Real Estate</a>
-    </div>
+    <footer class="hub-footer">
+      <div class="footer-group"><h2>Games</h2><div><a href="stickman-escape.html">Stickman Escape</a><a href="stickman-arena.html">Stickman Arena</a><a href="#gamesGrid">All Games</a></div></div>
+      <div class="footer-group"><h2>Other YouOOO Tools</h2><div><a href="https://youooo.com" target="_blank" rel="noopener">Username Checker</a><a href="https://resume.youooo.com" target="_blank" rel="noopener">Resume Builder</a><a href="https://linux.youooo.com" target="_blank" rel="noopener">Learn Linux</a><a href="https://dari.youooo.com" target="_blank" rel="noopener">Dari Real Estate</a></div></div>
+    </footer>
 
     <section class="seo-games-panel">
       <p class="seo-eyebrow">Free Browser Games</p>
