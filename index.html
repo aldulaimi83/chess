@@ -35,10 +35,10 @@
     "@type":"WebSite",
     "name":"Youooo Games",
     "url":"https://game.youooo.com/",
-    "description":"A free browser game hub with eight mobile-friendly games.",
+    "description":"A free browser game hub with nine mobile-friendly games.",
     "mainEntity":{
       "@type":"ItemList",
-      "numberOfItems":8,
+      "numberOfItems":9,
       "itemListElement":[
         {"@type":"ListItem","position":1,"name":"Chess","url":"https://game.youooo.com/chess.html"},
         {"@type":"ListItem","position":2,"name":"Checkers","url":"https://game.youooo.com/checkers.html"},
@@ -47,7 +47,8 @@
         {"@type":"ListItem","position":5,"name":"Snake","url":"https://game.youooo.com/snake.html"},
         {"@type":"ListItem","position":6,"name":"Merge Fruit","url":"https://game.youooo.com/merge-fruit.html"},
         {"@type":"ListItem","position":7,"name":"Stickman Escape","url":"https://game.youooo.com/stickman-escape.html"},
-        {"@type":"ListItem","position":8,"name":"Stickman Arena","url":"https://game.youooo.com/stickman-arena.html"}
+        {"@type":"ListItem","position":8,"name":"Stickman Arena","url":"https://game.youooo.com/stickman-arena.html"},
+        {"@type":"ListItem","position":9,"name":"Stickman Maze Run","url":"https://game.youooo.com/stickman-maze-run.html"}
       ]
     }
   }
@@ -106,7 +107,7 @@
         <img src="youooo_logo.png" alt="Youooo" style="height:52px;width:auto;flex-shrink:0;" />
         <div>
           <div class="logo-title" style="font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:2px;">Youooo Games</div>
-          <div class="logo-sub">8 games · Play free · Online &amp; Offline</div>
+          <div class="logo-sub">9 games · Play free · Online &amp; Offline</div>
         </div>
       </div>
     </header>
@@ -122,7 +123,7 @@
       <div class="featured-art" aria-hidden="true"><div class="featured-moon"></div><div class="featured-ruins"></div><div class="featured-stickman"><span>Y</span></div><div class="featured-portal">Y</div></div>
     </section>
 
-    <div class="hub-stats" aria-label="Game hub features"><span><strong>8</strong> Games</span><button id="statsLeaderboardButton" type="button"><strong>🏆</strong> Global Leaderboard</button><span><strong>✓</strong> Mobile Friendly</span><span><strong>＋</strong> Installable App</span></div>
+    <div class="hub-stats" aria-label="Game hub features"><span><strong>9</strong> Games</span><button id="statsLeaderboardButton" type="button"><strong>🏆</strong> Global Leaderboard</button><span><strong>✓</strong> Mobile Friendly</span><span><strong>＋</strong> Installable App</span></div>
 
     <aside class="install-banner hidden" id="installBanner" aria-live="polite"><div><strong>Install Youooo Games</strong><span>Play faster from your home screen.</span></div><button id="installAppButton" type="button">Install Game Hub</button><button id="dismissInstallButton" class="install-dismiss" type="button" aria-label="Dismiss install suggestion">×</button></aside>
 
@@ -245,6 +246,16 @@
         <a class="play-btn" href="stickman-arena.html">Play Stickman Arena</a>
       </article>
 
+      <article class="game-card stickman-card" data-game-id="stickman-maze-run" data-categories="action arcade puzzle" data-href="stickman-maze-run.html" tabindex="0" role="link" aria-label="Play Stickman Maze Run">
+        <div class="card-glow"></div>
+        <button class="favorite-button" type="button" aria-label="Add Stickman Maze Run to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-maze" aria-hidden="true"><div class="preview-stickman"><span>Y</span></div><span class="preview-title">Stickman Maze Run</span><i class="preview-maze-lines"></i><i class="preview-maze-key">K</i></div>
+        <h2 class="game-card-name">Stickman Maze Run</h2>
+        <p class="game-card-desc">Solve unpredictable mazes packed with traps and puzzles</p>
+        <div class="game-tags"><span class="tag">Puzzle Maze</span><span class="tag">Procedural</span><span class="tag tag-new">New!</span></div>
+        <a class="play-btn" href="stickman-maze-run.html">Play Stickman Maze Run</a>
+      </article>
+
     </div>
 
     <!-- Leaderboard button -->
@@ -253,7 +264,7 @@
     </div>
 
     <footer class="hub-footer">
-      <div class="footer-group"><h2>Games</h2><div><a href="stickman-escape.html">Stickman Escape</a><a href="stickman-arena.html">Stickman Arena</a><a href="#gamesGrid">All Games</a></div></div>
+      <div class="footer-group"><h2>Games</h2><div><a href="stickman-escape.html">Stickman Escape</a><a href="stickman-arena.html">Stickman Arena</a><a href="stickman-maze-run.html">Stickman Maze Run</a><a href="#gamesGrid">All Games</a></div></div>
       <div class="footer-group"><h2>Other YouOOO Tools</h2><div><a href="https://youooo.com" target="_blank" rel="noopener">Username Checker</a><a href="https://resume.youooo.com" target="_blank" rel="noopener">Resume Builder</a><a href="https://linux.youooo.com" target="_blank" rel="noopener">Learn Linux</a><a href="https://dari.youooo.com" target="_blank" rel="noopener">Dari Real Estate</a></div></div>
     </footer>
 
@@ -263,7 +274,7 @@
       <p>
         Youooo Games is a free online games hub for quick browser play. Play chess online free with AI or friends,
         play checkers online, enjoy classic Snake, try a free 2048 browser game, drop fruit in Merge Fruit, relax with Gems Crush match-3 puzzles,
-        run and jump through thirty original levels in Stickman Escape, or fight endless waves in Stickman Arena.
+        run and jump through thirty original levels in Stickman Escape, fight endless waves in Stickman Arena, or solve unpredictable puzzles in Stickman Maze Run.
         No signup is required, and the games work on desktop and mobile browsers.
       </p>
       <div class="seo-game-links" aria-label="Game pages">
@@ -275,6 +286,7 @@
         <a href="gems-crush.html">Play Gems Crush match-3 online</a>
         <a href="stickman-escape.html">Play Stickman Escape platform game</a>
         <a href="stickman-arena.html">Play Stickman Arena fighting game</a>
+        <a href="stickman-maze-run.html">Play Stickman Maze Run puzzle game</a>
       </div>
     </section>
   </div>
