@@ -183,6 +183,21 @@
 
         if (dist >= minDist) continue;
 
+        // Merge matching fruit as soon as a genuine collision occurs. The
+        // previous stable-frame check ran after separating the circles, so
+        // many valid pairs never overlapped long enough to merge.
+        const readyToMerge = a.kind === b.kind
+          && !a.merged
+          && !b.merged
+          && a.age > 6
+          && b.age > 6;
+        if (readyToMerge) {
+          a.merged = true;
+          b.merged = true;
+          mergeFruitPair(i, j);
+          return;
+        }
+
         const overlap = (minDist - dist) / 2;
         const nx = dx / dist;
         const ny = dy / dist;
@@ -203,18 +218,8 @@
           b.vy += impulse * ny;
         }
 
-        const bothStable = Math.abs(a.vy) < 1.3 && Math.abs(b.vy) < 1.3 && Math.abs(a.vx) < 1.2 && Math.abs(b.vx) < 1.2;
-        if (a.kind === b.kind && bothStable) {
-          a.restingFrames += 1;
-          b.restingFrames += 1;
-          if (a.restingFrames > 10 && b.restingFrames > 10) {
-            mergeFruitPair(i, j);
-            return;
-          }
-        } else {
-          a.restingFrames = 0;
-          b.restingFrames = 0;
-        }
+        a.restingFrames = 0;
+        b.restingFrames = 0;
       }
     }
   }
