@@ -4,7 +4,7 @@
   const SAVE_KEY = 'youooo_stickman_escape_3d_v2';
   const COIN_TOTAL = 18;
   const world = { startX: -22, endX: 58, floorY: 0 };
-  const PLAYER_HEIGHT = 1.95;
+  const PLAYER_FOOT_OFFSET = 0.2;
   const controls = {
     maxSpeed: 9.2,
     groundAccel: 36,
@@ -25,7 +25,7 @@
     startTime: 0,
     elapsed: 0,
     checkpointIndex: 0,
-    checkpoint: { x: world.startX, y: 2.0, z: 0, label: 'Start' },
+    checkpoint: { x: world.startX, y: 0.9, z: 0, label: 'Start' },
     velocity: { x: 0, y: 0, z: 0 },
     grounded: false,
     onPlatform: null,
@@ -517,7 +517,7 @@
     state.jumpBuffer = 0;
     state.invincible = 0;
     state.checkpointIndex = 0;
-    state.checkpoint = { x: world.startX, y: 2.0, z: 0, label: 'Start' };
+    state.checkpoint = { x: world.startX, y: 0.9, z: 0, label: 'Start' };
     state.collected.clear();
     coins.forEach((coin) => {
       coin.visible = true;
@@ -582,8 +582,12 @@
       const halfW = data.width / 2;
       const halfD = data.depth / 2;
       const top = platform.position.y + data.height / 2;
-      if (x >= platform.position.x - halfW && x <= platform.position.x + halfW && z >= platform.position.z - halfD && z <= platform.position.z + halfD && previousY >= top + PLAYER_HEIGHT - 0.42 && y <= top + PLAYER_HEIGHT + 0.18) {
-        if (!best || top > best.top) best = { mesh: platform, top };
+      const standY = top - PLAYER_FOOT_OFFSET;
+      const withinX = x >= platform.position.x - halfW && x <= platform.position.x + halfW;
+      const withinZ = z >= platform.position.z - halfD && z <= platform.position.z + halfD;
+      const crossedTop = previousY >= standY - 0.18 && y <= standY + 0.65;
+      if (withinX && withinZ && crossedTop) {
+        if (!best || top > best.top) best = { mesh: platform, top, standY };
       }
     });
     return best;
@@ -635,10 +639,11 @@
     player.position.x += state.velocity.x * delta;
     player.position.y += state.velocity.y * delta;
     player.position.z += state.velocity.z * delta;
+    player.position.z = Math.max(-1.35, Math.min(1.35, player.position.z));
 
     const platformHit = getPlatformAt(player.position.x, player.position.z, player.position.y, previousY);
     if (platformHit && state.velocity.y <= 0) {
-      player.position.y = platformHit.top + PLAYER_HEIGHT;
+      player.position.y = platformHit.standY;
       state.velocity.y = 0;
       state.grounded = true;
       state.onPlatform = platformHit.mesh;
@@ -660,7 +665,6 @@
     const stride = elapsed * (speed > 4 ? 10 : 7.2);
     const walk = Math.sin(stride) * Math.min(0.8, speed / controls.maxSpeed);
     player.rotation.y += ((state.face > 0 ? Math.PI / 2 : -Math.PI / 2) - player.rotation.y) * Math.min(1, delta * 12);
-    player.position.z += (Math.sin(elapsed * 3.2) * 0.025) * (state.grounded ? Math.min(1, speed / controls.maxSpeed) : 0);
     player.scale.y = 1 + (state.grounded ? Math.abs(walk) * 0.025 : -0.02);
     if (parts.head) parts.head.position.y = 2.28 + Math.sin(elapsed * 2.5) * (state.grounded ? 0.025 : 0.01);
 
@@ -718,7 +722,7 @@
       if (!checkpoint.userData.active && Math.abs(player.position.x - checkpoint.position.x) < 1.2 && player.position.y < 3.4) {
         checkpoint.userData.active = true;
         state.checkpointIndex = index + 1;
-        state.checkpoint = { x: checkpoint.position.x, y: 2.2, z: 0, label: checkpoint.userData.label };
+        state.checkpoint = { x: checkpoint.position.x, y: checkpoint.position.y + 0.55, z: 0, label: checkpoint.userData.label };
         checkpoint.children[1].material.emissiveIntensity = 0.9;
         playTone('checkpoint');
         for (let i = 0; i < 14; i += 1) spawnParticle(checkpoint.position.clone().add(new THREE_REF.Vector3(0, 1.2, 0)), 0x38e8ff, false);
