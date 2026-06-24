@@ -80,8 +80,8 @@
   const checkpoints = [];
   const particles = [];
   const decorative = [];
-  const cameraTarget = new THREE_REF ? new THREE_REF.Vector3() : null;
-  const cameraLook = new THREE_REF ? new THREE_REF.Vector3() : null;
+  let cameraTarget = null;
+  let cameraLook = null;
 
   function showLoadError(message) {
     ui.loadError.textContent = message;
@@ -470,6 +470,8 @@
 
     scene = new THREE_REF.Scene();
     camera = new THREE_REF.PerspectiveCamera(58, 16 / 9, 0.1, 140);
+    cameraTarget = new THREE_REF.Vector3();
+    cameraLook = new THREE_REF.Vector3();
     clock = new THREE_REF.Clock();
     buildWorld();
     player = createStickman();
