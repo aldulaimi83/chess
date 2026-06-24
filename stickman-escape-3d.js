@@ -88,6 +88,16 @@
     ui.loadError.style.display = 'block';
   }
 
+  function ensureGameReady() {
+    if (renderer && scene && camera && player) return true;
+    THREE_REF = window.THREE;
+    if (!THREE_REF) {
+      showLoadError('The 3D engine did not load yet. Please refresh the page and try again.');
+      return false;
+    }
+    return initThree();
+  }
+
   function loadSave() {
     try {
       const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
@@ -490,6 +500,7 @@
   }
 
   function startGame() {
+    if (!ensureGameReady()) return;
     unlockAudio();
     playTone('button');
     state.started = true;
