@@ -85,6 +85,20 @@ a {
   white-space: nowrap;
 }
 
+.dev-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 6px;
+  padding: 5px 9px;
+  border: 1px solid rgba(255, 216, 90, 0.42);
+  border-radius: 999px;
+  color: #ffe7a6;
+  background: rgba(255, 216, 90, 0.1);
+  font: 900 0.62rem Orbitron, sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 .back-link,
 .classic-link,
 .secondary-button {
@@ -199,8 +213,8 @@ a {
 }
 
 .overlay-card {
-  width: min(500px, 100%);
-  padding: 28px;
+  width: min(540px, 100%);
+  padding: 30px;
   border: 1px solid rgba(56, 232, 255, 0.28);
   border-radius: 28px;
   background: rgba(5, 10, 22, 0.9);
@@ -217,6 +231,7 @@ a {
 .overlay-card p {
   color: var(--muted);
   line-height: 1.65;
+  font-weight: 700;
 }
 
 .help-text {

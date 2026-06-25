@@ -2,19 +2,19 @@
   'use strict';
 
   const SAVE_KEY = 'youooo_stickman_escape_3d_v2';
-  const COIN_TOTAL = 18;
-  const world = { startX: -22, endX: 58, floorY: 0 };
+  const COIN_TOTAL = 24;
+  const world = { startX: -21, endX: 54, floorY: 0 };
   const PLAYER_FOOT_OFFSET = 0.2;
   const controls = {
-    maxSpeed: 9.2,
-    groundAccel: 36,
-    airAccel: 18,
-    groundFriction: 22,
-    gravity: 25,
-    jumpVelocity: 10.8,
-    coyoteTime: 0.12,
-    jumpBuffer: 0.13,
-    terminalVelocity: -24
+    maxSpeed: 8.4,
+    groundAccel: 48,
+    airAccel: 28,
+    groundFriction: 34,
+    gravity: 28,
+    jumpVelocity: 10.2,
+    coyoteTime: 0.16,
+    jumpBuffer: 0.16,
+    terminalVelocity: -26
   };
 
   const state = {
@@ -32,6 +32,7 @@
     coyote: 0,
     jumpBuffer: 0,
     invincible: 0,
+    landingSquash: 0,
     face: 1,
     keys: { left: false, right: false },
     collected: new Set(),
@@ -242,18 +243,24 @@
 
   function addSpike(x, z, y) {
     const group = new THREE_REF.Group();
+    const base = new THREE_REF.Mesh(
+      new THREE_REF.BoxGeometry(1.55, 0.12, 0.72),
+      makeMaterial(0x76142e, { emissive: 0x390816, emissiveIntensity: 0.28 })
+    );
+    base.position.y = -0.04;
+    group.add(base);
     for (let i = 0; i < 3; i += 1) {
       const spike = new THREE_REF.Mesh(
-        new THREE_REF.ConeGeometry(0.28, 0.9, 4),
-        makeMaterial(0xff3d76, { emissive: 0x5e0920, emissiveIntensity: 0.4, roughness: 0.45 })
+        new THREE_REF.ConeGeometry(0.32, 1.0, 4),
+        makeMaterial(0xff2d6f, { emissive: 0x7d0928, emissiveIntensity: 0.58, roughness: 0.42 })
       );
-      spike.position.set((i - 1) * 0.42, 0.35, 0);
+      spike.position.set((i - 1) * 0.46, 0.44, 0);
       spike.rotation.y = Math.PI / 4;
       spike.castShadow = true;
       group.add(spike);
     }
     group.position.set(x, y || 0.42, z);
-    group.userData.radius = 0.9;
+    group.userData.radius = 0.82;
     scene.add(group);
     spikes.push(group);
   }
@@ -389,13 +396,13 @@
   }
 
   function buildWorld() {
-    scene.background = new THREE_REF.Color(0x9ddff5);
-    scene.fog = new THREE_REF.Fog(0x9ddff5, 30, 92);
+    scene.background = new THREE_REF.Color(0xa9e7ff);
+    scene.fog = new THREE_REF.Fog(0xa9e7ff, 26, 82);
 
-    const hemi = new THREE_REF.HemisphereLight(0xcff6ff, 0x604629, 1.7);
+    const hemi = new THREE_REF.HemisphereLight(0xd9f8ff, 0x755334, 1.9);
     scene.add(hemi);
-    const sun = new THREE_REF.DirectionalLight(0xfff0b8, 2.6);
-    sun.position.set(-12, 20, 14);
+    const sun = new THREE_REF.DirectionalLight(0xfff0b8, 3.0);
+    sun.position.set(-10, 18, 11);
     sun.castShadow = true;
     sun.shadow.mapSize.width = 2048;
     sun.shadow.mapSize.height = 2048;
@@ -413,40 +420,54 @@
     scene.add(sunMoon);
 
     [
-      [-17, 0, 14, 5.2, 0.8, 0x2b4e6e, 0.3],
-      [-4.8, 0.2, 7.8, 4.8, 0.8, 0x315d76, 0.55],
-      [4.6, -0.15, 6.5, 4.2, 0.7, 0x2f6177, 0.8],
-      [13.5, 0.25, 7.2, 4.4, 0.7, 0x355c72, 1.15],
-      [25.0, -0.2, 9.2, 4.7, 0.8, 0x284d69, 0.65],
-      [36.6, 0.35, 9.4, 4.5, 0.75, 0x315a72, 1.0],
-      [50.7, 0, 14.4, 5.2, 0.8, 0x294c6d, 0.45]
+      [-17.0, 0, 14.0, 5.3, 0.8, 0x2b4e6e, 0.32],
+      [-7.0, 0, 8.0, 4.8, 0.72, 0x315d76, 0.55],
+      [-0.8, 0, 5.4, 4.2, 0.62, 0x426f82, 0.82],
+      [5.8, 0, 7.2, 4.6, 0.7, 0x2f6177, 0.72],
+      [13.7, 0, 7.6, 4.6, 0.7, 0x355c72, 1.0],
+      [21.8, 0, 7.8, 4.8, 0.72, 0x284d69, 0.72],
+      [30.4, 0, 8.2, 4.8, 0.72, 0x315a72, 0.96],
+      [39.5, 0, 8.4, 4.9, 0.72, 0x315d76, 0.66],
+      [49.4, 0, 13.0, 5.4, 0.82, 0x294c6d, 0.45]
+    ].forEach((args) => addPlatform(...args));
+    [
+      [-12.0, 0, 4.8, 3.1, 0.22, 0x5b7890, 0.96],
+      [-3.8, 0, 3.0, 3.0, 0.2, 0x6d849a, 1.06],
+      [2.4, 0, 3.4, 3.0, 0.2, 0x6d849a, 1.18],
+      [9.7, 0, 3.6, 3.0, 0.2, 0x6d849a, 1.2],
+      [17.8, 0, 3.8, 3.1, 0.22, 0x6d849a, 1.08],
+      [26.1, 0, 3.5, 3.0, 0.2, 0x6d849a, 1.24],
+      [34.8, 0, 3.8, 3.0, 0.22, 0x6d849a, 1.12],
+      [44.3, 0, 3.8, 3.0, 0.22, 0x6d849a, 0.95]
     ].forEach((args) => addPlatform(...args));
     platforms.forEach(addPlatformTrim);
 
-    const movingA = addPlatform(0.2, 0, 3.2, 3.8, 0.55, 0x3a7d8d, 0.95);
-    movingA.userData.move = { baseX: 0.2, baseY: 0.95, amplitudeX: 2.2, amplitudeY: 0, speed: 1.25, lastX: movingA.position.x, lastY: movingA.position.y };
+    const movingA = addPlatform(1.1, 0, 3.2, 3.8, 0.5, 0x3a7d8d, 1.18);
+    movingA.userData.move = { baseX: 1.1, baseY: 1.18, amplitudeX: 0.75, amplitudeY: 0, speed: 0.9, lastX: movingA.position.x, lastY: movingA.position.y };
     movers.push(movingA);
-    const movingB = addPlatform(19.0, 0, 3.0, 3.6, 0.55, 0x3a7d8d, 1.0);
-    movingB.userData.move = { baseX: 19.0, baseY: 1.0, amplitudeX: 1.5, amplitudeY: 1.0, speed: 1.45, lastX: movingB.position.x, lastY: movingB.position.y };
+    const movingB = addPlatform(26.1, 0, 3.2, 3.6, 0.5, 0x3a7d8d, 1.22);
+    movingB.userData.move = { baseX: 26.1, baseY: 1.22, amplitudeX: 0.65, amplitudeY: 0.35, speed: 1.05, lastX: movingB.position.x, lastY: movingB.position.y };
     movers.push(movingB);
-    const movingC = addPlatform(42.6, 0, 3.6, 3.8, 0.55, 0x3a7d8d, 1.2);
-    movingC.userData.move = { baseX: 42.6, baseY: 1.2, amplitudeX: 2.3, amplitudeY: 0.45, speed: 1.2, lastX: movingC.position.x, lastY: movingC.position.y };
+    const movingC = addPlatform(44.2, 0, 3.5, 3.8, 0.5, 0x3a7d8d, 1.0);
+    movingC.userData.move = { baseX: 44.2, baseY: 1.0, amplitudeX: 0.8, amplitudeY: 0.25, speed: 0.95, lastX: movingC.position.x, lastY: movingC.position.y };
     movers.push(movingC);
     movers.forEach(addPlatformTrim);
 
     [
-      [-19, 1.85, -0.9], [-15.4, 2.0, 0.85], [-10.8, 2.25, 0],
-      [-3.9, 2.45, -0.6], [1.2, 2.75, 0.7], [5.8, 2.55, 0],
-      [12.2, 3.0, -0.7], [16.1, 3.1, 0.65], [20.2, 3.0, 0],
-      [25.0, 2.2, 0.8], [29.0, 2.25, -0.7], [35.0, 2.7, 0],
-      [39.2, 3.0, 0.7], [43.6, 3.3, -0.65], [47.2, 2.6, 0.8],
-      [50.8, 2.0, -0.7], [54.2, 2.0, 0.6], [56.5, 2.1, 0]
+      [-19.2, 1.65, -0.8], [-16.2, 1.72, 0], [-13.2, 1.82, 0.75],
+      [-9.2, 1.92, -0.65], [-5.8, 2.05, 0.6], [-2.4, 2.16, 0],
+      [1.1, 2.32, 0.7], [4.1, 2.12, -0.5], [7.2, 2.0, 0],
+      [10.8, 2.34, 0.65], [14.0, 2.5, -0.65], [17.4, 2.32, 0],
+      [20.8, 2.04, 0.75], [24.2, 2.26, -0.7], [27.6, 2.45, 0],
+      [31.2, 2.34, 0.65], [34.8, 2.26, -0.65], [38.3, 2.0, 0],
+      [41.6, 2.1, 0.75], [44.5, 2.25, -0.7], [47.6, 1.95, 0],
+      [50.2, 1.78, 0.7], [52.8, 1.75, -0.6], [55.0, 1.9, 0]
     ].forEach(([x, y, z]) => addCoin(x, y, z));
 
-    [-8.2, 7.4, 14.9, 27.4, 32.6, 48.3, 52.4].forEach((x, index) => addSpike(x, index % 2 ? 0.65 : -0.65));
-    addCheckpoint(-2.5, 'Bridge');
-    addCheckpoint(24.2, 'Ruins');
-    addCheckpoint(44.4, 'Portal Run');
+    [-8.2, 12.7, 22.6, 36.8, 48.7].forEach((x, index) => addSpike(x, index % 2 ? 0.7 : -0.7));
+    addCheckpoint(-1.6, 'Bridge');
+    addCheckpoint(21.8, 'Ruins');
+    addCheckpoint(39.8, 'Portal Run');
 
     [-18, -10, 9, 22, 38, 53].forEach((x, index) => createTree(x, index % 2 ? -2.9 : 2.75, 0.74 + index * 0.035));
     createCloud(-13, 12, -20, 1.5);
@@ -539,10 +560,11 @@
     player.rotation.y = Math.PI / 2;
     player.scale.set(1, 1, 1);
     state.face = 1;
-    state.velocity.x = fresh ? 0 : 1.2;
+    state.velocity.x = fresh ? 0 : 1.8;
     state.velocity.y = 0;
     state.velocity.z = 0;
-    state.invincible = fresh ? 0 : 1.25;
+    state.landingSquash = 0.12;
+    state.invincible = fresh ? 0 : 0.75;
   }
 
   function die() {
@@ -583,9 +605,10 @@
       const halfD = data.depth / 2;
       const top = platform.position.y + data.height / 2;
       const standY = top - PLAYER_FOOT_OFFSET;
-      const withinX = x >= platform.position.x - halfW && x <= platform.position.x + halfW;
-      const withinZ = z >= platform.position.z - halfD && z <= platform.position.z + halfD;
-      const crossedTop = previousY >= standY - 0.18 && y <= standY + 0.65;
+      const edgeGrace = state.velocity.y <= 0 ? 0.34 : 0.08;
+      const withinX = x >= platform.position.x - halfW - edgeGrace && x <= platform.position.x + halfW + edgeGrace;
+      const withinZ = z >= platform.position.z - halfD - 0.24 && z <= platform.position.z + halfD + 0.24;
+      const crossedTop = previousY >= standY - 0.24 && y <= standY + 0.82;
       if (withinX && withinZ && crossedTop) {
         if (!best || top > best.top) best = { mesh: platform, top, standY };
       }
@@ -606,11 +629,12 @@
   }
 
   function updatePlayer(delta) {
+    const wasGrounded = state.grounded;
     const input = (state.keys.right ? 1 : 0) - (state.keys.left ? 1 : 0);
     const accel = state.grounded ? controls.groundAccel : controls.airAccel;
     const targetSpeed = input * controls.maxSpeed;
     if (input !== 0) {
-      state.velocity.x += (targetSpeed - state.velocity.x) * Math.min(1, accel * delta / controls.maxSpeed);
+      state.velocity.x += (targetSpeed - state.velocity.x) * Math.min(1, accel * delta / Math.max(1, Math.abs(targetSpeed - state.velocity.x)));
       state.face = input > 0 ? 1 : -1;
     } else if (state.grounded) {
       const friction = controls.groundFriction * delta;
@@ -647,6 +671,7 @@
       state.velocity.y = 0;
       state.grounded = true;
       state.onPlatform = platformHit.mesh;
+      if (!wasGrounded) state.landingSquash = 0.18;
       const motion = platformHit.mesh.userData.platform;
       if (motion.deltaX) player.position.x += motion.deltaX;
       if (motion.deltaY) player.position.y += motion.deltaY;
@@ -662,11 +687,14 @@
   function animateStickman(delta, elapsed) {
     const speed = Math.abs(state.velocity.x);
     const parts = player.userData.parts || {};
-    const stride = elapsed * (speed > 4 ? 10 : 7.2);
+    const stride = elapsed * (speed > 5.8 ? 12.5 : 8.2);
     const walk = Math.sin(stride) * Math.min(0.8, speed / controls.maxSpeed);
     player.rotation.y += ((state.face > 0 ? Math.PI / 2 : -Math.PI / 2) - player.rotation.y) * Math.min(1, delta * 12);
-    player.scale.y = 1 + (state.grounded ? Math.abs(walk) * 0.025 : -0.02);
-    if (parts.head) parts.head.position.y = 2.28 + Math.sin(elapsed * 2.5) * (state.grounded ? 0.025 : 0.01);
+    state.landingSquash = Math.max(0, state.landingSquash - delta);
+    const squash = state.landingSquash > 0 ? Math.sin((state.landingSquash / 0.18) * Math.PI) : 0;
+    const idleBounce = speed < 0.25 && state.grounded ? Math.sin(elapsed * 3.2) * 0.035 : 0;
+    player.scale.set(1 + squash * 0.08, 1 - squash * 0.1 + (state.grounded ? Math.abs(walk) * 0.025 : -0.02), 1 + squash * 0.08);
+    if (parts.head) parts.head.position.y = 2.28 + idleBounce + Math.sin(elapsed * 2.5) * (state.grounded ? 0.025 : 0.01);
 
     if (!state.grounded) {
       const falling = state.velocity.y < -1;
@@ -760,11 +788,13 @@
   }
 
   function updateCamera(delta) {
-    const lookAhead = Math.max(-3.2, Math.min(4.2, state.velocity.x * 0.32));
-    cameraTarget.set(player.position.x - 7 + lookAhead, player.position.y + 4.6, 11.2);
-    camera.position.lerp(cameraTarget, 1 - Math.exp(-delta * 3.8));
-    cameraLook.set(player.position.x + 2.6 + lookAhead * 0.35, player.position.y + 1.1, 0);
+    const lookAhead = Math.max(-2.2, Math.min(3.2, state.velocity.x * 0.22));
+    const behind = state.face > 0 ? -5.0 : 5.0;
+    cameraTarget.set(player.position.x + behind + lookAhead, player.position.y + 3.25, 7.35);
+    camera.position.lerp(cameraTarget, 1 - Math.exp(-delta * 5.2));
+    cameraLook.set(player.position.x + lookAhead * 0.32, player.position.y + 1.05, 0);
     camera.lookAt(cameraLook);
+    camera.rotation.z += ((state.face > 0 ? -0.025 : 0.025) - camera.rotation.z) * Math.min(1, delta * 3);
   }
 
   function tick() {
