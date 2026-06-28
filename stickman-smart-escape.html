@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Stickman Smart Escape - Free Puzzle Trap Platformer | YouOOO Games</title>
+  <meta name="description" content="Play Stickman Smart Escape free online. Guide Tamer through 20 smart puzzle trap levels with yo-yo swings, keys, coins, checkpoints, saws, spikes, timed doors, buttons, and moving platforms.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://game.youooo.com/stickman-smart-escape.html">
+  <meta property="og:title" content="Stickman Smart Escape - Free Puzzle Trap Platformer | YouOOO Games">
+  <meta property="og:description" content="Think, time your jumps, use Tamer's yo-yo, collect keys, avoid traps, and reach the exit door in 20 puzzle platform levels.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://game.youooo.com/stickman-smart-escape.html">
+  <meta property="og:image" content="https://game.youooo.com/youooo_logo.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Stickman Smart Escape - Free Puzzle Trap Platformer">
+  <meta name="twitter:description" content="A smart trap-escape platformer starring Tamer, with yo-yo traversal, keys, timed doors, checkpoints, and saved progress.">
+  <meta name="twitter:image" content="https://game.youooo.com/youooo_logo.png">
+  <meta name="theme-color" content="#07110f">
+  <link rel="icon" href="youooo_logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&amp;family=Orbitron:wght@700;900&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="stickman-smart-escape.css">
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"VideoGame",
+    "name":"Stickman Smart Escape",
+    "description":"An original puzzle trap platformer starring Tamer, the YouOOO stickman, with 20 levels, yo-yo traversal, keys, coins, checkpoints, saw traps, spikes, timed doors, buttons, moving platforms, and saved progress.",
+    "url":"https://game.youooo.com/stickman-smart-escape.html",
+    "image":"https://game.youooo.com/youooo_logo.png",
+    "applicationCategory":"Game",
+    "gamePlatform":["Web browser","Desktop","Mobile"],
+    "genre":["Platform","Puzzle","Action"],
+    "numberOfPlayers":1,
+    "playMode":"SinglePlayer",
+    "isAccessibleForFree":true,
+    "inLanguage":"en",
+    "publisher":{"@type":"Organization","name":"YouOOO Games","url":"https://game.youooo.com/"}
+  }
+  </script>
+</head>
+<body>
+  <div class="smart-bg" aria-hidden="true"><div class="grid"></div><div class="glow glow-a"></div><div class="glow glow-b"></div></div>
+  <header class="smart-header">
+    <a href="index.html" class="back-link">← Games</a>
+    <div class="smart-brand"><span class="brand-mark">Y</span><div><small>YouOOO Games</small><h1>Stickman Smart Escape</h1></div></div>
+    <div class="header-actions"><button id="levelSelectButton" type="button">Levels</button><button id="soundButton" type="button" aria-pressed="true">Sound On</button></div>
+  </header>
+  <main class="smart-page">
+    <section class="game-shell" aria-label="Stickman Smart Escape game">
+      <div class="hud">
+        <div><span>Level</span><strong id="levelReadout">1</strong></div>
+        <div><span>Keys</span><strong id="keyReadout">0/1</strong></div>
+        <div><span>Coins</span><strong id="coinReadout">0</strong></div>
+        <div><span>Deaths</span><strong id="deathReadout">0</strong></div>
+        <div><span>Time</span><strong id="timeReadout">00:00</strong></div>
+        <div class="hint-box"><span>Hint</span><strong id="hintReadout">Get the key</strong></div>
+        <button id="pauseButton" type="button">Pause</button>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="smartCanvas" width="960" height="540" tabindex="0" aria-label="Puzzle trap platformer canvas"></canvas>
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+        <div class="overlay visible" id="menuOverlay">
+          <div class="panel">
+            <span class="kicker">Puzzle trap platformer</span>
+            <h2>Think before you jump.</h2>
+            <p>Use Tamer's yo-yo to cross gaps, pull toward anchors, collect keys, dodge fair trap patterns, and reach the exit door.</p>
+            <div class="pills"><span>20 Levels</span><span>Yo-yo Tool</span><span>Checkpoints</span><span>Saved Progress</span></div>
+            <div class="save-row"><span>Unlocked <strong id="menuUnlocked">1</strong></span><span>Total Coins <strong id="menuCoins">0</strong></span><span>Deaths <strong id="menuDeaths">0</strong></span></div>
+            <button class="primary" id="startButton" type="button">Start Level 1</button>
+            <button class="secondary" id="menuLevelsButton" type="button">Level Select</button>
+            <p class="desktop-help">A/D or arrows move · Space/W/Up jumps · X/Shift uses yo-yo · R restarts · P pauses</p>
+          </div>
+        </div>
+        <div class="overlay" id="pauseOverlay">
+          <div class="panel compact"><span class="kicker">Paused</span><h2 id="pauseTitle">Read the trap pattern.</h2><button class="primary" id="resumeButton" type="button">Resume</button><button class="secondary" id="restartButton" type="button">Restart Level</button><button class="secondary" id="pauseLevelsButton" type="button">Level Select</button></div>
+        </div>
+        <div class="overlay" id="completeOverlay">
+          <div class="panel compact"><span class="kicker">Door escaped</span><h2>Level clear.</h2><div class="complete-stats" id="completeStats"></div><button class="primary" id="nextButton" type="button">Next Level</button><button class="secondary" id="replayButton" type="button">Replay Level</button><button class="secondary" id="completeLevelsButton" type="button">Level Select</button></div>
+        </div>
+        <div class="overlay" id="levelOverlay">
+          <div class="panel level-panel"><span class="kicker">Choose a chamber</span><h2>Level Select</h2><div class="level-grid" id="levelGrid"></div><button class="secondary" id="closeLevelsButton" type="button">Close</button></div>
+        </div>
+      </div>
+      <div class="mobile-controls" aria-label="Mobile platform controls">
+        <div class="mobile-tools"><span>Rotate for landscape play</span><button id="fullscreenButton" type="button">⛶ Fullscreen</button></div>
+        <div class="move-pad"><button id="leftButton" class="touch-button" type="button" aria-label="Move left">◀</button><button id="rightButton" class="touch-button" type="button" aria-label="Move right">▶</button></div>
+        <button id="jumpButton" class="touch-button jump-button" type="button" aria-label="Jump">Jump</button>
+        <button id="yoyoButton" class="touch-button yoyo-button" type="button" aria-label="Use yo-yo">Yo-yo</button>
+      </div>
+    </section>
+    <section class="smart-info">
+      <div><span class="kicker">Tamer's smartest escape</span><h2>Keys, timing, traps, and yo-yo routes.</h2></div>
+      <p>Each handcrafted chamber introduces a readable puzzle: moving and falling platforms, disappearing ledges, spike pits, saw cycles, timed doors, pressure buttons, risky coins, and checkpoints before hard sections.</p>
+    </section>
+  </main>
+  <footer><a href="index.html">YouOOO Games</a><span>·</span><a href="stickman-escape.html">Stickman Escape</a><span>·</span><a href="stickman-maze-run.html">Stickman Maze Run</a></footer>
+  <script src="stickman-smart-escape.js"></script>
+</body>
+</html>
