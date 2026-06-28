@@ -14,7 +14,8 @@
   const JUMP_BUFFER = 0.12;
   const PLAYER_W = 26;
   const PLAYER_H = 58;
-  const WHISTLE_COOLDOWN = 5;
+  const WHISTLE_COOLDOWN = 8.6;
+  const YOYO_PICKUP_LEVEL = 1;
 
   const $ = (id) => document.getElementById(id);
   const canvas = $("smartCanvas");
@@ -24,7 +25,7 @@
     menu: $("menuOverlay"), pause: $("pauseOverlay"), complete: $("completeOverlay"), levels: $("levelOverlay"), toast: $("toast"),
     menuUnlocked: $("menuUnlocked"), menuCoins: $("menuCoins"), menuDeaths: $("menuDeaths"), grid: $("levelGrid"), completeStats: $("completeStats"),
     start: $("startButton"), pauseButton: $("pauseButton"), resume: $("resumeButton"), restart: $("restartButton"), next: $("nextButton"), replay: $("replayButton"),
-    sound: $("soundButton"), fullscreen: $("fullscreenButton"), whistleButton: $("whistleButton"), background: $("backgroundMode")
+    sound: $("soundButton"), fullscreen: $("fullscreenButton"), whistleButton: $("whistleButton"), background: $("backgroundMode"), controls: $("controlReadout")
   };
 
   const input = { left: false, right: false, jump: false, yoyo: false, jumpPressed: false, yoyoPressed: false };
@@ -35,6 +36,8 @@
   let lastTime = 0;
   let toastTimer = 0;
   let whistleCooldown = 0;
+  let audioCtx = null;
+  let whistleBus = null;
   let run = null;
 
   function rect(x, y, w, h, type = "solid", extra = {}) { return { x, y, w, h, type, ...extra }; }
@@ -47,6 +50,7 @@
   function button(x, y, id, hold = false) { return { x, y, w: 42, h: 12, id, hold, pressed: false, timer: 0 }; }
   function door(x, y, h = 88, id = null, keyDoor = false, seconds = 4) { return { x, y, w: 34, h, id, keyDoor, seconds, open: false, timer: 0 }; }
   function checkpoint(x, y) { return { x, y, w: 26, h: 42, active: false }; }
+  function yoyoPickup(x, y) { return { x, y, r: 18, collected: false }; }
 
   const base = {
     platforms: [rect(0, 500, 220, 40), rect(260, 470, 160, 30), rect(460, 430, 150, 30), rect(660, 390, 210, 30), rect(880, 500, 80, 40)],
@@ -113,6 +117,10 @@
       l.buttons.push(button(120, 488, "B", false));
       l.doors.push(door(372, 254, 82, "B", false, 2.6));
     }
+    if (i === YOYO_PICKUP_LEVEL) {
+      l.yoyoPickup = yoyoPickup(770, 300);
+      l.hint = "Find the yo-yo";
+    }
     l.start = { x: 46, y: 440 };
     l.exit = { x: 904, y: 432 };
     return l;
@@ -121,7 +129,7 @@
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
   function loadSave() {
-    const fallback = { unlocked: 1, lastLevel: 0, deaths: 0, coins: 0, best: {}, levelCoins: {}, backgroundMode: "night" };
+    const fallback = { unlocked: 1, lastLevel: 0, deaths: 0, coins: 0, best: {}, levelCoins: {}, backgroundMode: "night", yoyoUnlocked: false };
     try {
       const parsed = JSON.parse(localStorage.getItem(SAVE_KEY) || "null");
       const merged = { ...fallback, ...(parsed || {}), unlocked: Math.max(1, parsed?.unlocked || 1) };
@@ -420,9 +428,22 @@
         beep(920, 0.07, "triangle");
       }
     });
+    const pickup = run.level.yoyoPickup;
+    if (pickup && !pickup.collected && circleRect(pickup.x, pickup.y, pickup.r, p.x, p.y, PLAYER_W, PLAYER_H)) {
+      pickup.collected = true;
+      save.yoyoUnlocked = true;
+      writeSave();
+      toast("Yo-yo found! Press F to throw it.");
+      playSound("yoyoHook");
+      updateHud();
+    }
   }
 
   function toggleYoyo() {
+    if (!yoyoAvailable()) {
+      toast("Find the yo-yo in level 2");
+      return;
+    }
     if (run.yoyo.active) { run.yoyo.active = false; return; }
     const p = run.player;
     const cx = p.x + PLAYER_W / 2;
@@ -445,6 +466,10 @@
     } else {
       toast("No yo-yo anchor in range");
     }
+  }
+
+  function yoyoAvailable() {
+    return save.yoyoUnlocked;
   }
 
   function gameplayWhistle() {
@@ -482,6 +507,7 @@
     l.anchors.forEach(drawAnchor);
     l.coins.forEach(drawCoin);
     l.keys.forEach(drawKey);
+    if (l.yoyoPickup) drawYoyoPickup(l.yoyoPickup);
     drawExit(l.exit, run.keys >= run.neededKeys);
     l.saws.forEach(drawSaw);
     drawYoyo();
@@ -740,6 +766,27 @@
     ctx.beginPath(); ctx.moveTo(k.x + 14, k.y + 9); ctx.lineTo(k.x + 31, k.y + 9); ctx.lineTo(k.x + 31, k.y + 15); ctx.moveTo(k.x + 23, k.y + 9); ctx.lineTo(k.x + 23, k.y + 14); ctx.stroke();
   }
 
+  function drawYoyoPickup(pickup) {
+    if (pickup.collected || save.yoyoUnlocked) return;
+    const bob = Math.sin(run.time * 3.5) * 5;
+    ctx.save();
+    ctx.translate(pickup.x, pickup.y + bob);
+    ctx.fillStyle = "rgba(54,229,255,.12)";
+    ctx.shadowColor = "#36e5ff";
+    ctx.shadowBlur = 22;
+    ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#36e5ff";
+    ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#eaffff";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = "#eaffff";
+    ctx.font = "900 10px Orbitron";
+    ctx.textAlign = "center";
+    ctx.fillText("YO-YO", 0, -29);
+    ctx.restore();
+  }
+
   function drawExit(e, unlocked) {
     ctx.fillStyle = unlocked ? "#22c55e" : "#334155";
     roundRect(e.x, e.y - 70, 40, 76, 18, true, false);
@@ -835,6 +882,12 @@
     ui.deaths.textContent = String(save.deaths);
     ui.time.textContent = formatTime(run.time);
     ui.hint.textContent = run.level.hint;
+    if (ui.controls) ui.controls.textContent = yoyoAvailable() ? "F Yo-Yo · G Whistle" : "Yo-Yo locked · G Whistle";
+    const yoyoButton = $("yoyoButton");
+    if (yoyoButton) {
+      yoyoButton.disabled = !yoyoAvailable();
+      yoyoButton.textContent = yoyoAvailable() ? "Yo-yo" : "Locked";
+    }
     if (ui.whistleButton) {
       ui.whistleButton.disabled = whistleCooldown > 0;
       ui.whistleButton.textContent = whistleCooldown > 0 ? `${Math.ceil(whistleCooldown)}s` : "Whistle";
@@ -875,7 +928,6 @@
     toastTimer = 1.45;
   }
 
-  let audioCtx = null;
   function beep(freq, dur, type) {
     if (!soundOn) return;
     try {
@@ -890,12 +942,75 @@
     } catch (_) {}
   }
 
+  function getWhistleBus() {
+    if (whistleBus) return whistleBus;
+    audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+    const master = audioCtx.createGain();
+    const reverb = audioCtx.createConvolver();
+    const wet = audioCtx.createGain();
+    const length = Math.floor(audioCtx.sampleRate * 1.15);
+    const impulse = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
+    for (let channel = 0; channel < impulse.numberOfChannels; channel += 1) {
+      const data = impulse.getChannelData(channel);
+      for (let i = 0; i < length; i += 1) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 3.2);
+    }
+    master.gain.value = .3;
+    wet.gain.value = .14;
+    reverb.buffer = impulse;
+    reverb.connect(wet).connect(master);
+    master.connect(audioCtx.destination);
+    whistleBus = { dry: master, reverb };
+    return whistleBus;
+  }
+
+  function scheduleWhistleNote(frequency, duration, volume, delay = 0) {
+    if (!soundOn) return;
+    try {
+      audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+      const start = audioCtx.currentTime + delay;
+      const end = start + duration;
+      const whistle = audioCtx.createOscillator();
+      const harmonic = audioCtx.createOscillator();
+      const harmonicGain = audioCtx.createGain();
+      const envelope = audioCtx.createGain();
+      const vibrato = audioCtx.createOscillator();
+      const vibratoDepth = audioCtx.createGain();
+      const bus = getWhistleBus();
+      whistle.type = "sine";
+      harmonic.type = "sine";
+      vibrato.type = "sine";
+      whistle.frequency.setValueAtTime(frequency * .985, start);
+      whistle.frequency.exponentialRampToValueAtTime(frequency, start + Math.min(.09, duration * .3));
+      harmonic.frequency.setValueAtTime(frequency * 2, start);
+      harmonicGain.gain.setValueAtTime(.045, start);
+      vibrato.frequency.setValueAtTime(5.1, start);
+      vibratoDepth.gain.setValueAtTime(frequency * .007, start);
+      envelope.gain.setValueAtTime(.0001, start);
+      envelope.gain.exponentialRampToValueAtTime(volume, start + Math.min(.055, duration * .25));
+      envelope.gain.setValueAtTime(volume * .88, Math.max(start + .06, end - .09));
+      envelope.gain.exponentialRampToValueAtTime(.0001, end);
+      vibrato.connect(vibratoDepth).connect(whistle.frequency);
+      whistle.connect(envelope);
+      harmonic.connect(harmonicGain).connect(envelope);
+      envelope.connect(bus.dry);
+      envelope.connect(bus.reverb);
+      whistle.start(start); harmonic.start(start); vibrato.start(start);
+      whistle.stop(end + .01); harmonic.stop(end + .01); vibrato.stop(end + .01);
+    } catch (_) {}
+  }
+
+  function scheduleWhistleMelody(delay = 0) {
+    const note = (frequency, duration, start, volume = .15) => scheduleWhistleNote(frequency, duration, volume, delay + start);
+    note(659.25, .5, 0); note(783.99, .5, .5); note(880, 1, 1, .16);
+    note(783.99, .5, 2); note(659.25, .5, 2.5); note(587.33, 1, 3, .14);
+    note(659.25, .5, 4.5); note(783.99, .5, 5); note(987.77, 1, 5.5, .16);
+    note(880, .5, 6.5); note(783.99, .5, 7); note(659.25, 1, 7.5, .145);
+  }
+
   function playSound(name) {
     if (name === "yoyoThrow") beep(240, 0.05, "triangle"), setTimeout(() => beep(620, 0.09, "triangle"), 35);
     if (name === "yoyoHook") beep(520, 0.06, "sine"), setTimeout(() => beep(880, 0.1, "triangle"), 70);
-    if (name === "whistle") {
-      [880, 988, 1175, 988, 1319].forEach((freq, i) => setTimeout(() => beep(freq, i === 4 ? 0.18 : 0.1, "sine"), i * 105));
-    }
+    if (name === "whistle") scheduleWhistleMelody();
   }
 
   function bindKey(code, down, event) {
