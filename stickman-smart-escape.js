@@ -15,7 +15,6 @@
   const PLAYER_W = 26;
   const PLAYER_H = 58;
   const WHISTLE_COOLDOWN = 8.6;
-  const YOYO_PICKUP_LEVEL = 1;
   const WHISTLE_TRAP_PAUSE = 2.4;
 
   const $ = (id) => document.getElementById(id);
@@ -51,7 +50,6 @@
   function button(x, y, id, hold = false) { return { x, y, w: 42, h: 12, id, hold, pressed: false, timer: 0 }; }
   function door(x, y, h = 88, id = null, keyDoor = false, seconds = 4) { return { x, y, w: 34, h, id, keyDoor, seconds, open: false, timer: 0 }; }
   function checkpoint(x, y) { return { x, y, w: 26, h: 42, active: false }; }
-  function yoyoPickup(x, y) { return { x, y, r: 18, collected: false }; }
   function rock(x, y, trigger = 105) { return { x, y, sy: y, r: 14, trigger, armed: false, warning: 0, falling: false, vy: 0, done: false }; }
   function fakeDoor(x, y, label = "FAKE") { return { x, y, w: 38, h: 76, label, sprung: false }; }
   function yoyoSwitch(x, y, id) { return { x, y, r: 15, id, pulled: false }; }
@@ -124,10 +122,6 @@
       l.buttons.push(button(120, 488, "B", false));
       l.doors.push(door(372, 254, 82, "B", false, 2.6));
     }
-    if (i === YOYO_PICKUP_LEVEL) {
-      l.yoyoPickup = yoyoPickup(770, 300);
-      l.hint = "Find the yo-yo";
-    }
     tuneLevel(l, i);
     l.start = { x: 46, y: 440 };
     l.exit = { x: 904, y: 432 };
@@ -152,7 +146,7 @@
       l.saws = [];
       l.keys = [key(760, 302)];
       l.coins = [coin(350, 470), coin(405, 470), coin(650, 470), coin(770, 264)];
-      l.yoyoPickup = yoyoPickup(770, 300);
+      l.hint = "Hidden spikes warn first";
     } else if (i === 2) {
       l.hint = "Floor cracks before it falls";
       l.platforms.push(rect(455, 386, 120, 24, "fall", { delay: 0.18, fallVy: 0 }));
@@ -189,12 +183,12 @@
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
   function loadSave() {
-    const fallback = { unlocked: 1, lastLevel: 0, deaths: 0, coins: 0, best: {}, levelCoins: {}, backgroundMode: "night", yoyoUnlocked: false };
+    const fallback = { unlocked: 1, lastLevel: 0, deaths: 0, coins: 0, best: {}, levelCoins: {}, backgroundMode: "night", yoyoUnlocked: true };
     try {
       const parsed = JSON.parse(localStorage.getItem(SAVE_KEY) || "null");
       const merged = { ...fallback, ...(parsed || {}), unlocked: Math.max(1, parsed?.unlocked || 1) };
       if (!["night", "day", "dynamic"].includes(merged.backgroundMode)) merged.backgroundMode = "night";
-      if (merged.unlocked > YOYO_PICKUP_LEVEL + 1) merged.yoyoUnlocked = true;
+      merged.yoyoUnlocked = true;
       return merged;
     } catch (_) { return fallback; }
   }
@@ -521,22 +515,9 @@
         beep(920, 0.07, "triangle");
       }
     });
-    const pickup = run.level.yoyoPickup;
-    if (pickup && !pickup.collected && circleRect(pickup.x, pickup.y, pickup.r, p.x, p.y, PLAYER_W, PLAYER_H)) {
-      pickup.collected = true;
-      save.yoyoUnlocked = true;
-      writeSave();
-      toast("Yo-yo found! Press F to throw it.");
-      playSound("yoyoHook");
-      updateHud();
-    }
   }
 
   function toggleYoyo() {
-    if (!yoyoAvailable()) {
-      toast("Find the yo-yo in level 2");
-      return;
-    }
     if (run.yoyo.active) { run.yoyo.active = false; return; }
     const p = run.player;
     const cx = p.x + PLAYER_W / 2;
@@ -576,7 +557,7 @@
   }
 
   function yoyoAvailable() {
-    return save.yoyoUnlocked;
+    return true;
   }
 
   function gameplayWhistle() {
@@ -620,7 +601,6 @@
     l.anchors.forEach(drawAnchor);
     l.coins.forEach(drawCoin);
     l.keys.forEach(drawKey);
-    if (l.yoyoPickup) drawYoyoPickup(l.yoyoPickup);
     drawExit(l.exit, run.keys >= run.neededKeys);
     l.saws.forEach(drawSaw);
     l.rocks.forEach(drawRock);
@@ -939,27 +919,6 @@
     ctx.beginPath(); ctx.moveTo(k.x + 14, k.y + 9); ctx.lineTo(k.x + 31, k.y + 9); ctx.lineTo(k.x + 31, k.y + 15); ctx.moveTo(k.x + 23, k.y + 9); ctx.lineTo(k.x + 23, k.y + 14); ctx.stroke();
   }
 
-  function drawYoyoPickup(pickup) {
-    if (pickup.collected || save.yoyoUnlocked) return;
-    const bob = Math.sin(run.time * 3.5) * 5;
-    ctx.save();
-    ctx.translate(pickup.x, pickup.y + bob);
-    ctx.fillStyle = "rgba(54,229,255,.12)";
-    ctx.shadowColor = "#36e5ff";
-    ctx.shadowBlur = 22;
-    ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#36e5ff";
-    ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "#eaffff";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.fillStyle = "#eaffff";
-    ctx.font = "900 10px Orbitron";
-    ctx.textAlign = "center";
-    ctx.fillText("YO-YO", 0, -29);
-    ctx.restore();
-  }
-
   function drawExit(e, unlocked) {
     ctx.fillStyle = unlocked ? "#22c55e" : "#334155";
     roundRect(e.x, e.y - 70, 40, 76, 18, true, false);
@@ -1055,11 +1014,11 @@
     ui.deaths.textContent = String(save.deaths);
     ui.time.textContent = formatTime(run.time);
     ui.hint.textContent = run.level.hint;
-    if (ui.controls) ui.controls.textContent = yoyoAvailable() ? "F Yo-Yo · G Whistle" : "Yo-Yo locked · G Whistle";
+    if (ui.controls) ui.controls.textContent = "F Yo-Yo · G Whistle";
     const yoyoButton = $("yoyoButton");
     if (yoyoButton) {
-      yoyoButton.disabled = !yoyoAvailable();
-      yoyoButton.textContent = yoyoAvailable() ? "Yo-yo" : "Locked";
+      yoyoButton.disabled = false;
+      yoyoButton.textContent = "Yo-yo";
     }
     if (ui.whistleButton) {
       ui.whistleButton.disabled = whistleCooldown > 0;
