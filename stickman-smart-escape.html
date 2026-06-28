@@ -45,7 +45,11 @@
   <header class="smart-header">
     <a href="index.html" class="back-link">← Games</a>
     <div class="smart-brand"><span class="brand-mark">Y</span><div><small>YouOOO Games</small><h1>Stickman Smart Escape</h1></div></div>
-    <div class="header-actions"><button id="levelSelectButton" type="button">Levels</button><button id="soundButton" type="button" aria-pressed="true">Sound On</button></div>
+    <div class="header-actions">
+      <label class="background-picker" for="backgroundMode"><span>Background</span><select id="backgroundMode" aria-label="Choose game background"><option value="night">Night</option><option value="day">Day</option><option value="dynamic">Dynamic</option></select></label>
+      <button id="levelSelectButton" type="button">Levels</button>
+      <button id="soundButton" type="button" aria-pressed="true">Sound On</button>
+    </div>
   </header>
   <main class="smart-page">
     <section class="game-shell" aria-label="Stickman Smart Escape game">

@@ -24,7 +24,7 @@
     menu: $("menuOverlay"), pause: $("pauseOverlay"), complete: $("completeOverlay"), levels: $("levelOverlay"), toast: $("toast"),
     menuUnlocked: $("menuUnlocked"), menuCoins: $("menuCoins"), menuDeaths: $("menuDeaths"), grid: $("levelGrid"), completeStats: $("completeStats"),
     start: $("startButton"), pauseButton: $("pauseButton"), resume: $("resumeButton"), restart: $("restartButton"), next: $("nextButton"), replay: $("replayButton"),
-    sound: $("soundButton"), fullscreen: $("fullscreenButton"), whistleButton: $("whistleButton")
+    sound: $("soundButton"), fullscreen: $("fullscreenButton"), whistleButton: $("whistleButton"), background: $("backgroundMode")
   };
 
   const input = { left: false, right: false, jump: false, yoyo: false, jumpPressed: false, yoyoPressed: false };
@@ -57,6 +57,12 @@
 
   const LEVELS = Array.from({ length: 20 }, (_, i) => makeLevel(i));
   if (LEVELS.length !== 20) throw new Error("Stickman Smart Escape requires exactly 20 levels");
+  const HERITAGE_BACKGROUNDS = {
+    0: "ziggurat", 1: "ishtar", 2: "palms", 3: "walls", 4: "dunes",
+    5: "cuneiform", 6: "palms", 7: "ziggurat", 8: "ishtar", 9: "walls",
+    10: "dunes", 11: "cuneiform", 12: "palms", 13: "walls", 14: "ziggurat",
+    15: "ishtar", 16: "dunes", 17: "cuneiform", 18: "palms", 19: "walls"
+  };
 
   function makeLevel(i) {
     const n = i + 1;
@@ -66,8 +72,8 @@
     l.platforms = [
       rect(0, 500, 180, 40),
       rect(225, 472 - (i % 3) * 12, 130, 28),
-      rect(402, 442 - (i % 4) * 10, 116, 28, i > 5 && i % 4 === 2 ? "fall" : "solid", { delay: 0.35, fallVy: 0 }),
-      rect(566, 420 - (i % 3) * 16, 120, 28, i > 6 && i % 5 === 1 ? "vanish" : "solid", { phase: i * 0.3, on: 1.4, off: 1 }),
+      rect(402, 442 - (i % 4) * 10, 116, 28, i > 2 && i % 4 === 2 ? "fall" : "solid", { delay: 0.28, fallVy: 0 }),
+      rect(566, 420 - (i % 3) * 16, 120, 28, i > 3 && i % 5 === 1 ? "vanish" : "solid", { phase: i * 0.3, on: 1.05, off: 1.15 }),
       rect(742, 392 - (i % 4) * 12, 108, 28),
       rect(890, 500, 70, 40)
     ];
@@ -75,6 +81,8 @@
     if (i > 3) l.platforms.push(rect(650, 300, 112, 24, "move", { sx: 650, sy: 300, dx: i % 2 ? -95 : 0, dy: 64, period: 2.4 }));
     if (i > 8) l.platforms.push(rect(126, 392, 86, 22, "vanish", { phase: 0.6, on: 1.05, off: 0.95 }));
     if (i > 12) l.platforms.push(rect(500, 265, 95, 22, "fall", { delay: 0.28, fallVy: 0 }));
+    l.platforms.push(rect(330 + (i % 2) * 90, 366 - (i % 3) * 18, 94, 22, "trapShift", { sx: 330 + (i % 2) * 90, sy: 366 - (i % 3) * 18, dx: i % 2 ? -105 : 105, trigger: 120, speed: 3.8, activated: false, offset: 0 }));
+    if (i > 4) l.platforms.push(rect(708, 255 + (i % 3) * 16, 86, 22, "trapSink", { sx: 708, sy: 255 + (i % 3) * 16, sink: 82, trigger: 92, speed: 4.6, activated: false, offset: 0 }));
     l.spikes = [spike(182, 516, 92), spike(356, 516, 88), spike(518, 516, 104), spike(686, 516, 82)];
     if (i > 4) l.spikes.push(spike(805, 408 - (i % 4) * 12, 42));
     l.hiddenSpikes = [hiddenSpike(290 + (i % 3) * 72, 516, 58), hiddenSpike(620, 516, 52)];
@@ -113,10 +121,12 @@
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
   function loadSave() {
-    const fallback = { unlocked: 1, lastLevel: 0, deaths: 0, coins: 0, best: {}, levelCoins: {} };
+    const fallback = { unlocked: 1, lastLevel: 0, deaths: 0, coins: 0, best: {}, levelCoins: {}, backgroundMode: "night" };
     try {
       const parsed = JSON.parse(localStorage.getItem(SAVE_KEY) || "null");
-      return { ...fallback, ...(parsed || {}), unlocked: Math.max(1, parsed?.unlocked || 1) };
+      const merged = { ...fallback, ...(parsed || {}), unlocked: Math.max(1, parsed?.unlocked || 1) };
+      if (!["night", "day", "dynamic"].includes(merged.backgroundMode)) merged.backgroundMode = "night";
+      return merged;
     } catch (_) { return fallback; }
   }
 
@@ -126,7 +136,12 @@
 
   function newRun(index) {
     const level = clone(LEVELS[index]);
-    level.platforms.forEach((p) => { p.baseX = p.x; p.baseY = p.y; p.startY = p.y; p.fallTimer = 0; p.used = false; p.visible = true; });
+    level.platforms.forEach((p) => {
+      if (p.type === "trapShift" && Math.random() < 0.45) p.dx *= -1;
+      if ((p.type === "trapShift" || p.type === "trapSink") && Math.random() < 0.35) p.speed += 1.2;
+      p.baseX = p.x; p.baseY = p.y; p.startY = p.y; p.fallTimer = 0; p.used = false; p.visible = true; p.activated = p.activated || false; p.offset = p.offset || 0; p.prevX = p.x; p.prevY = p.y;
+    });
+    level.hiddenSpikes.forEach((s) => { s.trigger += Math.floor(Math.random() * 28) - 10; });
     run = {
       level, time: 0, levelCoins: 0, levelDeaths: 0, keys: 0, neededKeys: level.keys.length, won: false, pausedAt: 0,
       player: { x: level.start.x, y: level.start.y, vx: 0, vy: 0, facing: 1, grounded: false, coyote: 0, jumpBuffer: 0, jumpHeld: false, checkpoint: { ...level.start }, hurt: 0, runTime: 0 },
@@ -239,6 +254,21 @@
         p.fallTimer += dt;
         if (p.fallTimer > (p.delay || 0.35)) p.y += (p.fallVy += GRAVITY * dt * 0.5) * dt;
         if (p.y > H + 80) { p.y = p.startY; p.fallVy = 0; p.fallTimer = 0; p.used = false; }
+      }
+      if (p.type === "trapShift" || p.type === "trapSink") {
+        const px = run.player.x + PLAYER_W / 2;
+        const py = run.player.y + PLAYER_H;
+        const near = Math.abs(px - (p.x + p.w / 2)) < (p.trigger || 100) && Math.abs(py - p.y) < 88;
+        const standing = run.player.x + PLAYER_W > p.x && run.player.x < p.x + p.w && Math.abs(py - p.y) < 10;
+        if (near || standing) p.activated = true;
+        p.offset = approach(p.offset || 0, p.activated ? 1 : 0, dt * (p.speed || 4));
+        if (p.type === "trapShift") {
+          const shake = p.activated && p.offset < 1 ? Math.sin(run.time * 48) * 2 : 0;
+          p.x = p.sx + (p.dx || 0) * easeOutCubic(p.offset) + shake;
+        } else {
+          const shake = p.activated && p.offset < 1 ? Math.sin(run.time * 40) * 1.5 : 0;
+          p.y = p.sy + (p.sink || 72) * easeOutCubic(p.offset) + shake;
+        }
       }
     });
     run.level.saws.forEach((s) => {
@@ -355,7 +385,7 @@
           p.vy = 0;
           p.grounded = true;
           if (o.type === "fall") o.used = true;
-          if (o.type === "move") {
+          if (o.type === "move" || o.type === "trapShift" || o.type === "trapSink") {
             p.x += (o.x - (o.prevX ?? o.x));
             p.y += (o.y - (o.prevY ?? o.y));
           }
@@ -461,6 +491,141 @@
   }
 
   function drawBackground() {
+    const palette = backgroundPalette();
+    const gradient = ctx.createLinearGradient(0, 0, 0, H);
+    gradient.addColorStop(0, palette.top);
+    gradient.addColorStop(0.62, palette.middle);
+    gradient.addColorStop(1, palette.bottom);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, W, H);
+
+    if (save.backgroundMode === "day") {
+      ctx.fillStyle = "rgba(255,243,177,.82)";
+      ctx.shadowColor = "rgba(255,229,125,.7)";
+      ctx.shadowBlur = 30;
+      ctx.beginPath(); ctx.arc(120, 100, 42, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "rgba(116,93,58,.14)";
+      ctx.beginPath(); ctx.moveTo(0, 410); ctx.quadraticCurveTo(220, 320, 450, 410); ctx.quadraticCurveTo(690, 330, W, 405); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+    } else if (save.backgroundMode === "night") {
+      ctx.fillStyle = "rgba(228,241,255,.8)";
+      ctx.shadowColor = "rgba(154,205,255,.65)";
+      ctx.shadowBlur = 24;
+      ctx.beginPath(); ctx.arc(120, 100, 35, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = palette.top;
+      ctx.beginPath(); ctx.arc(137, 88, 34, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.fillStyle = `${palette.accent}55`;
+      ctx.shadowColor = palette.accent;
+      ctx.shadowBlur = 28;
+      ctx.beginPath(); ctx.arc(120, 100, 31 + Math.sin(run.time * .7) * 4, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.save();
+    ctx.strokeStyle = palette.grid;
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W + 80; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 60; y < H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    ctx.restore();
+
+    if (save.backgroundMode === "dynamic") {
+      for (let i = 0; i < 12; i += 1) {
+        const x = (i * 179 + Math.sin(run.time * .13 + i) * 24) % (W + 120) - 30;
+        const y = 70 + (i * 97 + levelIndex * 31) % 320;
+        const size = 18 + (i * 7 + levelIndex * 3) % 42;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(run.time * .06 * (i % 2 ? 1 : -1) + i); ctx.globalAlpha = .09 + (i % 3) * .025; ctx.fillStyle = palette.accent;
+        ctx.beginPath();
+        if ((i + levelIndex) % 3 === 0) ctx.arc(0, 0, size, 0, Math.PI * 2);
+        else if ((i + levelIndex) % 3 === 1) { ctx.moveTo(0, -size); ctx.lineTo(size, size); ctx.lineTo(-size, size); ctx.closePath(); }
+        else { ctx.moveTo(0, -size); ctx.lineTo(size, 0); ctx.lineTo(0, size); ctx.lineTo(-size, 0); ctx.closePath(); }
+        ctx.fill(); ctx.restore();
+      }
+    }
+
+    for (let i = 0; i < 20; i += 1) {
+      const x = (i * 157 + Math.sin(run.time * .05 + i) * 18) % (W + 120) - 60;
+      const y = 45 + (i * 83) % 310;
+      ctx.fillStyle = i % 3 ? palette.spark : "rgba(184,255,87,.18)";
+      ctx.fillRect(x, y, 2, 2);
+    }
+    drawHeritageBackground(palette);
+  }
+
+  function backgroundPalette() {
+    if (save.backgroundMode === "day") return { top: "#8fc9df", middle: "#e4ce96", bottom: "#987a52", grid: "rgba(91,76,48,.09)", spark: "rgba(255,248,198,.46)", accent: "#6d6247" };
+    if (save.backgroundMode === "dynamic") {
+      const palettes = [
+        ["#30155a", "#11183d", "#07101f", "#b284ff"], ["#0b4553", "#102947", "#07121e", "#36e5ff"],
+        ["#542039", "#251631", "#090c18", "#ff6b9f"], ["#384714", "#183126", "#07130f", "#b8ff57"]
+      ];
+      const palette = palettes[levelIndex % palettes.length];
+      return { top: palette[0], middle: palette[1], bottom: palette[2], grid: "rgba(255,255,255,.055)", spark: `${palette[3]}66`, accent: palette[3] };
+    }
+    return { top: "#111b36", middle: "#091123", bottom: "#050912", grid: "rgba(54,229,255,.065)", spark: "rgba(54,229,255,.16)", accent: "#36e5ff" };
+  }
+
+  function drawPalm(x, groundY, scale, ink) {
+    ctx.strokeStyle = ink; ctx.lineWidth = 7 * scale; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(x, groundY); ctx.quadraticCurveTo(x - 8 * scale, groundY - 55 * scale, x + 3 * scale, groundY - 112 * scale); ctx.stroke();
+    for (let i = 0; i < 7; i += 1) {
+      const angle = -Math.PI + i * Math.PI / 3;
+      ctx.beginPath(); ctx.moveTo(x + 3 * scale, groundY - 112 * scale); ctx.quadraticCurveTo(x + Math.cos(angle) * 35 * scale, groundY - 128 * scale + Math.sin(angle) * 18 * scale, x + Math.cos(angle) * 53 * scale, groundY - 106 * scale + Math.sin(angle) * 24 * scale); ctx.stroke();
+    }
+  }
+
+  function drawCuneiformStone(x, y, scale, ink) {
+    ctx.fillStyle = ink; ctx.beginPath(); ctx.moveTo(x - 34 * scale, y); ctx.lineTo(x - 27 * scale, y - 60 * scale); ctx.lineTo(x + 24 * scale, y - 68 * scale); ctx.lineTo(x + 35 * scale, y); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = save.backgroundMode === "day" ? "rgba(255,245,199,.55)" : "rgba(5,10,23,.55)"; ctx.lineWidth = 2;
+    for (let row = 0; row < 4; row += 1) for (let mark = 0; mark < 3; mark += 1) {
+      const px = x - 18 * scale + mark * 17 * scale;
+      const py = y - 50 * scale + row * 12 * scale;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + 7 * scale, py + 3 * scale); ctx.lineTo(px + 2 * scale, py + 7 * scale); ctx.stroke();
+    }
+  }
+
+  function drawHeritageBackground(palette) {
+    const scene = HERITAGE_BACKGROUNDS[levelIndex];
+    if (!scene) return;
+    const ink = save.backgroundMode === "day" ? "#6d6247" : palette.accent;
+    const dark = save.backgroundMode === "day" ? "#8a7958" : "#10142a";
+    ctx.save();
+    ctx.globalAlpha = save.backgroundMode === "day" ? .18 : .16;
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.moveTo(0, 420); ctx.quadraticCurveTo(150, 315, 330, 410); ctx.quadraticCurveTo(505, 325, 690, 412); ctx.quadraticCurveTo(830, 350, W, 414); ctx.lineTo(W, 450); ctx.lineTo(0, 450); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha *= .7;
+    ctx.beginPath(); ctx.moveTo(0, 430); ctx.quadraticCurveTo(240, 370, 470, 425); ctx.quadraticCurveTo(720, 360, W, 428); ctx.lineTo(W, 460); ctx.lineTo(0, 460); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = save.backgroundMode === "day" ? .2 : .18;
+    if (scene === "ziggurat" || scene === "cuneiform") {
+      ctx.fillStyle = ink;
+      for (let step = 0; step < 5; step += 1) ctx.fillRect(520 + step * 24, 388 - step * 43, 290 - step * 48, 43);
+      ctx.fillRect(622, 174, 86, 42);
+      drawPalm(450, 420, .85, ink); drawPalm(825, 420, .72, ink); drawCuneiformStone(875, 420, .78, ink);
+      if (scene === "cuneiform") { drawCuneiformStone(150, 420, 1.15, ink); drawCuneiformStone(270, 420, .9, ink); }
+    } else if (scene === "ishtar") {
+      ctx.fillStyle = ink; ctx.fillRect(585, 270, 170, 150);
+      for (let i = 0; i < 7; i += 1) ctx.fillRect(580 + i * 27, 251 + (i % 2) * 8, 18, 25);
+      ctx.fillStyle = dark; ctx.beginPath(); ctx.arc(670, 366, 38, Math.PI, 0); ctx.lineTo(708, 420); ctx.lineTo(632, 420); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = dark; ctx.lineWidth = 4;
+      for (let row = 0; row < 3; row += 1) for (let col = 0; col < 5; col += 1) ctx.strokeRect(602 + col * 29, 290 + row * 31, 15, 11);
+      drawPalm(500, 420, .62, ink); drawPalm(825, 420, .58, ink);
+    } else if (scene === "palms") {
+      drawPalm(180, 420, 1.05, ink); drawPalm(370, 420, .72, ink); drawPalm(650, 420, 1.12, ink); drawPalm(840, 420, .82, ink);
+      ctx.fillStyle = ink; ctx.beginPath(); ctx.ellipse(520, 420, 180, 18, 0, Math.PI, 0); ctx.fill(); drawCuneiformStone(510, 420, .7, ink);
+    } else if (scene === "walls") {
+      ctx.fillStyle = ink; ctx.fillRect(60, 330, 840, 90);
+      for (let x = 60; x < 900; x += 58) ctx.fillRect(x, 304, 35, 34);
+      ctx.strokeStyle = dark; ctx.lineWidth = 3;
+      for (let row = 0; row < 3; row += 1) for (let x = 80 - row * 20; x < 890; x += 72) ctx.strokeRect(x, 344 + row * 25, 46, 15);
+      drawCuneiformStone(770, 420, .8, ink);
+    } else if (scene === "dunes") {
+      drawPalm(180, 420, .55, ink); drawPalm(790, 420, .62, ink); drawCuneiformStone(680, 420, .76, ink);
+    }
+    ctx.restore();
+  }
+
+  function drawOldGridBackground() {
     const g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, "#0e2131"); g.addColorStop(1, "#07110f");
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -475,9 +640,15 @@
       ctx.setLineDash([6, 8]); roundRect(p.x, p.y, p.w, p.h, 8, false, true); ctx.setLineDash([]);
       return;
     }
-    const color = p.type === "move" ? "#38bdf8" : p.type === "fall" ? "#f59e0b" : p.type === "vanish" ? "#a78bfa" : "#1f3940";
+    const color = p.type === "move" ? "#38bdf8" : p.type === "fall" ? "#f59e0b" : p.type === "vanish" ? "#a78bfa" : p.type === "trapShift" || p.type === "trapSink" ? "#ef4444" : "#263a58";
     ctx.fillStyle = color; roundRect(p.x, p.y, p.w, p.h, 8, true, false);
     ctx.fillStyle = "rgba(255,255,255,.22)"; ctx.fillRect(p.x + 8, p.y + 5, p.w - 16, 3);
+    if (p.type === "trapShift" || p.type === "trapSink") {
+      ctx.fillStyle = p.activated ? "rgba(255,255,255,.42)" : "rgba(255,213,74,.72)";
+      for (let x = p.x + 10; x < p.x + p.w - 8; x += 22) {
+        ctx.beginPath(); ctx.moveTo(x, p.y + p.h - 5); ctx.lineTo(x + 8, p.y + 7); ctx.lineTo(x + 16, p.y + p.h - 5); ctx.closePath(); ctx.fill();
+      }
+    }
   }
 
   function drawSpike(s) {
@@ -654,6 +825,7 @@
   function hitSpike(p, s) { return p.x < s.x + s.w - 5 && p.x + PLAYER_W > s.x + 5 && p.y + PLAYER_H > s.y + 7 && p.y + PLAYER_H < s.y + s.h + 18; }
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
   function approach(v, target, step) { return v < target ? Math.min(target, v + step) : Math.max(target, v - step); }
+  function easeOutCubic(t) { return 1 - Math.pow(1 - clamp(t, 0, 1), 3); }
 
   function updateHud() {
     if (!run) return;
@@ -670,6 +842,7 @@
   }
 
   function updateMenuStats() {
+    if (ui.background) ui.background.value = save.backgroundMode;
     ui.menuUnlocked.textContent = `${save.unlocked}/20`;
     ui.menuCoins.textContent = String(save.coins || 0);
     ui.menuDeaths.textContent = String(save.deaths || 0);
@@ -775,6 +948,12 @@
   ["levelSelectButton", "menuLevelsButton", "pauseLevelsButton", "completeLevelsButton"].forEach((id) => $(id).addEventListener("click", () => { renderLevelGrid(); showOverlay("levels"); }));
   $("closeLevelsButton").addEventListener("click", () => showOverlay(state === "paused" ? "pause" : state === "complete" ? "complete" : state === "menu" ? "menu" : null));
   ui.sound.addEventListener("click", () => { soundOn = !soundOn; ui.sound.textContent = soundOn ? "Sound On" : "Sound Off"; ui.sound.setAttribute("aria-pressed", String(soundOn)); });
+  ui.background?.addEventListener("change", () => {
+    save.backgroundMode = ["night", "day", "dynamic"].includes(ui.background.value) ? ui.background.value : "night";
+    writeSave();
+    toast(`${ui.background.options[ui.background.selectedIndex].text} background`);
+    canvas.focus({ preventScroll: true });
+  });
   ui.fullscreen.addEventListener("click", () => { const el = document.documentElement; if (!document.fullscreenElement) el.requestFullscreen?.(); else document.exitFullscreen?.(); });
 
   function loop(now) {
