@@ -145,10 +145,10 @@
       l.hint = "Get the key, then the door";
       l.platforms = [rect(0, 500, 260, 40), rect(320, 462, 150, 28), rect(540, 432, 150, 28), rect(740, 500, 220, 40)];
       l.spikes = [spike(485, 516, 44)];
-      l.hiddenSpikes = [];
+      l.hiddenSpikes = [hiddenSpike(790, 516, 62, 70)];
       l.saws = [];
       l.keys = [key(580, 394)];
-      l.coins = [coin(360, 424), coin(515, 486), coin(805, 462)];
+      l.coins = [coin(360, 424), coin(515, 486), coin(805, 462, { bait: "spikes" })];
       l.doors = [door(845, 412, 88, null, true)];
       l.checkpoints = [checkpoint(520, 390)];
     } else if (i === 1) {
@@ -286,7 +286,7 @@
     run = {
       level, time: 0, levelCoins: 0, levelDeaths: 0, keys: 0, neededKeys: level.keys.length, won: false, pausedAt: 0, trapPause: 0, whistleReveal: 0,
       player: { x: level.start.x, y: level.start.y, vx: 0, vy: 0, facing: 1, grounded: false, coyote: 0, jumpBuffer: 0, jumpHeld: false, checkpoint: { ...level.start }, hurt: 0, runTime: 0 },
-      yoyo: { active: false, anchor: null, t: 0 }
+      yoyo: { state: "ready", active: false, anchor: null, target: null, targetKind: null, x: 0, y: 0, vx: 0, vy: 0, distance: 0, direction: 1, t: 0 }
     };
     updateHud();
     toast(level.hint);
@@ -340,6 +340,7 @@
     p.y = p.checkpoint.y;
     p.vx = 0; p.vy = 0; p.hurt = 0.25; p.grounded = false;
     run.yoyo.active = false;
+    run.yoyo.state = "ready";
     updateHud();
   }
 
@@ -501,8 +502,9 @@
       const dist = Math.max(1, Math.hypot(dx, dy));
       p.vx += (dx / dist) * 1320 * dt;
       p.vy += (dy / dist) * 1160 * dt;
-      if (dist < 36 || run.yoyo.t > 0.95) run.yoyo.active = false;
+      if (dist < 36 || run.yoyo.t > 0.95) returnYoyo();
     }
+    updateYoyo(dt);
 
     if (p.jumpBuffer > 0 && p.coyote > 0) {
       p.vy = -JUMP_SPEED;
@@ -619,18 +621,20 @@
   }
 
   function toggleYoyo() {
-    if (run.yoyo.active) { run.yoyo.active = false; return; }
+    if (run.yoyo.state !== "ready") { returnYoyo(); return; }
     const p = run.player;
-    const cx = p.x + PLAYER_W / 2;
-    const cy = p.y + 18;
+    const hand = yoyoHand();
+    const cx = hand.x;
+    const cy = hand.y;
     let best = null;
     let bestScore = Infinity;
+    let bestKind = null;
     run.level.anchors.forEach((a) => {
       const dx = a.x - cx;
       const dy = a.y - cy;
       const dist = Math.hypot(dx, dy);
       const facingOk = Math.sign(dx || p.facing) === p.facing || dist < 90;
-      if (dist <= a.range && facingOk && dist < bestScore) { best = a; bestScore = dist; }
+      if (dist <= a.range && facingOk && dist < bestScore) { best = a; bestScore = dist; bestKind = "anchor"; }
     });
     run.level.switches.forEach((s) => {
       if (s.pulled) return;
@@ -638,27 +642,92 @@
       const dy = s.y - cy;
       const dist = Math.hypot(dx, dy);
       const facingOk = Math.sign(dx || p.facing) === p.facing || dist < 90;
-      if (dist <= 340 && facingOk && dist < bestScore) { best = s; bestScore = dist; }
+      if (dist <= 340 && facingOk && dist < bestScore) { best = s; bestScore = dist; bestKind = "switch"; }
     });
-    if (best) {
-      if ("pulled" in best) {
-        best.pulled = true;
-        playSound("yoyoHook");
-        toast("Yo-yo switch pulled");
-        return;
-      }
-      run.yoyo.active = true;
-      run.yoyo.anchor = best;
-      run.yoyo.t = 0;
-      playSound("yoyoThrow");
-      setTimeout(() => { if (run?.yoyo?.active) playSound("yoyoHook"); }, 80);
-    } else {
-      toast("No yo-yo anchor in range");
-    }
+    const dx = best ? best.x - cx : p.facing;
+    const dy = best ? best.y - cy : 0;
+    const length = Math.max(1, Math.hypot(dx, dy));
+    run.yoyo.state = "outbound";
+    run.yoyo.active = false;
+    run.yoyo.anchor = null;
+    run.yoyo.target = best;
+    run.yoyo.targetKind = bestKind;
+    run.yoyo.x = cx;
+    run.yoyo.y = cy;
+    run.yoyo.vx = dx / length * 820;
+    run.yoyo.vy = dy / length * 820;
+    run.yoyo.distance = 0;
+    run.yoyo.direction = p.facing;
+    run.yoyo.t = 0;
+    playSound("yoyoThrow");
   }
 
   function yoyoAvailable() {
     return true;
+  }
+
+  function yoyoHand() {
+    const p = run.player;
+    return { x: p.x + PLAYER_W / 2 + p.facing * 12, y: p.y + 35 };
+  }
+
+  function returnYoyo() {
+    run.yoyo.state = run.yoyo.state === "ready" ? "ready" : "returning";
+    run.yoyo.active = false;
+    run.yoyo.anchor = null;
+  }
+
+  function updateYoyo(dt) {
+    const y = run.yoyo;
+    const hand = yoyoHand();
+    if (y.state === "ready") {
+      y.x = hand.x + run.player.facing * 18;
+      y.y = hand.y + 5 + Math.sin(run.time * 6) * 1.5;
+      return;
+    }
+    if (y.state === "outbound") {
+      const stepX = y.vx * dt;
+      const stepY = y.vy * dt;
+      y.x += stepX;
+      y.y += stepY;
+      y.distance += Math.hypot(stepX, stepY);
+      if (y.target && Math.hypot(y.x - y.target.x, y.y - y.target.y) < 24) {
+        if (y.targetKind === "switch") {
+          y.target.pulled = true;
+          toast("Yo-yo switch pulled");
+          playSound("yoyoHook");
+          returnYoyo();
+        } else {
+          y.state = "hooked";
+          y.active = true;
+          y.anchor = y.target;
+          y.x = y.target.x;
+          y.y = y.target.y;
+          y.t = 0;
+          playSound("yoyoHook");
+        }
+        return;
+      }
+      if (y.distance > 360) returnYoyo();
+    } else if (y.state === "hooked") {
+      if (y.anchor) {
+        y.x = y.anchor.x;
+        y.y = y.anchor.y;
+      }
+    } else if (y.state === "returning") {
+      const dx = hand.x - y.x;
+      const dy = hand.y - y.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 14) {
+        y.state = "ready";
+        y.x = hand.x + run.player.facing * 18;
+        y.y = hand.y + 5;
+      } else {
+        const step = Math.min(900 * dt, dist);
+        y.x += dx / dist * step;
+        y.y += dy / dist * step;
+      }
+    }
   }
 
   function gameplayWhistle() {
@@ -900,9 +969,13 @@
     ctx.strokeRect(s.x + 4, s.y + 18, s.w - 8, 7);
     ctx.setLineDash([]);
     if (!s.armed) {
-      ctx.font = "900 13px Orbitron";
+      ctx.font = "900 14px Orbitron";
       ctx.textAlign = "center";
       ctx.fillText("!", s.x + s.w / 2, s.y + 14);
+      ctx.fillStyle = "rgba(255,213,74,.18)";
+      ctx.beginPath();
+      ctx.ellipse(s.x + s.w / 2, s.y + s.h + 2, s.w * .5, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
       return;
     }
@@ -1063,25 +1136,20 @@
 
   function drawYoyo() {
     const y = run.yoyo;
-    const p = run.player;
-    const hx = p.x + PLAYER_W / 2 + p.facing * 7;
-    const hy = p.y + 19;
-    const bob = Math.sin(run.time * 6) * 1.5;
-    const readyX = hx + p.facing * 18;
-    const readyY = hy + 8 + bob;
+    const hand = yoyoHand();
     ctx.save();
     ctx.strokeStyle = "rgba(234,244,255,.82)";
     ctx.lineWidth = 1.5;
     ctx.fillStyle = "#36e5ff";
     ctx.shadowColor = "#36e5ff";
     ctx.shadowBlur = 12;
-    if (y.active && y.anchor) {
-      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(y.anchor.x, y.anchor.y); ctx.stroke();
-      ctx.beginPath(); ctx.arc(y.anchor.x, y.anchor.y, 10, 0, Math.PI * 2); ctx.fill();
+    if (y.state !== "ready") {
+      ctx.beginPath(); ctx.moveTo(hand.x, hand.y); ctx.lineTo(y.x, y.y); ctx.stroke();
+      ctx.beginPath(); ctx.arc(y.x, y.y, y.state === "hooked" ? 10 : 8, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = "#eaffff"; ctx.stroke();
     } else {
-      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(readyX, readyY); ctx.stroke();
-      ctx.beginPath(); ctx.arc(readyX, readyY, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(hand.x, hand.y); ctx.lineTo(y.x, y.y); ctx.stroke();
+      ctx.beginPath(); ctx.arc(y.x, y.y, 7, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = "#eaffff"; ctx.stroke();
     }
     ctx.restore();
