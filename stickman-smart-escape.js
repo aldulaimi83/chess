@@ -142,13 +142,14 @@
 
   function tuneLevel(l, i) {
     if (i === 0) {
-      l.hint = "Get the key, then the door";
+      l.hint = "The first door lies";
       l.platforms = [rect(0, 500, 260, 40), rect(320, 462, 150, 28), rect(540, 432, 150, 28), rect(740, 500, 220, 40)];
       l.spikes = [spike(485, 516, 44)];
       l.hiddenSpikes = [hiddenSpike(790, 516, 62, 70)];
       l.saws = [];
       l.keys = [key(580, 394)];
       l.coins = [coin(360, 424), coin(515, 486), coin(805, 462, { bait: "spikes" })];
+      l.fakeDoors = [fakeDoor(770, 424, "FAKE")];
       l.doors = [door(845, 412, 88, null, true)];
       l.checkpoints = [checkpoint(520, 390)];
     } else if (i === 1) {
@@ -284,10 +285,14 @@
     (level.quicksands || []).forEach((q) => { q.sink = 0; });
     (level.symbols || []).forEach((s) => { s.revealed = false; });
     run = {
-      level, time: 0, levelCoins: 0, levelDeaths: 0, keys: 0, neededKeys: level.keys.length, won: false, pausedAt: 0, trapPause: 0, whistleReveal: 0,
+      level, time: 0, levelCoins: 0, levelDeaths: 0, keys: 0, neededKeys: level.keys.length, won: false, dead: false, pausedAt: 0, trapPause: 0, whistleReveal: 0,
+      deathPieces: [], dust: [],
       player: { x: level.start.x, y: level.start.y, vx: 0, vy: 0, facing: 1, grounded: false, coyote: 0, jumpBuffer: 0, jumpHeld: false, checkpoint: { ...level.start }, hurt: 0, runTime: 0 },
       yoyo: { state: "ready", active: false, anchor: null, target: null, targetKind: null, x: 0, y: 0, vx: 0, vy: 0, distance: 0, direction: 1, t: 0 }
     };
+    const hand = yoyoHand();
+    run.yoyo.x = hand.x;
+    run.yoyo.y = hand.y;
     updateHud();
     toast(level.hint);
     whistleCooldown = 0;
@@ -322,26 +327,62 @@
   }
 
   function die(reason = "Try again") {
-    const p = run.player;
-    if (p.hurt > 0 || run.won) return;
-    p.hurt = 0.55;
+    if (run.dead || run.won) return;
+    run.dead = true;
+    spawnDeathBreak();
     save.deaths += 1;
     run.levelDeaths += 1;
     writeSave();
     beep(110, 0.08, "sawtooth");
     toast(reason);
-    setTimeout(() => respawn(), 180);
+    setTimeout(() => respawn(), 720);
   }
 
   function respawn() {
     if (!run || run.won) return;
     const p = run.player;
+    run.dead = false;
+    run.deathPieces = [];
+    run.dust = [];
     p.x = p.checkpoint.x;
     p.y = p.checkpoint.y;
     p.vx = 0; p.vy = 0; p.hurt = 0.25; p.grounded = false;
     run.yoyo.active = false;
     run.yoyo.state = "ready";
     updateHud();
+  }
+
+  function spawnDeathBreak() {
+    const p = run.player;
+    const cx = p.x + PLAYER_W / 2;
+    const cy = p.y;
+    const dir = p.facing || 1;
+    const piece = (kind, x, y, angle, len, vx, vy) => {
+      run.deathPieces.push({
+        kind, x, y, angle, len,
+        vx: vx + (Math.random() - .5) * 90,
+        vy: vy + (Math.random() - .5) * 80,
+        va: (Math.random() - .5) * 12,
+        life: 1
+      });
+    };
+    piece("head", cx, cy + 10, 0, 9, -dir * 80, -430);
+    piece("line", cx, cy + 29, Math.PI / 2, 22, -dir * 35, -300);
+    piece("line", cx - 8, cy + 31, -.7, 22, -210, -270);
+    piece("line", cx + 8, cy + 31, .7, 22, 210, -260);
+    piece("line", cx - 7, cy + 47, -1, 24, -190, -210);
+    piece("line", cx + 7, cy + 47, 1, 24, 190, -200);
+    for (let i = 0; i < 18; i += 1) {
+      run.dust.push({
+        x: cx + (Math.random() - .5) * 22,
+        y: cy + PLAYER_H - 3,
+        vx: (Math.random() - .5) * 180,
+        vy: -90 - Math.random() * 110,
+        r: 2 + Math.random() * 4,
+        life: .55 + Math.random() * .35
+      });
+    }
+    returnYoyo();
   }
 
   function completeLevel() {
@@ -375,10 +416,39 @@
     toastTimer = Math.max(0, toastTimer - dt);
     if (toastTimer === 0) ui.toast.classList.remove("show");
 
+    if (run.dead) {
+      updateDeathBreak(dt);
+      updateHud();
+      return;
+    }
+
     updateWorld(dt);
     updatePlayer(dt);
     updateCollectibles();
     updateHud();
+  }
+
+  function updateDeathBreak(dt) {
+    run.deathPieces.forEach((piece) => {
+      piece.vy += GRAVITY * .72 * dt;
+      piece.x += piece.vx * dt;
+      piece.y += piece.vy * dt;
+      piece.angle += piece.va * dt;
+      if (piece.y > 518) {
+        piece.y = 518;
+        piece.vy *= -.38;
+        piece.vx *= .68;
+        piece.va *= .66;
+      }
+      piece.life = Math.max(0, piece.life - dt * .8);
+    });
+    run.dust.forEach((dust) => {
+      dust.vy += GRAVITY * .35 * dt;
+      dust.x += dust.vx * dt;
+      dust.y += dust.vy * dt;
+      dust.life = Math.max(0, dust.life - dt);
+    });
+    run.dust = run.dust.filter((dust) => dust.life > 0);
   }
 
   function updateWorld(dt) {
@@ -478,6 +548,7 @@
 
   function updatePlayer(dt) {
     const p = run.player;
+    if (run.dead) return;
     p.hurt = Math.max(0, p.hurt - dt);
     if (Math.abs(p.vx) > 20 && p.grounded) p.runTime += dt * Math.abs(p.vx) / 95;
     p.jumpBuffer = input.jumpPressed ? JUMP_BUFFER : Math.max(0, p.jumpBuffer - dt);
@@ -586,6 +657,7 @@
   }
 
   function updateCollectibles() {
+    if (run.dead) return;
     const p = run.player;
     run.level.coins.forEach((c) => {
       if (!c.taken && circleRect(c.x, c.y, c.r, p.x, p.y, PLAYER_W, PLAYER_H)) {
@@ -681,8 +753,8 @@
     const y = run.yoyo;
     const hand = yoyoHand();
     if (y.state === "ready") {
-      y.x = hand.x + run.player.facing * 18;
-      y.y = hand.y + 5 + Math.sin(run.time * 6) * 1.5;
+      y.x = hand.x;
+      y.y = hand.y;
       return;
     }
     if (y.state === "outbound") {
@@ -691,11 +763,10 @@
       y.x += stepX;
       y.y += stepY;
       y.distance += Math.hypot(stepX, stepY);
+      checkYoyoPuzzleHits(y);
       if (y.target && Math.hypot(y.x - y.target.x, y.y - y.target.y) < 24) {
         if (y.targetKind === "switch") {
-          y.target.pulled = true;
-          toast("Yo-yo switch pulled");
-          playSound("yoyoHook");
+          pullYoyoSwitch(y.target);
           returnYoyo();
         } else {
           y.state = "hooked";
@@ -720,8 +791,8 @@
       const dist = Math.hypot(dx, dy);
       if (dist < 14) {
         y.state = "ready";
-        y.x = hand.x + run.player.facing * 18;
-        y.y = hand.y + 5;
+        y.x = hand.x;
+        y.y = hand.y;
       } else {
         const step = Math.min(900 * dt, dist);
         y.x += dx / dist * step;
@@ -730,8 +801,48 @@
     }
   }
 
+  function pullYoyoSwitch(s) {
+    if (s.pulled) return;
+    s.pulled = true;
+    run.level.doors.forEach((d) => { if (d.id === s.id) d.timer = d.seconds; });
+    run.level.platforms.forEach((p) => {
+      if (p.id === s.id || (p.type === "whistle" && Math.abs(p.x - s.x) < 190)) p.revealed = true;
+    });
+    run.level.hiddenSpikes.forEach((trap) => {
+      if (Math.abs((trap.x + trap.w / 2) - s.x) < 170) trap.armed = true;
+    });
+    toast("Yo-yo switch pulled");
+    playSound("yoyoHook");
+  }
+
+  function checkYoyoPuzzleHits(y) {
+    run.level.coins.forEach((c) => {
+      if (!c.taken && Math.hypot(y.x - c.x, y.y - c.y) < 22) {
+        c.taken = true;
+        run.levelCoins += 1;
+        triggerBait(c);
+        beep(740, 0.035, "sine");
+      }
+    });
+    run.level.hiddenSpikes.forEach((s) => {
+      if (!s.armed && Math.abs(y.x - (s.x + s.w / 2)) < s.w / 2 + 14 && y.y > s.y - 40 && y.y < s.y + s.h + 20) {
+        s.armed = true;
+        toast("Yo-yo sprung the trap safely");
+        playSound("yoyoHit");
+      }
+    });
+    run.level.fakeDoors.forEach((d) => {
+      if (!d.revealed && circleRect(y.x, y.y, 8, d.x, d.y, d.w, d.h)) {
+        d.revealed = true;
+        toast("Yo-yo exposed a fake door");
+        playSound("yoyoHit");
+        returnYoyo();
+      }
+    });
+  }
+
   function gameplayWhistle() {
-    if (!run || state !== "playing" || whistleCooldown > 0) return;
+    if (!run || state !== "playing" || run.dead || whistleCooldown > 0) return;
     whistleCooldown = WHISTLE_COOLDOWN;
     run.trapPause = WHISTLE_TRAP_PAUSE;
     run.whistleReveal = WHISTLE_TRAP_PAUSE + 1.4;
@@ -780,6 +891,7 @@
     drawPlayer();
     drawYoyo();
     drawTamerName();
+    drawDeathBreak();
     drawForeground();
   }
 
@@ -1135,6 +1247,7 @@
   }
 
   function drawYoyo() {
+    if (run.dead) return;
     const y = run.yoyo;
     const hand = yoyoHand();
     ctx.save();
@@ -1148,7 +1261,6 @@
       ctx.beginPath(); ctx.arc(y.x, y.y, y.state === "hooked" ? 10 : 8, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = "#eaffff"; ctx.stroke();
     } else {
-      ctx.beginPath(); ctx.moveTo(hand.x, hand.y); ctx.lineTo(y.x, y.y); ctx.stroke();
       ctx.beginPath(); ctx.arc(y.x, y.y, 7, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = "#eaffff"; ctx.stroke();
     }
@@ -1156,6 +1268,7 @@
   }
 
   function drawPlayer() {
+    if (run.dead) return;
     const p = run.player;
     const x = p.x + PLAYER_W / 2;
     const y = p.y;
@@ -1194,11 +1307,49 @@
   }
 
   function drawTamerName() {
+    if (run.dead) return;
     const p = run.player;
     ctx.fillStyle = "rgba(234,244,255,.78)";
     ctx.font = "900 9px Orbitron";
     ctx.textAlign = "center";
     ctx.fillText("TAMER", p.x + PLAYER_W / 2, p.y - 8);
+  }
+
+  function drawDeathBreak() {
+    if (!run.dead && run.deathPieces.length === 0 && run.dust.length === 0) return;
+    ctx.save();
+    run.dust.forEach((dust) => {
+      ctx.globalAlpha = clamp(dust.life, 0, 1) * .55;
+      ctx.fillStyle = "#d6b16f";
+      ctx.beginPath();
+      ctx.arc(dust.x, dust.y, dust.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    run.deathPieces.forEach((piece) => {
+      ctx.globalAlpha = .35 + piece.life * .65;
+      ctx.save();
+      ctx.translate(piece.x, piece.y);
+      ctx.rotate(piece.angle);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      if (piece.kind === "head") {
+        ctx.strokeStyle = "rgba(80,220,255,.45)";
+        ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.arc(0, 0, piece.len, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = "#020308";
+        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.arc(0, 0, piece.len, 0, Math.PI * 2); ctx.stroke();
+      } else {
+        ctx.strokeStyle = "rgba(80,220,255,.45)";
+        ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.moveTo(-piece.len / 2, 0); ctx.lineTo(piece.len / 2, 0); ctx.stroke();
+        ctx.strokeStyle = "#020308";
+        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(-piece.len / 2, 0); ctx.lineTo(piece.len / 2, 0); ctx.stroke();
+      }
+      ctx.restore();
+    });
+    ctx.restore();
   }
 
   function drawForeground() {
@@ -1359,6 +1510,7 @@
   function playSound(name) {
     if (name === "yoyoThrow") beep(240, 0.05, "triangle"), setTimeout(() => beep(620, 0.09, "triangle"), 35);
     if (name === "yoyoHook") beep(520, 0.06, "sine"), setTimeout(() => beep(880, 0.1, "triangle"), 70);
+    if (name === "yoyoHit") beep(180, 0.04, "square"), setTimeout(() => beep(320, 0.07, "triangle"), 45);
     if (name === "whistle") scheduleWhistleMelody();
   }
 
