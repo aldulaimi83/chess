@@ -41,8 +41,8 @@
   let run = null;
 
   function rect(x, y, w, h, type = "solid", extra = {}) { return { x, y, w, h, type, ...extra }; }
-  function coin(x, y) { return { x, y, r: 9, taken: false }; }
-  function key(x, y) { return { x, y, w: 22, h: 18, taken: false }; }
+  function coin(x, y, extra = {}) { return { x, y, r: 9, taken: false, ...extra }; }
+  function key(x, y, extra = {}) { return { x, y, w: 22, h: 18, taken: false, ...extra }; }
   function saw(x, y, r = 18, dx = 0, dy = 0, period = 2, phase = 0) { return { x, y, sx: x, sy: y, r, dx, dy, period, phase, angle: 0 }; }
   function spike(x, y, w, h = 24) { return { x, y, w, h }; }
   function hiddenSpike(x, y, w, trigger = 82) { return { x, y, w, h: 25, trigger, armed: false, rise: 0 }; }
@@ -53,6 +53,15 @@
   function rock(x, y, trigger = 105) { return { x, y, sy: y, r: 14, trigger, armed: false, warning: 0, falling: false, vy: 0, done: false }; }
   function fakeDoor(x, y, label = "FAKE") { return { x, y, w: 38, h: 76, label, sprung: false }; }
   function yoyoSwitch(x, y, id) { return { x, y, r: 15, id, pulled: false }; }
+  function quicksand(x, y, w) { return { x, y, w, h: 18, sink: 0 }; }
+  function symbol(x, y, text) { return { x, y, text, revealed: false }; }
+
+  const LEVEL_TRICKS = [
+    "Key opens the real door", "Spikes rise from sand", "Cracked floor collapses", "Yo-yo pulls a ruin switch", "Whistle reveals a hidden path",
+    "Coin bait wakes the floor", "Step-on platform starts moving", "Whistle shows invisible symbols", "Yo-yo opens an ancient wall", "Key appears after coins",
+    "Fake exit hides the safe route", "Quicksand under a coin", "Whistle bridge lasts briefly", "Ceiling stones fall after safety", "Door lies until symbols reveal it",
+    "Yo-yo triggers trap safely", "Button and whistle timing", "Hidden bridge plus fake floor", "Coins choose the key route", "All Tamer tricks together"
+  ];
 
   const base = {
     platforms: [rect(0, 500, 220, 40), rect(260, 470, 160, 30), rect(460, 430, 150, 30), rect(660, 390, 210, 30), rect(880, 500, 80, 40)],
@@ -77,6 +86,9 @@
     l.rocks = [];
     l.fakeDoors = [];
     l.switches = [];
+    l.quicksands = [];
+    l.symbols = [];
+    l.trick = LEVEL_TRICKS[i];
     l.hint = ["Get the key", "Use F for yo-yo", "Watch the timing", "Press the button", "Look for hidden traps"][i % 5];
     l.platforms = [
       rect(0, 500, 180, 40),
@@ -166,17 +178,80 @@
       l.doors = [door(888, 412, 88, null, true)];
       l.keys = [key(690, 252)];
     } else {
-      if (i % 2 === 0) l.rocks.push(rock(420 + (i * 41) % 240, 70, 105));
-      if (i % 3 === 0) l.fakeDoors.push(fakeDoor(820, 392 - (i % 4) * 12));
-      if (i % 4 === 0) {
-        l.platforms.push(rect(530, 315, 106, 22, "whistle", { revealed: false }));
-        l.hint = "Whistle reveals secrets";
-      }
-      if (i % 5 === 0) {
-        l.switches.push(yoyoSwitch(580, 275, `Y${i}`));
-        l.doors.push(door(702, 318, 92, `Y${i}`, false, 99));
-        l.hint = "Yo-yo switch first";
-      }
+      applyAdvancedTrick(l, i);
+    }
+  }
+
+  function applyAdvancedTrick(l, i) {
+    l.hint = LEVEL_TRICKS[i];
+    if (i === 5) {
+      l.coins.push(coin(505, 382, { bait: "spikes" }));
+      l.hiddenSpikes.push(hiddenSpike(488, 516, 88, 45));
+      l.hint = "That coin is bait";
+    } else if (i === 6) {
+      l.platforms.push(rect(465, 350, 112, 22, "trapShift", { sx: 465, sy: 350, dx: 145, trigger: 38, speed: 5.2, activated: false, offset: 0 }));
+      l.hint = "The floor waits for your feet";
+    } else if (i === 7) {
+      l.symbols.push(symbol(480, 300, "G"), symbol(625, 260, "F"), symbol(760, 322, "KEY"));
+      l.platforms.push(rect(618, 318, 112, 22, "whistle", { revealed: false }));
+      l.hint = "Whistle reads the ruins";
+    } else if (i === 8) {
+      l.switches.push(yoyoSwitch(610, 265, "WALL"));
+      l.doors.push(door(690, 320, 96, "WALL", false, 99));
+      l.anchors.push(anchor(610, 265, 330));
+      l.hint = "Pull the wall open";
+    } else if (i === 9) {
+      l.keys = [key(690, 260, { hidden: true, requiresCoins: 3 })];
+      l.coins.push(coin(335, 430), coin(520, 384), coin(770, 340));
+      l.hint = "Three coins reveal the key";
+    } else if (i === 10) {
+      l.fakeDoors.push(fakeDoor(820, 396, "NO"));
+      l.platforms.push(rect(540, 310, 105, 22, "whistle", { revealed: false }));
+      l.keys = [key(585, 272)];
+      l.hint = "The obvious door lies";
+    } else if (i === 11) {
+      l.quicksands.push(quicksand(455, 516, 120));
+      l.coins.push(coin(512, 486, { bait: "sand" }));
+      l.hint = "Sand can swallow Tamer";
+    } else if (i === 12) {
+      l.platforms.push(rect(430, 330, 105, 22, "whistle", { revealed: false, temporary: true }));
+      l.platforms.push(rect(570, 292, 105, 22, "whistle", { revealed: false, temporary: true }));
+      l.hint = "Whistle bridge fades";
+    } else if (i === 13) {
+      l.rocks.push(rock(360, 65, 80), rock(675, 70, 100));
+      l.coins.push(coin(675, 365, { bait: "rock" }));
+      l.hint = "Safe spots are not always safe";
+    } else if (i === 14) {
+      l.fakeDoors.push(fakeDoor(785, 370, "FAKE"));
+      l.symbols.push(symbol(705, 285, "REAL ->"));
+      l.platforms.push(rect(705, 322, 95, 22, "whistle", { revealed: false }));
+      l.hint = "Whistle before trusting doors";
+    } else if (i === 15) {
+      l.switches.push(yoyoSwitch(470, 298, "TRAP"));
+      l.hiddenSpikes.push(hiddenSpike(610, 516, 100, 999));
+      l.doors.push(door(710, 330, 90, "TRAP", false, 99));
+      l.hint = "Trigger the trap from far away";
+    } else if (i === 16) {
+      l.buttons.push(button(344, 450, "B2", true));
+      l.platforms.push(rect(610, 315, 110, 22, "whistle", { revealed: false }));
+      l.doors.push(door(750, 330, 90, "B2", false, 2.8));
+      l.hint = "Hold, whistle, then move";
+    } else if (i === 17) {
+      l.platforms.push(rect(390, 350, 110, 22, "fall", { delay: 0.16, fallVy: 0 }));
+      l.platforms.push(rect(530, 308, 100, 22, "whistle", { revealed: false }));
+      l.hint = "Fake floor, hidden bridge";
+    } else if (i === 18) {
+      l.keys = [key(330, 392, { hidden: true, requiresCoins: 2 }), key(760, 302, { hidden: true, requiresCoins: 4 })];
+      l.coins.push(coin(300, 460), coin(375, 430), coin(665, 365), coin(815, 335));
+      l.hint = "Coins decide where keys appear";
+    } else if (i === 19) {
+      l.fakeDoors.push(fakeDoor(820, 390, "NO"));
+      l.switches.push(yoyoSwitch(585, 265, "FINAL"));
+      l.doors.push(door(710, 320, 95, "FINAL", false, 99));
+      l.platforms.push(rect(500, 305, 110, 22, "whistle", { revealed: false, temporary: true }));
+      l.rocks.push(rock(680, 64, 95));
+      l.quicksands.push(quicksand(420, 516, 120));
+      l.hint = "Use whistle and yo-yo together";
     }
   }
 
@@ -206,6 +281,8 @@
     });
     level.hiddenSpikes.forEach((s) => { s.trigger += Math.floor(Math.random() * 28) - 10; });
     (level.rocks || []).forEach((r) => { r.sy = r.y; r.warning = 0; r.falling = false; r.vy = 0; r.done = false; });
+    (level.quicksands || []).forEach((q) => { q.sink = 0; });
+    (level.symbols || []).forEach((s) => { s.revealed = false; });
     run = {
       level, time: 0, levelCoins: 0, levelDeaths: 0, keys: 0, neededKeys: level.keys.length, won: false, pausedAt: 0, trapPause: 0, whistleReveal: 0,
       player: { x: level.start.x, y: level.start.y, vx: 0, vy: 0, facing: 1, grounded: false, coyote: 0, jumpBuffer: 0, jumpHeld: false, checkpoint: { ...level.start }, hurt: 0, runTime: 0 },
@@ -307,7 +384,10 @@
     const t = run.time;
     run.level.platforms.forEach((p) => {
       p.prevX = p.x; p.prevY = p.y;
-      if (p.type === "whistle") p.visible = !!p.revealed || run.whistleReveal > 0;
+      if (p.type === "whistle") {
+        p.visible = !!p.revealed || run.whistleReveal > 0;
+        if (p.temporary && run.whistleReveal <= 0) p.revealed = false;
+      }
       if (p.type === "move") {
         const wave = Math.sin(((t / p.period) + (p.phase || 0)) * Math.PI * 2);
         p.x = p.sx + (p.dx || 0) * wave;
@@ -370,6 +450,11 @@
         r.y += r.vy * dt;
         if (r.y > H + 40) r.done = true;
       }
+    });
+    run.level.quicksands.forEach((q) => {
+      const onSand = run.player.x + PLAYER_W > q.x && run.player.x < q.x + q.w && run.player.y + PLAYER_H > q.y - 4;
+      q.sink = approach(q.sink, onSand ? 1 : 0, dt * 2.3);
+      if (q.sink > 0.78) die("Quicksand. Keep moving.");
     });
     const p = run.player;
     run.level.buttons.forEach((b) => {
@@ -504,17 +589,33 @@
       if (!c.taken && circleRect(c.x, c.y, c.r, p.x, p.y, PLAYER_W, PLAYER_H)) {
         c.taken = true;
         run.levelCoins += 1;
+        triggerBait(c);
         beep(740, 0.035, "sine");
       }
     });
     run.level.keys.forEach((k) => {
-      if (!k.taken && overlap(p, k)) {
+      if (k.hidden && run.levelCoins >= (k.requiresCoins || 0)) {
+        k.hidden = false;
+        toast("A hidden key appeared");
+        playSound("yoyoHook");
+      }
+    });
+    run.level.keys.forEach((k) => {
+      if (!k.hidden && !k.taken && overlap(p, k)) {
         k.taken = true;
         run.keys += 1;
         toast(run.keys >= run.neededKeys ? "Exit door unlocked" : "Key collected");
         beep(920, 0.07, "triangle");
       }
     });
+  }
+
+  function triggerBait(c) {
+    if (!c.bait) return;
+    if (c.bait === "spikes") run.level.hiddenSpikes.forEach((s) => { if (Math.abs(s.x - c.x) < 160) s.armed = true; });
+    if (c.bait === "rock") run.level.rocks.forEach((r) => { if (Math.abs(r.x - c.x) < 140) { r.armed = true; r.warning = 0.34; } });
+    if (c.bait === "sand") run.level.quicksands.forEach((q) => { if (c.x > q.x && c.x < q.x + q.w) q.sink = Math.max(q.sink, .35); });
+    toast("That coin triggered something");
   }
 
   function toggleYoyo() {
@@ -567,6 +668,7 @@
     run.whistleReveal = WHISTLE_TRAP_PAUSE + 1.4;
     run.level.platforms.forEach((p) => { if (p.type === "whistle") p.revealed = true; });
     run.level.fakeDoors.forEach((d) => { d.revealed = true; });
+    run.level.symbols.forEach((s) => { s.revealed = true; });
     toast("Whistle reveals secrets and pauses traps");
     playSound("whistle");
     updateHud();
@@ -591,6 +693,7 @@
     if (!run) newRun(levelIndex);
     const l = run.level;
     l.platforms.forEach(drawPlatform);
+    l.quicksands.forEach(drawQuicksand);
     l.hiddenSpikes.forEach(drawHiddenSpike);
     l.spikes.forEach(drawSpike);
     l.doors.forEach(drawDoor);
@@ -601,6 +704,7 @@
     l.anchors.forEach(drawAnchor);
     l.coins.forEach(drawCoin);
     l.keys.forEach(drawKey);
+    l.symbols.forEach(drawSymbol);
     drawExit(l.exit, run.keys >= run.neededKeys);
     l.saws.forEach(drawSaw);
     l.rocks.forEach(drawRock);
@@ -913,10 +1017,41 @@
   }
 
   function drawKey(k) {
-    if (k.taken) return;
+    if (k.taken || k.hidden) return;
     ctx.strokeStyle = "#fde68a"; ctx.lineWidth = 5; ctx.lineCap = "round";
     ctx.beginPath(); ctx.arc(k.x + 7, k.y + 9, 7, 0, Math.PI * 2); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(k.x + 14, k.y + 9); ctx.lineTo(k.x + 31, k.y + 9); ctx.lineTo(k.x + 31, k.y + 15); ctx.moveTo(k.x + 23, k.y + 9); ctx.lineTo(k.x + 23, k.y + 14); ctx.stroke();
+  }
+
+  function drawQuicksand(q) {
+    ctx.save();
+    ctx.fillStyle = "rgba(196,151,84,.55)";
+    roundRect(q.x, q.y, q.w, q.h, 8, true, false);
+    ctx.strokeStyle = "rgba(255,232,166,.45)";
+    ctx.lineWidth = 2;
+    for (let x = q.x + 10; x < q.x + q.w; x += 26) {
+      ctx.beginPath(); ctx.arc(x, q.y + 8 + Math.sin(run.time * 4 + x) * 2, 10 + q.sink * 6, 0, Math.PI * 2); ctx.stroke();
+    }
+    if (q.sink > .25) {
+      ctx.fillStyle = "rgba(255,213,74,.75)";
+      ctx.font = "900 11px Orbitron";
+      ctx.textAlign = "center";
+      ctx.fillText("MOVE", q.x + q.w / 2, q.y - 8);
+    }
+    ctx.restore();
+  }
+
+  function drawSymbol(s) {
+    if (!s.revealed && run.whistleReveal <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = s.revealed ? 1 : .5;
+    ctx.fillStyle = "#b284ff";
+    ctx.shadowColor = "#b284ff";
+    ctx.shadowBlur = 12;
+    ctx.font = "900 13px Orbitron";
+    ctx.textAlign = "center";
+    ctx.fillText(s.text, s.x, s.y);
+    ctx.restore();
   }
 
   function drawExit(e, unlocked) {
