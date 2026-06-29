@@ -604,8 +604,8 @@
     drawExit(l.exit, run.keys >= run.neededKeys);
     l.saws.forEach(drawSaw);
     l.rocks.forEach(drawRock);
-    drawYoyo();
     drawPlayer();
+    drawYoyo();
     drawTamerName();
     drawForeground();
   }
@@ -928,14 +928,28 @@
 
   function drawYoyo() {
     const y = run.yoyo;
-    if (!y.active || !y.anchor) return;
     const p = run.player;
     const hx = p.x + PLAYER_W / 2 + p.facing * 7;
     const hy = p.y + 19;
-    ctx.strokeStyle = "#4ade80"; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(y.anchor.x, y.anchor.y); ctx.stroke();
-    ctx.fillStyle = "#0f172a"; ctx.strokeStyle = "#4ade80"; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(y.anchor.x, y.anchor.y, 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    const bob = Math.sin(run.time * 6) * 1.5;
+    const readyX = hx + p.facing * 18;
+    const readyY = hy + 8 + bob;
+    ctx.save();
+    ctx.strokeStyle = "rgba(234,244,255,.82)";
+    ctx.lineWidth = 1.5;
+    ctx.fillStyle = "#36e5ff";
+    ctx.shadowColor = "#36e5ff";
+    ctx.shadowBlur = 12;
+    if (y.active && y.anchor) {
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(y.anchor.x, y.anchor.y); ctx.stroke();
+      ctx.beginPath(); ctx.arc(y.anchor.x, y.anchor.y, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#eaffff"; ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(readyX, readyY); ctx.stroke();
+      ctx.beginPath(); ctx.arc(readyX, readyY, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#eaffff"; ctx.stroke();
+    }
+    ctx.restore();
   }
 
   function drawPlayer() {
