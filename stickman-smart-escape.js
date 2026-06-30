@@ -55,6 +55,8 @@
   function yoyoSwitch(x, y, id) { return { x, y, r: 15, id, pulled: false }; }
   function quicksand(x, y, w) { return { x, y, w, h: 18, sink: 0 }; }
   function symbol(x, y, text) { return { x, y, text, revealed: false }; }
+  function triggerZone(x, y, w, h, actions, extra = {}) { return { x, y, w, h, actions, delay: 0, once: true, fired: false, active: false, timer: 0, ...extra }; }
+  function bot(x, y, minX, maxX) { return { x, y, w: 24, h: 48, minX, maxX, vx: 75, stunned: 0, active: true }; }
 
   const LEVEL_TRICKS = [
     "Key opens the real door", "Spikes rise from sand", "Cracked floor collapses", "Yo-yo pulls a ruin switch", "Whistle reveals a hidden path",
@@ -88,6 +90,9 @@
     l.switches = [];
     l.quicksands = [];
     l.symbols = [];
+    l.triggers = [];
+    l.enemies = [];
+    l.slidingWalls = [];
     l.trick = LEVEL_TRICKS[i];
     l.hint = ["Get the key", "Use F for yo-yo", "Watch the timing", "Press the button", "Look for hidden traps"][i % 5];
     l.platforms = [
@@ -135,6 +140,7 @@
       l.doors.push(door(372, 254, 82, "B", false, 2.6));
     }
     tuneLevel(l, i);
+    addSmartTrapPlan(l, i);
     l.start = { x: 46, y: 440 };
     l.exit = { x: 904, y: 432 };
     return l;
@@ -256,6 +262,90 @@
     }
   }
 
+  function addSmartTrapPlan(l, i) {
+    l.trick = [
+      "Fake floor tutorial", "Coin wakes hidden spikes", "Door slides away", "Fake key reveals real key", "Second step drops the floor",
+      "Yo-yo switch opens bridge", "Walls close after key", "Jump wakes hidden spikes", "Fake exit drops Tamer", "Safe platform moves away",
+      "Yo-yo pulls key over pit", "Falling blocks chase Tamer", "Stun the guard with yo-yo", "Yo-yo bridge switch", "Yo-yo activates checkpoint",
+      "Safe floor disappears", "Exit moves after key", "Coin trail is a trap", "Multiple fake doors", "Chained smart escape room"
+    ][i];
+    l.hint = l.trick;
+
+    if (i === 0) {
+      const p = l.platforms[1]; p.trapId = "fake-floor-1"; p.cracked = true;
+      l.triggers.push(triggerZone(p.x + 12, p.y - 70, p.w - 24, 82, [{ type: "fallPlatform", id: "fake-floor-1" }], { delay: .18, message: "The floor was lying" }));
+    } else if (i === 1) {
+      l.coins[0].fake = true; l.coins[0].bait = "spikes";
+      l.triggers.push(triggerZone(330, 430, 112, 92, [{ type: "armSpikes", nearX: 380 }, { type: "toast", text: "Coin bait!" }], { once: false, delay: .1 }));
+    } else if (i === 2) {
+      l.fakeDoors.push(fakeDoor(805, 404, "RUN"));
+      l.triggers.push(triggerZone(750, 350, 100, 160, [{ type: "moveFakeDoor", index: 0, dx: -130 }, { type: "dropRock", index: 0 }], { delay: .08, message: "The door moved" }));
+    } else if (i === 3) {
+      l.keys[0].fake = true;
+      l.keys.push(key(610, 282, { hidden: true, trapId: "real-key" }));
+      l.triggers.push(triggerZone(l.keys[0].x - 20, l.keys[0].y - 25, 70, 70, [{ type: "fakeKey", index: 0 }, { type: "revealKey", id: "real-key" }], { message: "Fake key. Real key appeared." }));
+    } else if (i === 4) {
+      const p = l.platforms[2]; p.trapId = "second-step"; p.stepCount = 0; p.fallOnStep = 2; p.cracked = true;
+    } else if (i === 5) {
+      l.platforms.push(rect(510, 345, 150, 22, "whistle", { trapId: "switch-bridge", revealed: false }));
+      l.switches.push(yoyoSwitch(438, 306, "switch-bridge"));
+      l.triggers.push(triggerZone(650, 360, 110, 130, [{ type: "armSpikes", nearX: 690 }], { delay: .25, message: "Use F before crossing" }));
+    } else if (i === 6) {
+      l.slidingWalls.push(rect(160, 390, 26, 110, "wall", { trapId: "left-wall", vx: 170, active: false }));
+      l.slidingWalls.push(rect(850, 390, 26, 110, "wall", { trapId: "right-wall", vx: -170, active: false }));
+      l.triggers.push(triggerZone(l.keys[0].x - 24, l.keys[0].y - 28, 80, 80, [{ type: "slideWalls" }], { message: "Ancient walls are closing" }));
+    } else if (i === 7) {
+      l.triggers.push(triggerZone(350, 250, 260, 160, [{ type: "armSpikes", nearX: 498 }, { type: "armSpikes", nearX: 620 }], { delay: .18, message: "Jump trap!" }));
+    } else if (i === 8) {
+      l.fakeDoors.push(fakeDoor(846, 424, "DROP"));
+      l.platforms.push(rect(790, 498, 100, 24, "fall", { trapId: "exit-drop", delay: .08, fallVy: 0, cracked: true }));
+      l.triggers.push(triggerZone(810, 380, 120, 150, [{ type: "fallPlatform", id: "exit-drop" }, { type: "bounce", vx: -220, vy: -520 }], { delay: .12, message: "Fake exit floor" }));
+    } else if (i === 9) {
+      const p = l.platforms[3]; p.type = "trapShift"; p.trapId = "safe-runner"; p.sx = p.x; p.sy = p.y; p.dx = -175; p.trigger = 20; p.speed = 6.5; p.activated = false; p.offset = 0;
+    } else if (i === 10) {
+      l.keys[0].pullable = true; l.keys[0].hidden = false;
+      l.spikes.push(spike(520, 516, 120));
+      l.symbols.push(symbol(505, 300, "F PULLS KEY"));
+    } else if (i === 11) {
+      l.rocks.push(rock(280, 64, 999), rock(410, 64, 999), rock(560, 64, 999), rock(710, 64, 999));
+      l.triggers.push(triggerZone(230, 370, 610, 150, [{ type: "dropRock", index: 0 }, { type: "dropRock", index: 1 }, { type: "dropRock", index: 2 }, { type: "dropRock", index: 3 }], { delay: .22, message: "Run under the falling stones" }));
+    } else if (i === 12) {
+      l.enemies.push(bot(585, 452, 500, 760));
+      l.keys[0].hidden = true; l.keys[0].requiresEnemy = true;
+      l.symbols.push(symbol(590, 315, "F STUNS GUARD"));
+    } else if (i === 13) {
+      l.platforms.push(rect(455, 332, 210, 22, "whistle", { trapId: "yoyo-bridge", revealed: false }));
+      l.switches.push(yoyoSwitch(365, 282, "yoyo-bridge"));
+      l.triggers.push(triggerZone(430, 330, 245, 90, [{ type: "vanishPlatform", id: "yoyo-bridge" }], { once: false, delay: 2.2, message: "Bridge is timed" }));
+    } else if (i === 14) {
+      l.checkpoints[0].fake = true;
+      l.switches.push(yoyoSwitch(l.checkpoints[0].x + 38, l.checkpoints[0].y - 16, "real-checkpoint"));
+      l.symbols.push(symbol(l.checkpoints[0].x + 55, l.checkpoints[0].y - 35, "F FIRST"));
+    } else if (i === 15) {
+      const p = l.platforms[1]; p.trapId = "too-safe"; p.cracked = true;
+      l.triggers.push(triggerZone(p.x, p.y - 65, p.w, 80, [{ type: "vanishPlatform", id: "too-safe" }], { delay: .55, message: "Too safe?" }));
+    } else if (i === 16) {
+      l.exit.altX = 130; l.exit.altY = 332;
+      l.triggers.push(triggerZone(l.keys[0].x - 24, l.keys[0].y - 24, 80, 80, [{ type: "moveExit", x: 130, y: 332 }, { type: "revealPlatformNearExit" }], { message: "Exit changed rooms" }));
+    } else if (i === 17) {
+      l.coins.forEach((c, n) => { if (n < 4) c.bait = "spikes"; });
+      l.platforms.push(rect(560, 326, 130, 22, "whistle", { trapId: "coin-safe", revealed: false }));
+      l.switches.push(yoyoSwitch(455, 286, "coin-safe"));
+      l.hint = "Do not trust the coin trail";
+    } else if (i === 18) {
+      l.fakeDoors.push(fakeDoor(300, 424, "NO"), fakeDoor(555, 365, "NO"), fakeDoor(815, 365, "NO"));
+      l.symbols.push(symbol(675, 300, "G SHOWS REAL"));
+      l.triggers.push(triggerZone(260, 360, 610, 170, [{ type: "moveFakeDoor", index: 0, dx: 80 }, { type: "moveFakeDoor", index: 1, dx: -90 }, { type: "armSpikes", nearX: 620 }], { delay: .2, message: "Doors are pretending" }));
+    } else if (i === 19) {
+      l.enemies.push(bot(520, 452, 430, 720));
+      l.platforms.push(rect(610, 300, 150, 22, "whistle", { trapId: "final-bridge", revealed: false }));
+      l.switches.push(yoyoSwitch(395, 266, "final-bridge"));
+      l.triggers.push(triggerZone(280, 355, 560, 150, [{ type: "dropRock", index: 0 }, { type: "armSpikes", nearX: 620 }, { type: "slideWalls" }], { delay: .25, message: "Final room woke up" }));
+      l.slidingWalls.push(rect(130, 392, 28, 108, "wall", { vx: 120, active: false }));
+      l.slidingWalls.push(rect(860, 392, 28, 108, "wall", { vx: -120, active: false }));
+    }
+  }
+
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
   function loadSave() {
@@ -273,20 +363,27 @@
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (_) {}
   }
 
-  function newRun(index) {
-    const level = clone(LEVELS[index]);
+  function initLevelState(level) {
     level.platforms.forEach((p) => {
-      if (p.type === "trapShift" && Math.random() < 0.45) p.dx *= -1;
-      if ((p.type === "trapShift" || p.type === "trapSink") && Math.random() < 0.35) p.speed += 1.2;
       p.baseX = p.x; p.baseY = p.y; p.startY = p.y; p.fallTimer = 0; p.used = false; p.visible = p.type === "whistle" ? !!p.revealed : true; p.activated = p.activated || false; p.offset = p.offset || 0; p.prevX = p.x; p.prevY = p.y;
     });
-    level.hiddenSpikes.forEach((s) => { s.trigger += Math.floor(Math.random() * 28) - 10; });
+    level.hiddenSpikes.forEach((s) => { s.armed = false; s.rise = 0; });
     (level.rocks || []).forEach((r) => { r.sy = r.y; r.warning = 0; r.falling = false; r.vy = 0; r.done = false; });
     (level.quicksands || []).forEach((q) => { q.sink = 0; });
     (level.symbols || []).forEach((s) => { s.revealed = false; });
+    (level.triggers || []).forEach((t) => { t.fired = false; t.active = false; t.timer = 0; });
+    (level.fakeDoors || []).forEach((d) => { d.sprung = false; d.revealed = false; d.baseX = d.x; d.baseY = d.y; });
+    (level.switches || []).forEach((s) => { s.pulled = false; });
+    (level.slidingWalls || []).forEach((w) => { w.baseX = w.x; w.baseY = w.y; w.active = false; });
+    (level.enemies || []).forEach((e) => { e.baseX = e.x; e.baseY = e.y; e.active = true; e.stunned = 0; });
+    return level;
+  }
+
+  function newRun(index) {
+    const level = initLevelState(clone(LEVELS[index]));
     run = {
-      level, time: 0, levelCoins: 0, levelDeaths: 0, keys: 0, neededKeys: level.keys.length, won: false, dead: false, pausedAt: 0, trapPause: 0, whistleReveal: 0,
-      deathPieces: [], dust: [],
+      level, time: 0, levelCoins: 0, levelDeaths: 0, keys: 0, neededKeys: level.keys.filter((k) => !k.fake).length, won: false, dead: false, pausedAt: 0, trapPause: 0, whistleReveal: 0,
+      deathPieces: [], dust: [], shake: 0,
       player: { x: level.start.x, y: level.start.y, vx: 0, vy: 0, facing: 1, grounded: false, coyote: 0, jumpBuffer: 0, jumpHeld: false, checkpoint: { ...level.start }, hurt: 0, runTime: 0 },
       yoyo: { state: "ready", active: false, anchor: null, target: null, targetKind: null, x: 0, y: 0, vx: 0, vy: 0, distance: 0, direction: 1, t: 0 }
     };
@@ -297,6 +394,20 @@
     toast(level.hint);
     whistleCooldown = 0;
     canvas.focus({ preventScroll: true });
+  }
+
+  function resetLevelAfterDeath() {
+    const checkpoint = { ...run.player.checkpoint };
+    const deaths = run.levelDeaths;
+    const time = run.time;
+    run.level = initLevelState(clone(LEVELS[levelIndex]));
+    run.time = time;
+    run.levelCoins = 0;
+    run.keys = 0;
+    run.neededKeys = run.level.keys.filter((k) => !k.fake).length;
+    run.levelDeaths = deaths;
+    run.player.checkpoint = checkpoint;
+    run.shake = 0;
   }
 
   function showOverlay(name) {
@@ -329,17 +440,19 @@
   function die(reason = "Try again") {
     if (run.dead || run.won) return;
     run.dead = true;
+    triggerShake(.42);
     spawnDeathBreak();
     save.deaths += 1;
     run.levelDeaths += 1;
     writeSave();
-    beep(110, 0.08, "sawtooth");
+    playSound("death");
     toast(reason);
     setTimeout(() => respawn(), 720);
   }
 
   function respawn() {
     if (!run || run.won) return;
+    resetLevelAfterDeath();
     const p = run.player;
     run.dead = false;
     run.deathPieces = [];
@@ -349,6 +462,9 @@
     p.vx = 0; p.vy = 0; p.hurt = 0.25; p.grounded = false;
     run.yoyo.active = false;
     run.yoyo.state = "ready";
+    const hand = yoyoHand();
+    run.yoyo.x = hand.x;
+    run.yoyo.y = hand.y;
     updateHud();
   }
 
@@ -413,6 +529,7 @@
     whistleCooldown = Math.max(0, whistleCooldown - dt);
     run.trapPause = Math.max(0, run.trapPause - dt);
     run.whistleReveal = Math.max(0, run.whistleReveal - dt);
+    run.shake = Math.max(0, run.shake - dt);
     toastTimer = Math.max(0, toastTimer - dt);
     if (toastTimer === 0) ui.toast.classList.remove("show");
 
@@ -453,6 +570,7 @@
 
   function updateWorld(dt) {
     const t = run.time;
+    updateTriggers(dt);
     run.level.platforms.forEach((p) => {
       p.prevX = p.x; p.prevY = p.y;
       if (p.type === "whistle") {
@@ -488,6 +606,22 @@
           p.y = p.sy + (p.sink || 72) * easeOutCubic(p.offset) + shake;
         }
       }
+    });
+    run.level.slidingWalls.forEach((w) => {
+      w.prevX = w.x; w.prevY = w.y;
+      if (w.active && run.trapPause <= 0) {
+        w.x += (w.vx || 0) * dt;
+        if (overlap(run.player, w)) die("The wall pushed Tamer");
+      }
+    });
+    run.level.enemies.forEach((e) => {
+      if (!e.active) return;
+      e.stunned = Math.max(0, e.stunned - dt);
+      if (e.stunned <= 0 && run.trapPause <= 0) {
+        e.x += e.vx * dt;
+        if (e.x < e.minX || e.x > e.maxX) { e.vx *= -1; e.x = clamp(e.x, e.minX, e.maxX); }
+      }
+      if (overlap(run.player, e)) die(e.stunned > 0 ? "Do not hug the guard" : "Yo-yo stuns guards");
     });
     run.level.saws.forEach((s) => {
       if (run.trapPause > 0) return;
@@ -544,6 +678,78 @@
         d.open = d.timer > 0;
       }
     });
+  }
+
+  function updateTriggers(dt) {
+    const p = run.player;
+    run.level.triggers.forEach((zone) => {
+      if (zone.once && zone.fired) return;
+      const inside = overlap(p, zone);
+      if (!inside && !zone.once) zone.fired = false;
+      if (!zone.once && zone.fired) return;
+      if (inside && !zone.active) {
+        zone.active = true;
+        zone.timer = zone.delay || 0;
+      }
+      if (!inside && !zone.active) zone.timer = 0;
+      if (!zone.active) return;
+      zone.timer -= dt;
+      if (zone.timer <= 0) {
+        fireTrigger(zone);
+        zone.fired = true;
+        zone.active = false;
+      }
+    });
+  }
+
+  function fireTrigger(zone) {
+    if (zone.message) toast(zone.message);
+    triggerShake(.18);
+    playSound("trap");
+    zone.actions.forEach(runTrapAction);
+  }
+
+  function runTrapAction(action) {
+    if (action.type === "toast") toast(action.text);
+    if (action.type === "armSpikes") {
+      run.level.hiddenSpikes.forEach((s) => {
+        if (action.nearX == null || Math.abs((s.x + s.w / 2) - action.nearX) < 120) s.armed = true;
+      });
+    }
+    if (action.type === "fallPlatform") {
+      const p = run.level.platforms.find((item) => item.trapId === action.id);
+      if (p) { p.used = true; p.fallTimer = Math.max(p.delay || 0, .2); }
+    }
+    if (action.type === "vanishPlatform") {
+      run.level.platforms.forEach((p) => { if (p.trapId === action.id) { p.revealed = false; p.visible = false; } });
+    }
+    if (action.type === "moveFakeDoor") {
+      const d = run.level.fakeDoors[action.index];
+      if (d) { d.x = (d.baseX ?? d.x) + (action.dx || 0); d.revealed = true; }
+    }
+    if (action.type === "dropRock") {
+      const r = run.level.rocks[action.index];
+      if (r && !r.done) { r.armed = true; r.warning = Math.max(r.warning || 0, .22); }
+    }
+    if (action.type === "slideWalls") run.level.slidingWalls.forEach((w) => { w.active = true; });
+    if (action.type === "fakeKey") {
+      const k = run.level.keys[action.index];
+      if (k) { k.taken = true; k.hidden = true; }
+    }
+    if (action.type === "revealKey") {
+      run.level.keys.forEach((k) => { if (k.trapId === action.id) k.hidden = false; });
+    }
+    if (action.type === "moveExit") {
+      run.level.exit.x = action.x;
+      run.level.exit.y = action.y;
+    }
+    if (action.type === "revealPlatformNearExit") {
+      run.level.platforms.push(rect(92, 398, 130, 22, "whistle", { revealed: true }));
+    }
+    if (action.type === "bounce") {
+      run.player.vx = action.vx || run.player.vx;
+      run.player.vy = action.vy || -620;
+    }
   }
 
   function updatePlayer(dt) {
@@ -607,6 +813,11 @@
     run.level.doors.forEach((d) => { if (!d.open && overlap(p, d)) pushOutDoor(p, d); });
     run.level.checkpoints.forEach((c) => {
       if (!c.active && overlap(p, c)) {
+        if (c.fake) {
+          toast("Fake checkpoint. Hit its switch.");
+          playSound("trap");
+          return;
+        }
         c.active = true;
         p.checkpoint = { x: c.x - 4, y: c.y - 8 };
         toast("Checkpoint");
@@ -637,7 +848,14 @@
           p.y = o.y - PLAYER_H;
           p.vy = 0;
           p.grounded = true;
-          if (o.type === "fall") o.used = true;
+          if (o.type === "fall") {
+            o.stepCount = (o.stepCount || 0) + 1;
+            if (!o.fallOnStep || o.stepCount >= o.fallOnStep) o.used = true;
+            if (o.cracked && !o.used) {
+              toast("It cracked. One more step?");
+              playSound("trap");
+            }
+          }
           if (o.type === "move" || o.type === "trapShift" || o.type === "trapSink") {
             p.x += (o.x - (o.prevX ?? o.x));
             p.y += (o.y - (o.prevY ?? o.y));
@@ -653,7 +871,7 @@
   function solidObjects() {
     const platforms = run.level.platforms.filter((p) => p.visible !== false && p.y < H + 60);
     const closedDoors = run.level.doors.filter((d) => !d.open).map((d) => ({ ...d, type: "door" }));
-    return platforms.concat(closedDoors);
+    return platforms.concat(closedDoors, run.level.slidingWalls || []);
   }
 
   function updateCollectibles() {
@@ -673,13 +891,27 @@
         toast("A hidden key appeared");
         playSound("yoyoHook");
       }
+      if (k.hidden && k.requiresEnemy && run.level.enemies.every((e) => e.stunned > 0 || !e.active)) {
+        k.hidden = false;
+        toast("Guard stunned. Key revealed.");
+        playSound("yoyoHook");
+      }
     });
     run.level.keys.forEach((k) => {
       if (!k.hidden && !k.taken && overlap(p, k)) {
+        if (k.fake) {
+          k.taken = true;
+          runTrapAction({ type: "revealKey", id: "real-key" });
+          run.level.hiddenSpikes.forEach((s) => { if (Math.abs(s.x - k.x) < 220) s.armed = true; });
+          triggerShake(.25);
+          toast("Fake key!");
+          playSound("trap");
+          return;
+        }
         k.taken = true;
         run.keys += 1;
         toast(run.keys >= run.neededKeys ? "Exit door unlocked" : "Key collected");
-        beep(920, 0.07, "triangle");
+        playSound("key");
       }
     });
   }
@@ -806,8 +1038,15 @@
     s.pulled = true;
     run.level.doors.forEach((d) => { if (d.id === s.id) d.timer = d.seconds; });
     run.level.platforms.forEach((p) => {
-      if (p.id === s.id || (p.type === "whistle" && Math.abs(p.x - s.x) < 190)) p.revealed = true;
+      if (p.id === s.id || p.trapId === s.id || (p.type === "whistle" && Math.abs(p.x - s.x) < 190)) {
+        p.revealed = true;
+        p.visible = true;
+      }
     });
+    if (s.id === "real-checkpoint") {
+      const c = run.level.checkpoints.find((point) => point.fake);
+      if (c) { c.fake = false; c.active = true; run.player.checkpoint = { x: c.x - 4, y: c.y - 8 }; toast("Checkpoint is real now"); }
+    }
     run.level.hiddenSpikes.forEach((trap) => {
       if (Math.abs((trap.x + trap.w / 2) - s.x) < 170) trap.armed = true;
     });
@@ -835,6 +1074,32 @@
       if (!d.revealed && circleRect(y.x, y.y, 8, d.x, d.y, d.w, d.h)) {
         d.revealed = true;
         toast("Yo-yo exposed a fake door");
+        playSound("yoyoHit");
+        returnYoyo();
+      }
+    });
+    run.level.platforms.forEach((p) => {
+      if (p.type === "whistle" && p.visible === false && circleRect(y.x, y.y, 9, p.x, p.y, p.w, p.h)) {
+        p.revealed = true;
+        p.visible = true;
+        toast("Yo-yo revealed a bridge");
+        playSound("yoyoHook");
+        returnYoyo();
+      }
+    });
+    run.level.keys.forEach((k) => {
+      if (!k.hidden && !k.taken && k.pullable && Math.hypot(y.x - (k.x + 10), y.y - (k.y + 8)) < 28) {
+        k.x = approach(k.x, run.player.x + PLAYER_W / 2, 32);
+        k.y = approach(k.y, run.player.y + 30, 24);
+        toast("Yo-yo pulled the key");
+      }
+    });
+    run.level.enemies.forEach((e) => {
+      if (e.active && Math.hypot(y.x - (e.x + e.w / 2), y.y - (e.y + e.h / 2)) < 34) {
+        e.stunned = 3.2;
+        e.vx *= -1;
+        triggerShake(.15);
+        toast("Guard stunned");
         playSound("yoyoHit");
         returnYoyo();
       }
@@ -871,6 +1136,11 @@
     ctx.clearRect(0, 0, W, H);
     drawBackground();
     if (!run) newRun(levelIndex);
+    ctx.save();
+    if (run.shake > 0) {
+      const s = run.shake * 11;
+      ctx.translate((Math.random() - .5) * s, (Math.random() - .5) * s);
+    }
     const l = run.level;
     l.platforms.forEach(drawPlatform);
     l.quicksands.forEach(drawQuicksand);
@@ -878,6 +1148,7 @@
     l.spikes.forEach(drawSpike);
     l.doors.forEach(drawDoor);
     l.fakeDoors.forEach(drawFakeDoor);
+    l.slidingWalls.forEach(drawSlidingWall);
     l.buttons.forEach(drawButton);
     l.switches.forEach(drawYoyoSwitch);
     l.checkpoints.forEach(drawCheckpoint);
@@ -892,7 +1163,9 @@
     drawYoyo();
     drawTamerName();
     drawDeathBreak();
+    l.enemies.forEach(drawEnemy);
     drawForeground();
+    ctx.restore();
   }
 
   function drawBackground() {
@@ -1123,6 +1396,23 @@
     ctx.restore();
   }
 
+  function drawSlidingWall(w) {
+    ctx.save();
+    ctx.fillStyle = w.active ? "#7c2d12" : "#8a7958";
+    ctx.strokeStyle = w.active ? "#f97316" : "#e4ce96";
+    ctx.lineWidth = 2;
+    roundRect(w.x, w.y, w.w, w.h, 4, true, true);
+    ctx.fillStyle = "rgba(255,245,199,.28)";
+    for (let y = w.y + 12; y < w.y + w.h - 8; y += 18) ctx.fillRect(w.x + 5, y, w.w - 10, 3);
+    if (w.active) {
+      ctx.fillStyle = "#ffd54a";
+      ctx.font = "900 10px Orbitron";
+      ctx.textAlign = "center";
+      ctx.fillText("!", w.x + w.w / 2, w.y - 6);
+    }
+    ctx.restore();
+  }
+
   function drawFakeDoor(d) {
     ctx.save();
     ctx.globalAlpha = d.sprung ? 0.35 : 1;
@@ -1184,7 +1474,7 @@
   }
 
   function drawCheckpoint(c) {
-    ctx.strokeStyle = c.active ? "#4ade80" : "#cbd5e1";
+    ctx.strokeStyle = c.fake ? "#f97316" : c.active ? "#4ade80" : "#cbd5e1";
     ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(c.x, c.y + c.h); ctx.lineTo(c.x, c.y); ctx.lineTo(c.x + 24, c.y + 9); ctx.lineTo(c.x, c.y + 18); ctx.stroke();
   }
@@ -1203,9 +1493,38 @@
 
   function drawKey(k) {
     if (k.taken || k.hidden) return;
-    ctx.strokeStyle = "#fde68a"; ctx.lineWidth = 5; ctx.lineCap = "round";
+    ctx.strokeStyle = k.fake ? "#fb7185" : "#fde68a"; ctx.lineWidth = 5; ctx.lineCap = "round";
     ctx.beginPath(); ctx.arc(k.x + 7, k.y + 9, 7, 0, Math.PI * 2); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(k.x + 14, k.y + 9); ctx.lineTo(k.x + 31, k.y + 9); ctx.lineTo(k.x + 31, k.y + 15); ctx.moveTo(k.x + 23, k.y + 9); ctx.lineTo(k.x + 23, k.y + 14); ctx.stroke();
+  }
+
+  function drawEnemy(e) {
+    if (!e.active) return;
+    const x = e.x + e.w / 2;
+    const y = e.y;
+    const color = e.stunned > 0 ? "#94a3b8" : "#fb7185";
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.strokeStyle = "rgba(255,255,255,.38)";
+    ctx.lineWidth = 7;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.arc(0, 9, 8, 0, Math.PI * 2);
+    ctx.moveTo(0, 18); ctx.lineTo(0, 34);
+    ctx.moveTo(0, 23); ctx.lineTo(-12, 30);
+    ctx.moveTo(0, 23); ctx.lineTo(12, 30);
+    ctx.moveTo(0, 34); ctx.lineTo(-9, 47);
+    ctx.moveTo(0, 34); ctx.lineTo(9, 47);
+    ctx.stroke();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.fillStyle = "#eaffff";
+    ctx.font = "900 8px Orbitron";
+    ctx.textAlign = "center";
+    ctx.fillText(e.stunned > 0 ? "Z" : "!", 0, -7);
+    ctx.restore();
   }
 
   function drawQuicksand(q) {
@@ -1428,6 +1747,11 @@
     toastTimer = 1.45;
   }
 
+  function triggerShake(amount = .2) {
+    if (!run) return;
+    run.shake = Math.max(run.shake || 0, amount);
+  }
+
   function beep(freq, dur, type) {
     if (!soundOn) return;
     try {
@@ -1511,6 +1835,9 @@
     if (name === "yoyoThrow") beep(240, 0.05, "triangle"), setTimeout(() => beep(620, 0.09, "triangle"), 35);
     if (name === "yoyoHook") beep(520, 0.06, "sine"), setTimeout(() => beep(880, 0.1, "triangle"), 70);
     if (name === "yoyoHit") beep(180, 0.04, "square"), setTimeout(() => beep(320, 0.07, "triangle"), 45);
+    if (name === "trap") beep(170, 0.045, "square"), setTimeout(() => beep(95, 0.07, "sawtooth"), 55);
+    if (name === "death") beep(110, 0.08, "sawtooth"), setTimeout(() => beep(82, 0.09, "sine"), 90);
+    if (name === "key") beep(920, 0.07, "triangle"), setTimeout(() => beep(1180, 0.08, "triangle"), 60);
     if (name === "whistle") scheduleWhistleMelody();
   }
 
