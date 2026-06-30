@@ -2,6 +2,7 @@
   "use strict";
 
   const SAVE_KEY = "youooo_stickman_smart_escape_v1";
+  const GAME_VERSION = "trick-engine-first3-v1";
   const W = 960;
   const H = 540;
   const GRAVITY = 1850;
@@ -272,14 +273,25 @@
     l.hint = l.trick;
 
     if (i === 0) {
-      const p = l.platforms[1]; p.trapId = "fake-floor-1"; p.cracked = true;
-      l.triggers.push(triggerZone(p.x + 12, p.y - 70, p.w - 24, 82, [{ type: "fallPlatform", id: "fake-floor-1" }], { delay: .18, message: "The floor was lying" }));
+      const p = l.platforms[1];
+      p.trapId = "fake-floor-1";
+      p.type = "fall";
+      p.cracked = true;
+      p.fakeSafe = true;
+      p.delay = .2;
+      p.fallVy = 0;
+      l.triggers.push(triggerZone(p.x + 4, p.y - 62, p.w - 8, 88, [{ type: "warnPlatform", id: "fake-floor-1" }, { type: "fallPlatform", id: "fake-floor-1" }], { delay: .18, message: "Fake floor!" }));
     } else if (i === 1) {
-      l.coins[0].fake = true; l.coins[0].bait = "spikes";
-      l.triggers.push(triggerZone(330, 430, 112, 92, [{ type: "armSpikes", nearX: 380 }, { type: "toast", text: "Coin bait!" }], { once: false, delay: .1 }));
+      l.hiddenSpikes = [hiddenSpike(310, 516, 82, 999), hiddenSpike(455, 516, 82, 999), hiddenSpike(655, 516, 76, 999)];
+      l.coins = [coin(338, 470, { bait: "spikes", baitRange: 130 }), coin(484, 470, { bait: "spikes", baitRange: 130 }), coin(675, 470, { bait: "spikes", baitRange: 130 }), coin(770, 264)];
+      l.triggers.push(triggerZone(300, 430, 420, 95, [{ type: "toast", text: "Coins can lie" }], { once: true, delay: .08 }));
     } else if (i === 2) {
-      l.fakeDoors.push(fakeDoor(805, 404, "RUN"));
-      l.triggers.push(triggerZone(750, 350, 100, 160, [{ type: "moveFakeDoor", index: 0, dx: -130 }, { type: "dropRock", index: 0 }], { delay: .08, message: "The door moved" }));
+      l.switches.push(yoyoSwitch(790, 344, "exit-return"));
+      l.symbols.push(symbol(790, 318, "F BRINGS DOOR BACK"));
+      l.exit.homeX = l.exit.x;
+      l.exit.homeY = l.exit.y;
+      l.exit.moved = false;
+      l.triggers.push(triggerZone(760, 348, 145, 176, [{ type: "moveExit", x: 120, y: 432 }, { type: "toast", text: "Hit the F switch!" }], { delay: .08, message: "Exit ran away!" }));
     } else if (i === 3) {
       l.keys[0].fake = true;
       l.keys.push(key(610, 282, { hidden: true, trapId: "real-key" }));
@@ -349,12 +361,14 @@
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
   function loadSave() {
-    const fallback = { unlocked: 1, lastLevel: 0, deaths: 0, coins: 0, best: {}, levelCoins: {}, backgroundMode: "night", yoyoUnlocked: true };
+    const fallback = { unlocked: 1, lastLevel: 0, deaths: 0, coins: 0, best: {}, levelCoins: {}, backgroundMode: "night", yoyoUnlocked: true, version: GAME_VERSION };
     try {
       const parsed = JSON.parse(localStorage.getItem(SAVE_KEY) || "null");
       const merged = { ...fallback, ...(parsed || {}), unlocked: Math.max(1, parsed?.unlocked || 1) };
+      if (parsed?.version !== GAME_VERSION) merged.lastLevel = 0;
       if (!["night", "day", "dynamic"].includes(merged.backgroundMode)) merged.backgroundMode = "night";
       merged.yoyoUnlocked = true;
+      merged.version = GAME_VERSION;
       return merged;
     } catch (_) { return fallback; }
   }
@@ -573,6 +587,7 @@
     updateTriggers(dt);
     run.level.platforms.forEach((p) => {
       p.prevX = p.x; p.prevY = p.y;
+      p.warning = Math.max(0, (p.warning || 0) - dt);
       if (p.type === "whistle") {
         p.visible = !!p.revealed || run.whistleReveal > 0;
         if (p.temporary && run.whistleReveal <= 0) p.revealed = false;
@@ -703,8 +718,8 @@
   }
 
   function fireTrigger(zone) {
-    if (zone.message) toast(zone.message);
-    triggerShake(.18);
+    toast(zone.message ? `Trap activated! ${zone.message}` : "Trap activated!");
+    triggerShake(.28);
     playSound("trap");
     zone.actions.forEach(runTrapAction);
   }
@@ -719,6 +734,10 @@
     if (action.type === "fallPlatform") {
       const p = run.level.platforms.find((item) => item.trapId === action.id);
       if (p) { p.used = true; p.fallTimer = Math.max(p.delay || 0, .2); }
+    }
+    if (action.type === "warnPlatform") {
+      const p = run.level.platforms.find((item) => item.trapId === action.id);
+      if (p) { p.warning = .35; p.activated = true; }
     }
     if (action.type === "vanishPlatform") {
       run.level.platforms.forEach((p) => { if (p.trapId === action.id) { p.revealed = false; p.visible = false; } });
@@ -742,6 +761,7 @@
     if (action.type === "moveExit") {
       run.level.exit.x = action.x;
       run.level.exit.y = action.y;
+      run.level.exit.moved = true;
     }
     if (action.type === "revealPlatformNearExit") {
       run.level.platforms.push(rect(92, 398, 130, 22, "whistle", { revealed: true }));
@@ -854,6 +874,11 @@
             if (o.cracked && !o.used) {
               toast("It cracked. One more step?");
               playSound("trap");
+            } else if (o.fakeSafe && o.used) {
+              o.warning = .25;
+              triggerShake(.18);
+              toast("Trap activated! Fake floor.");
+              playSound("trap");
             }
           }
           if (o.type === "move" || o.type === "trapShift" || o.type === "trapSink") {
@@ -918,10 +943,12 @@
 
   function triggerBait(c) {
     if (!c.bait) return;
-    if (c.bait === "spikes") run.level.hiddenSpikes.forEach((s) => { if (Math.abs(s.x - c.x) < 160) s.armed = true; });
+    if (c.bait === "spikes") run.level.hiddenSpikes.forEach((s) => { if (Math.abs((s.x + s.w / 2) - c.x) < (c.baitRange || 160)) s.armed = true; });
     if (c.bait === "rock") run.level.rocks.forEach((r) => { if (Math.abs(r.x - c.x) < 140) { r.armed = true; r.warning = 0.34; } });
     if (c.bait === "sand") run.level.quicksands.forEach((q) => { if (c.x > q.x && c.x < q.x + q.w) q.sink = Math.max(q.sink, .35); });
-    toast("That coin triggered something");
+    triggerShake(.28);
+    playSound("trap");
+    toast("Trap activated! Coin bait.");
   }
 
   function toggleYoyo() {
@@ -1046,6 +1073,13 @@
     if (s.id === "real-checkpoint") {
       const c = run.level.checkpoints.find((point) => point.fake);
       if (c) { c.fake = false; c.active = true; run.player.checkpoint = { x: c.x - 4, y: c.y - 8 }; toast("Checkpoint is real now"); }
+    }
+    if (s.id === "exit-return") {
+      run.level.exit.x = run.level.exit.homeX || 904;
+      run.level.exit.y = run.level.exit.homeY || 432;
+      run.level.exit.moved = false;
+      triggerShake(.18);
+      toast("Exit returned");
     }
     run.level.hiddenSpikes.forEach((trap) => {
       if (Math.abs((trap.x + trap.w / 2) - s.x) < 170) trap.armed = true;
@@ -1324,9 +1358,21 @@
       }
       return;
     }
-    const color = p.type === "move" ? "#38bdf8" : p.type === "fall" ? "#f59e0b" : p.type === "vanish" || p.type === "whistle" ? "#a78bfa" : p.type === "trapShift" || p.type === "trapSink" ? "#ef4444" : "#263a58";
+    const color = p.fakeSafe ? "#b45309" : p.type === "move" ? "#38bdf8" : p.type === "fall" ? "#f59e0b" : p.type === "vanish" || p.type === "whistle" ? "#a78bfa" : p.type === "trapShift" || p.type === "trapSink" ? "#ef4444" : "#263a58";
     ctx.fillStyle = color; roundRect(p.x, p.y, p.w, p.h, 8, true, false);
     ctx.fillStyle = "rgba(255,255,255,.22)"; ctx.fillRect(p.x + 8, p.y + 5, p.w - 16, 3);
+    if (p.cracked || p.fakeSafe) {
+      ctx.strokeStyle = p.warning > 0 ? "#fff7ad" : "rgba(255,247,173,.82)";
+      ctx.lineWidth = p.warning > 0 ? 4 : 2;
+      ctx.beginPath();
+      ctx.moveTo(p.x + 18, p.y + 5); ctx.lineTo(p.x + 34, p.y + p.h - 6); ctx.lineTo(p.x + 50, p.y + 10);
+      ctx.moveTo(p.x + p.w - 16, p.y + 7); ctx.lineTo(p.x + p.w - 38, p.y + p.h - 7); ctx.lineTo(p.x + p.w - 58, p.y + 12);
+      ctx.stroke();
+      ctx.fillStyle = "#fff7ad";
+      ctx.font = "900 10px Orbitron";
+      ctx.textAlign = "center";
+      ctx.fillText("CRACK", p.x + p.w / 2, p.y - 7);
+    }
     if (p.type === "trapShift" || p.type === "trapSink") {
       ctx.fillStyle = p.activated ? "rgba(255,255,255,.42)" : "rgba(255,213,74,.72)";
       for (let x = p.x + 10; x < p.x + p.w - 8; x += 22) {
@@ -1352,6 +1398,8 @@
     ctx.lineWidth = 2;
     ctx.setLineDash(s.armed ? [] : [5, 5]);
     ctx.strokeRect(s.x + 4, s.y + 18, s.w - 8, 7);
+    ctx.fillStyle = s.armed ? "rgba(251,113,133,.34)" : "rgba(255,213,74,.26)";
+    roundRect(s.x + 2, s.y + s.h - 2, s.w - 4, 8, 4, true, false);
     ctx.setLineDash([]);
     if (!s.armed) {
       ctx.font = "900 14px Orbitron";
@@ -1424,7 +1472,7 @@
     ctx.fillStyle = "#eaffff";
     ctx.font = "900 9px Orbitron";
     ctx.textAlign = "center";
-    ctx.fillText(d.revealed ? d.label : "Y", d.x + d.w / 2, d.y + 39);
+    ctx.fillText(d.revealed ? d.label : "FAKE", d.x + d.w / 2, d.y + 39);
     ctx.restore();
   }
 
@@ -1559,10 +1607,21 @@
   }
 
   function drawExit(e, unlocked) {
+    ctx.save();
+    if (e.moved) {
+      ctx.shadowColor = "#ffd54a";
+      ctx.shadowBlur = 18;
+    }
     ctx.fillStyle = unlocked ? "#22c55e" : "#334155";
     roundRect(e.x, e.y - 70, 40, 76, 18, true, false);
     ctx.fillStyle = "#07110f"; roundRect(e.x + 8, e.y - 58, 24, 52, 12, true, false);
     ctx.fillStyle = unlocked ? "#fff" : "#94a3b8"; ctx.font = "900 11px Orbitron"; ctx.textAlign = "center"; ctx.fillText("Y", e.x + 20, e.y - 28);
+    if (e.moved) {
+      ctx.fillStyle = "#ffd54a";
+      ctx.font = "900 9px Orbitron";
+      ctx.fillText("MOVED", e.x + 20, e.y - 78);
+    }
+    ctx.restore();
   }
 
   function drawYoyo() {
