@@ -5,6 +5,7 @@
   const W = 960, H = 540, WORLD_W = 3600;
   const GRAVITY = 1850, MOVE = 3000, FRICTION = 2400, MAX = 280, JUMP = 625;
   const PLAYER_W = 26, PLAYER_H = 58, COYOTE = .1, JUMP_BUFFER = .12;
+  const WHISTLE_COOLDOWN = 8.6;
   const $ = (id) => document.getElementById(id);
   const canvas = $("odysseyCanvas");
   const ctx = canvas.getContext("2d");
@@ -24,7 +25,7 @@
   ];
   const input = { left: false, right: false, jump: false, jumpPressed: false, yoyoPressed: false };
   let save = loadSave();
-  let state = "menu", run = null, last = 0, camera = 0, toastTimer = 0, soundOn = true, audio = null;
+  let state = "menu", run = null, last = 0, camera = 0, toastTimer = 0, soundOn = true, audio = null, whistleBus = null, whistleCooldown = 0;
 
   const rect = (x, y, w, h, type = "solid", extra = {}) => ({ x, y, w, h, type, ...extra });
   const coin = (x, y, secret = false) => ({ x, y, r: 9, taken: false, secret });
@@ -47,12 +48,20 @@
     rocks: [{ x: 1520, y: 120, r: 16, armed: false, vy: 0 }, { x: 2380, y: 120, r: 18, armed: false, vy: 0 }],
     boulders: [{ x: 2460, y: 430, r: 22, vx: 0, armed: false }],
     doors: [rect(2845, 350, 42, 120, "door", { id: "temple", open: false })],
+    plates: [rect(2365, 458, 54, 12, "plate", { id: "temple", pressed: false, timer: 0 })],
     coins: [coin(160, 420), coin(535, 398), coin(845, 430), coin(985, 310, true), coin(1320, 376), coin(1815, 400), coin(2140, 384), coin(2765, 384), coin(3210, 292, true), coin(3440, 428)],
     artifacts: [artifact(1015, 342, "Sun Tablet"), artifact(1855, 390, "Cave Idol"), artifact(3310, 342, "Golden Leaf")],
     keys: [key(2305, 388, "temple")],
     checkpoints: [checkpoint(40, 426, "start"), checkpoint(920, 426, "ruins"), checkpoint(1650, 426, "cave"), checkpoint(2350, 426, "temple")],
     hooks: [hook(610, 300), hook(1360, 300), hook(2100, 300), hook(2810, 290)],
     switches: [yoyoSwitch(1960, 330, "bridge"), yoyoSwitch(2520, 320, "temple")],
+    signs: [
+      { x: 120, y: 420, text: "Coins mark the path" },
+      { x: 820, y: 420, text: "F catches hooks" },
+      { x: 1510, y: 420, text: "G reveals cave paths" },
+      { x: 2320, y: 420, text: "Step plates wake doors" },
+      { x: 3110, y: 420, text: "Find all artifacts" }
+    ],
     leaves: []
   };
 
@@ -63,19 +72,24 @@
   function writeSave() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (_) {} }
   function clone(v) { return JSON.parse(JSON.stringify(v)); }
 
-  function newRun(fresh = false) {
-    if (fresh) {
-      save = { checkpoint: { x: 44, y: 380 }, coins: [], artifacts: [], keys: [], switches: [], deaths: 0, best: save.best || null, complete: false };
-      writeSave();
-    }
+  function buildWorld() {
     const world = clone(baseWorld);
     world.coins.forEach((c, i) => { c.id = i; c.taken = save.coins.includes(i); });
     world.artifacts.forEach((a, i) => { a.id = i; a.taken = save.artifacts.includes(i); });
     world.keys.forEach((k) => { k.taken = save.keys.includes(k.id); });
     world.switches.forEach((s) => { s.pulled = save.switches.includes(s.id); });
+    return world;
+  }
+
+  function newRun(fresh = false) {
+    if (fresh) {
+      save = { checkpoint: { x: 44, y: 380 }, coins: [], artifacts: [], keys: [], switches: [], deaths: 0, best: save.best || null, complete: false };
+      writeSave();
+    }
+    const world = buildWorld();
     run = {
-      world, time: 0, keys: new Set(save.keys), dead: false, won: false, dust: [], pieces: [], waves: [], whistle: 0,
-      player: { x: save.checkpoint.x, y: save.checkpoint.y, vx: 0, vy: 0, facing: 1, grounded: false, coyote: 0, jumpBuffer: 0, jumpHeld: false, runTime: 0, pose: "idle", checkpoint: { ...save.checkpoint } },
+      world, time: 0, keys: new Set(save.keys), dead: false, won: false, dust: [], particles: [], pieces: [], waves: [], whistle: 0, shake: 0, areaName: "",
+      player: { x: save.checkpoint.x, y: save.checkpoint.y, vx: 0, vy: 0, facing: 1, grounded: false, coyote: 0, jumpBuffer: 0, jumpHeld: false, runTime: 0, pose: "idle", checkpoint: { ...save.checkpoint }, invuln: 1 },
       yoyo: { state: "ready", x: 0, y: 0, vx: 0, vy: 0, distance: 0, hook: null, target: null, kind: null, t: 0 }
     };
     applySwitches();
@@ -92,14 +106,34 @@
     run.world.doors.forEach((d) => { if (d.id === "temple") d.open = temple || run.keys.has("temple"); });
   }
 
+  function resetLocalHazards() {
+    if (!run) return;
+    const old = run.world;
+    run.world = buildWorld();
+    applySwitches();
+    run.world.platforms.forEach((p) => {
+      const previous = old.platforms.find((item) => item.id && item.id === p.id);
+      if (previous?.revealed) { p.revealed = true; p.visible = true; }
+    });
+    run.whistle = 0;
+    run.world.leaves = [];
+    run.waves = [];
+    run.dust = [];
+    run.particles = [];
+    run.shake = 0;
+  }
+
   function update(dt) {
     if (!run || state !== "playing") return;
     dt = Math.min(dt, .033);
     run.time += dt;
+    whistleCooldown = Math.max(0, whistleCooldown - dt);
+    run.shake = Math.max(0, run.shake - dt);
     toastTimer = Math.max(0, toastTimer - dt);
     if (toastTimer === 0) ui.toast.classList.remove("show");
     if (run.dead) { updateDeath(dt); updateHud(); return; }
     updateWorld(dt);
+    updateArea();
     updatePlayer(dt);
     updateCollectibles();
     updateCamera();
@@ -110,6 +144,10 @@
     run.whistle = Math.max(0, run.whistle - dt);
     run.world.leaves.forEach((l) => { l.x += l.vx * dt; l.y += l.vy * dt; l.life -= dt; });
     run.world.leaves = run.world.leaves.filter((l) => l.life > 0);
+    run.dust.forEach((d) => { d.x += d.vx * dt; d.y += d.vy * dt; d.life -= dt; });
+    run.dust = run.dust.filter((d) => d.life > 0);
+    run.particles.forEach((p) => { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += GRAVITY * .22 * dt; p.life -= dt; });
+    run.particles = run.particles.filter((p) => p.life > 0);
     run.world.platforms.forEach((p) => {
       p.prevX = p.x; p.prevY = p.y;
       if (p.type === "move") p.x = p.sx + Math.sin(run.time / p.period * Math.PI * 2) * p.dx;
@@ -120,18 +158,38 @@
       if (p.type === "hidden") p.visible = !!p.revealed || run.whistle > 0;
     });
     run.world.axes.forEach((a) => { if (run.whistle <= 0) a.angle = Math.sin(run.time * a.speed) * .9; });
+    const canArmHazards = run.player.invuln <= 0;
     run.world.rocks.forEach((r) => {
-      if (!r.armed && Math.abs(run.player.x - r.x) < 90) { r.armed = true; toast("Falling rock"); }
-      if (r.armed && run.whistle <= 0) { r.vy += GRAVITY * .55 * dt; r.y += r.vy * dt; if (r.y > 470) { r.y = 470; r.vy *= -.25; } }
+      if (canArmHazards && !r.armed && Math.abs(run.player.x - r.x) < 90) { r.armed = true; toast("Falling rock"); }
+      if (r.armed && run.whistle <= 0) {
+        r.vy += GRAVITY * .55 * dt;
+        r.y += r.vy * dt;
+        if (r.y > 470) {
+          if (!r.hitGround) { triggerShake(.28); play("trap"); }
+          r.hitGround = true;
+          r.y = 470; r.vy *= -.25;
+        }
+      }
     });
     run.world.boulders.forEach((b) => {
-      if (!b.armed && run.player.x > 2320) { b.armed = true; b.vx = 130; toast("Rolling boulder"); }
+      if (canArmHazards && !b.armed && run.player.x > 2320) { b.armed = true; b.vx = 130; toast("Rolling boulder"); }
       if (b.armed && run.whistle <= 0) { b.x += b.vx * dt; if (b.x > 2780 || b.x < 2460) b.vx *= -1; }
+    });
+    run.world.plates.forEach((plate) => {
+      plate.pressed = overlap(run.player, plate);
+      if (plate.pressed) {
+        plate.timer = 2.7;
+        run.world.doors.forEach((d) => { if (d.id === plate.id) d.open = true; });
+      } else {
+        plate.timer = Math.max(0, plate.timer - dt);
+        if (plate.timer <= 0 && !run.keys.has(plate.id)) run.world.doors.forEach((d) => { if (d.id === plate.id) d.open = false; });
+      }
     });
   }
 
   function updatePlayer(dt) {
     const p = run.player;
+    p.invuln = Math.max(0, (p.invuln || 0) - dt);
     p.jumpBuffer = input.jumpPressed ? JUMP_BUFFER : Math.max(0, p.jumpBuffer - dt);
     input.jumpPressed = false;
     if (input.yoyoPressed) throwYoyo();
@@ -189,6 +247,7 @@
   }
 
   function checkHazards() {
+    if (run.player.invuln > 0) return;
     const p = run.player;
     run.world.spikes.forEach((s) => { if (overlap(p, s)) die("Spike pit"); });
     run.world.axes.forEach((a) => {
@@ -230,6 +289,7 @@
   function collectCoin(c) {
     c.taken = true;
     if (!save.coins.includes(c.id)) save.coins.push(c.id);
+    for (let i = 0; i < 7; i += 1) run.particles.push({ x: c.x, y: c.y, vx: (Math.random() - .5) * 130, vy: -80 - Math.random() * 90, life: .45 });
     play("coin"); writeSave();
   }
 
@@ -259,12 +319,15 @@
       const sx = y.vx * dt, sy = y.vy * dt; y.x += sx; y.y += sy; y.distance += Math.hypot(sx, sy);
       run.world.platforms.forEach((p) => { if (p.type === "hidden" && circleRect(y.x, y.y, 8, p.x, p.y, p.w, p.h)) { p.revealed = true; p.visible = true; toast("Yo-yo revealed a ledge"); } });
       if (y.target && Math.hypot(y.x - y.target.x, y.y - y.target.y) < 26) {
-        if (y.kind === "hook") { y.state = "hooked"; y.hook = y.target; y.t = 0; play("hook"); }
+        if (y.kind === "hook") { y.state = "hooked"; y.hook = y.target; y.t = 0; toast("Yo-yo attached"); play("hook"); }
         if (y.kind === "switch") pullSwitch(y.target);
         if (y.kind === "coin") { collectCoin(y.target); returnYoyo(); }
         if (y.kind === "key") { y.target.key.x = run.player.x + 8; y.target.key.y = run.player.y + 24; returnYoyo(); toast("Yo-yo pulled the key"); }
       }
-      if (y.distance > 390) returnYoyo();
+      if (y.distance > 390) {
+        if (!y.target) toast("No grip ahead");
+        returnYoyo();
+      }
     } else if (y.state === "return") {
       const dx = hand.x - y.x, dy = hand.y - y.y, dist = Math.hypot(dx, dy);
       if (dist < 14) y.state = "ready"; else { const step = Math.min(980 * dt, dist); y.x += dx / dist * step; y.y += dy / dist * step; }
@@ -283,7 +346,8 @@
   function yoyoHand() { const p = run.player; return { x: p.x + PLAYER_W / 2 + p.facing * 12, y: p.y + 35 }; }
 
   function whistle() {
-    if (!run || state !== "playing" || run.dead) return;
+    if (!run || state !== "playing" || run.dead || whistleCooldown > 0) return;
+    whistleCooldown = WHISTLE_COOLDOWN;
     run.whistle = 2.8;
     run.world.platforms.forEach((p) => { if (p.type === "hidden" && Math.abs(p.x - run.player.x) < 520) p.revealed = true; });
     for (let i = 0; i < 22; i += 1) run.world.leaves.push({ x: run.player.x + 12, y: run.player.y + 22, vx: 100 + Math.random() * 180, vy: -80 + Math.random() * 130, life: .6 + Math.random() * .6 });
@@ -313,7 +377,18 @@
   function respawn() {
     if (!run) return;
     const cp = run.player.checkpoint;
-    run.dead = false; run.pieces = []; run.player.x = cp.x; run.player.y = cp.y; run.player.vx = 0; run.player.vy = 0; run.yoyo.state = "ready";
+    resetLocalHazards();
+    run.dead = false;
+    run.pieces = [];
+    run.player.x = cp.x;
+    run.player.y = cp.y;
+    run.player.vx = 0;
+    run.player.vy = 0;
+    run.player.invuln = 1.15;
+    run.yoyo.state = "ready";
+    run.yoyo.hook = null;
+    updateCamera();
+    toast("Checkpoint safe");
   }
 
   function completeGame() {
@@ -330,7 +405,9 @@
     ctx.clearRect(0, 0, W, H);
     if (!run) newRun(false);
     drawBackground();
-    ctx.save(); ctx.translate(-camera, 0);
+    ctx.save();
+    if (run.shake > 0) ctx.translate((Math.random() - .5) * run.shake * 16, (Math.random() - .5) * run.shake * 12);
+    ctx.translate(-camera, 0);
     drawWorld();
     drawItems();
     drawTamer();
@@ -359,10 +436,12 @@
     run.world.hooks.forEach((h) => drawHook(h));
     run.world.switches.forEach(drawSwitch);
     run.world.checkpoints.forEach(drawCheckpoint);
+    run.world.plates.forEach(drawPlate);
     run.world.axes.forEach(drawAxe);
     run.world.rocks.forEach(drawRock);
     run.world.boulders.forEach(drawBoulder);
     drawRuins();
+    run.world.signs.forEach(drawSign);
   }
 
   function drawPlatform(p) {
@@ -385,7 +464,9 @@
     const p = run.player, x = p.x + PLAYER_W / 2, y = p.y;
     const swing = p.pose === "walk" ? Math.sin(p.runTime += .16) * 10 : 0;
     if (p.pose === "whistle") {}
-    ctx.save(); ctx.translate(x, y); ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.save();
+    if (p.invuln > 0) ctx.globalAlpha = .55 + Math.sin(run.time * 28) * .22;
+    ctx.translate(x, y); ctx.lineCap = "round"; ctx.lineJoin = "round";
     ctx.strokeStyle = "rgba(255,248,219,.38)"; ctx.lineWidth = 8;
     tamerPath(swing); ctx.stroke();
     ctx.strokeStyle = "#050403"; ctx.lineWidth = 5;
@@ -412,6 +493,8 @@
     run.waves.forEach((w) => { w.r += 3; w.life -= .03; ctx.strokeStyle = `rgba(255,244,190,${Math.max(0, w.life)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2); ctx.stroke(); });
     run.waves = run.waves.filter((w) => w.life > 0);
     run.world.leaves.forEach((l) => { ctx.fillStyle = "rgba(55,93,45,.72)"; ctx.beginPath(); ctx.ellipse(l.x, l.y, 7, 3, .7, 0, Math.PI * 2); ctx.fill(); });
+    run.dust.forEach((d) => { ctx.globalAlpha = Math.max(0, d.life * 2.5); ctx.fillStyle = "#d2ad70"; ctx.beginPath(); ctx.arc(d.x, d.y, 3 + d.life * 6, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; });
+    run.particles.forEach((p) => { ctx.globalAlpha = Math.max(0, p.life * 2); ctx.fillStyle = "#f0c36a"; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; });
   }
 
   function drawPieces() {
@@ -423,17 +506,31 @@
   function drawHook(h) { ctx.strokeStyle = "rgba(72,50,27,.62)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(h.x, h.y, 15, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = "#4b3320"; ctx.beginPath(); ctx.arc(h.x, h.y, 5, 0, Math.PI * 2); ctx.fill(); }
   function drawSwitch(s) { ctx.save(); ctx.translate(s.x, s.y); ctx.strokeStyle = s.pulled ? "#6f8f68" : "#f0c36a"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, s.r, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = "#fff7dc"; ctx.font = "900 10px Orbitron"; ctx.textAlign = "center"; ctx.fillText("F", 0, 4); ctx.restore(); }
   function drawCheckpoint(c) { ctx.strokeStyle = c.active ? "#6f8f68" : "#fff7dc"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(c.x, c.y + c.h); ctx.lineTo(c.x, c.y); ctx.lineTo(c.x + 25, c.y + 10); ctx.lineTo(c.x, c.y + 20); ctx.stroke(); }
+  function drawPlate(p) { ctx.fillStyle = p.pressed ? "#6f8f68" : "#9a7548"; roundRect(p.x, p.y, p.w, p.h, 5, true, false); ctx.fillStyle = "#fff2bf"; ctx.font = "900 9px Orbitron"; ctx.textAlign = "center"; ctx.fillText("STEP", p.x + p.w / 2, p.y - 6); }
   function drawAxe(a) { const ax = a.x + Math.sin(a.angle) * a.len, ay = a.y + Math.cos(a.angle) * a.len; ctx.strokeStyle = "#44301e"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(ax, ay); ctx.stroke(); ctx.fillStyle = "#8b8b7a"; ctx.beginPath(); ctx.ellipse(ax, ay, 20, 11, a.angle, 0, Math.PI * 2); ctx.fill(); }
   function drawRock(r) { ctx.fillStyle = "#6b6256"; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.fill(); }
   function drawBoulder(b) { ctx.fillStyle = "#6b5540"; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,.2)"; ctx.stroke(); }
   function drawRuins() { ctx.fillStyle = "rgba(76,52,30,.26)"; [840, 1120, 2300, 3080].forEach((x) => { ctx.fillRect(x, 280, 46, 190); ctx.fillRect(x - 18, 260, 82, 24); }); }
+  function drawSign(s) { ctx.fillStyle = "#5f3d22"; ctx.fillRect(s.x + 22, s.y + 15, 5, 38); roundRect(s.x, s.y, 74, 24, 5, true, false); ctx.fillStyle = "#fff2bf"; ctx.font = "800 8px Inter"; ctx.textAlign = "center"; ctx.fillText(s.text, s.x + 37, s.y + 15); }
 
   function updateCamera() { camera = clamp(run.player.x - W * .42, 0, WORLD_W - W); }
   function currentArea() { return [...areas].reverse().find((a) => run?.player.x >= a.x) || areas[0]; }
+  function updateArea() {
+    const area = currentArea().name;
+    if (area !== run.areaName) {
+      run.areaName = area;
+      toast(area);
+    }
+  }
   function updateHud() {
     if (!run) return;
     ui.area.textContent = currentArea().name; ui.coins.textContent = `${save.coins.length}/${run.world.coins.length}`; ui.artifacts.textContent = `${save.artifacts.length}/${run.world.artifacts.length}`;
     ui.keys.textContent = String(save.keys.length); ui.deaths.textContent = String(save.deaths || 0); ui.time.textContent = formatTime(run.time);
+    const whistleButton = $("whistleButton");
+    if (whistleButton) {
+      whistleButton.disabled = whistleCooldown > 0;
+      whistleButton.textContent = whistleCooldown > 0 ? `${Math.ceil(whistleCooldown)}s` : "Whistle";
+    }
   }
   function renderMap() {
     const x = run?.player.x || save.checkpoint.x;
@@ -444,15 +541,78 @@
   function pause() { if (state !== "playing") return; state = "paused"; showOverlay("pause"); }
   function resume() { if (state !== "paused") return; state = "playing"; showOverlay(null); canvas.focus({ preventScroll: true }); }
   function toast(text) { ui.toast.textContent = text; ui.toast.classList.add("show"); toastTimer = 1.45; }
+  function triggerShake(amount = .2) { if (run) run.shake = Math.max(run.shake || 0, amount); }
   function formatTime(sec) { const m = Math.floor(sec / 60).toString().padStart(2, "0"), s = Math.floor(sec % 60).toString().padStart(2, "0"); return `${m}:${s}`; }
   function roundRect(x, y, w, h, r, fill, stroke) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); if (fill) ctx.fill(); if (stroke) ctx.stroke(); }
   function overlap(a, b) { return a.x < b.x + b.w && a.x + PLAYER_W > b.x && a.y < b.y + b.h && a.y + PLAYER_H > b.y; }
   function circleRect(cx, cy, r, x, y, w, h) { const nx = clamp(cx, x, x + w), ny = clamp(cy, y, y + h); return Math.hypot(cx - nx, cy - ny) <= r; }
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
   function approach(v, target, step) { return v < target ? Math.min(target, v + step) : Math.max(target, v - step); }
-  function puff(x, y) { run.dust.push({ x, y, life: .3 }); }
+  function puff(x, y) { for (let i = 0; i < 6; i += 1) run.dust.push({ x, y, vx: (Math.random() - .5) * 90, vy: -20 - Math.random() * 35, life: .3 + Math.random() * .15 }); }
   function beep(freq, dur, type = "sine") { if (!soundOn) return; try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); const o = audio.createOscillator(), g = audio.createGain(); o.type = type; o.frequency.value = freq; g.gain.setValueAtTime(.045, audio.currentTime); g.gain.exponentialRampToValueAtTime(.001, audio.currentTime + dur); o.connect(g).connect(audio.destination); o.start(); o.stop(audio.currentTime + dur); } catch (_) {} }
-  function play(name) { if (name === "coin") beep(740, .04); if (name === "key") beep(920, .07, "triangle"); if (name === "artifact") beep(660, .08, "triangle"), setTimeout(() => beep(880, .08, "triangle"), 70); if (name === "checkpoint") beep(520, .06); if (name === "yoyo") beep(240, .05, "triangle"); if (name === "hook") beep(610, .07); if (name === "death") beep(100, .1, "sawtooth"); if (name === "whistle") beep(660, .12), setTimeout(() => beep(880, .16), 100); }
+  function getWhistleBus() {
+    if (whistleBus) return whistleBus;
+    audio ||= new (window.AudioContext || window.webkitAudioContext)();
+    const master = audio.createGain();
+    const reverb = audio.createConvolver();
+    const wet = audio.createGain();
+    const length = Math.floor(audio.sampleRate * 1.15);
+    const impulse = audio.createBuffer(2, length, audio.sampleRate);
+    for (let channel = 0; channel < impulse.numberOfChannels; channel += 1) {
+      const data = impulse.getChannelData(channel);
+      for (let i = 0; i < length; i += 1) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 3.2);
+    }
+    master.gain.value = .3;
+    wet.gain.value = .14;
+    reverb.buffer = impulse;
+    reverb.connect(wet).connect(master);
+    master.connect(audio.destination);
+    whistleBus = { dry: master, reverb };
+    return whistleBus;
+  }
+  function scheduleWhistleNote(frequency, duration, volume, delay = 0) {
+    if (!soundOn) return;
+    try {
+      audio ||= new (window.AudioContext || window.webkitAudioContext)();
+      const start = audio.currentTime + delay;
+      const end = start + duration;
+      const whistle = audio.createOscillator();
+      const harmonic = audio.createOscillator();
+      const harmonicGain = audio.createGain();
+      const envelope = audio.createGain();
+      const vibrato = audio.createOscillator();
+      const vibratoDepth = audio.createGain();
+      const bus = getWhistleBus();
+      whistle.type = "sine";
+      harmonic.type = "sine";
+      vibrato.type = "sine";
+      whistle.frequency.setValueAtTime(frequency * .985, start);
+      whistle.frequency.exponentialRampToValueAtTime(frequency, start + Math.min(.09, duration * .3));
+      harmonic.frequency.setValueAtTime(frequency * 2, start);
+      harmonicGain.gain.setValueAtTime(.045, start);
+      vibrato.frequency.setValueAtTime(5.1, start);
+      vibratoDepth.gain.setValueAtTime(frequency * .007, start);
+      envelope.gain.setValueAtTime(.0001, start);
+      envelope.gain.exponentialRampToValueAtTime(volume, start + Math.min(.055, duration * .25));
+      envelope.gain.setValueAtTime(volume * .88, Math.max(start + .06, end - .09));
+      envelope.gain.exponentialRampToValueAtTime(.0001, end);
+      vibrato.connect(vibratoDepth).connect(whistle.frequency);
+      whistle.connect(envelope);
+      harmonic.connect(harmonicGain).connect(envelope);
+      envelope.connect(bus.dry);
+      envelope.connect(bus.reverb);
+      whistle.start(start); harmonic.start(start); vibrato.start(start);
+      whistle.stop(end + .01); harmonic.stop(end + .01); vibrato.stop(end + .01);
+    } catch (_) {}
+  }
+  function scheduleWhistleMelody(delay = 0) {
+    const note = (frequency, duration, start, volume = .15) => scheduleWhistleNote(frequency, duration, volume, delay + start);
+    note(659.25, .5, 0); note(783.99, .5, .5); note(880, 1, 1, .16);
+    note(783.99, .5, 2); note(659.25, .5, 2.5); note(587.33, 1, 3, .14);
+    note(659.25, .5, 4.5); note(783.99, .5, 5); note(987.77, 1, 5.5, .16);
+    note(880, .5, 6.5); note(783.99, .5, 7); note(659.25, 1, 7.5, .145);
+  }
+  function play(name) { if (name === "coin") beep(740, .04); if (name === "key") beep(920, .07, "triangle"); if (name === "artifact") beep(660, .08, "triangle"), setTimeout(() => beep(880, .08, "triangle"), 70); if (name === "checkpoint") beep(520, .06); if (name === "yoyo") beep(240, .05, "triangle"); if (name === "hook") beep(610, .07); if (name === "trap") beep(170, .045, "square"), setTimeout(() => beep(95, .07, "sawtooth"), 55); if (name === "death") beep(100, .1, "sawtooth"); if (name === "whistle") scheduleWhistleMelody(); }
 
   function bindKey(code, down, event) {
     if (["ArrowLeft", "ArrowRight", "ArrowUp", "Space"].includes(code)) event.preventDefault();
