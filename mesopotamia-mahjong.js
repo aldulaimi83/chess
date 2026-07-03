@@ -340,6 +340,30 @@
     const height = (maxY - minY + 1) * stepY + tileH + maxZ * depth + 18;
     els.board.style.width = `${width}px`;
     els.board.style.height = `${height}px`;
+    els.board.style.transformOrigin = 'center top';
+    els.board.style.position = 'relative';
+    els.board.style.left = 'auto';
+    els.board.style.top = 'auto';
+    els.board.style.transform = 'none';
+
+    const isPhone = window.matchMedia('(max-width: 820px)').matches;
+    if (isPhone) {
+      const frame = els.board.parentElement;
+      const frameWidth = frame?.clientWidth || window.innerWidth;
+      const frameHeight = frame?.clientHeight || window.innerHeight;
+      const fitWidth = Math.max(240, frameWidth - 8);
+      const fitHeight = Math.max(260, frameHeight - 8);
+      const scale = Math.min(fitWidth / width, fitHeight / height, 1);
+      const scaledWidth = width * scale;
+      const scaledHeight = height * scale;
+      const offsetX = Math.max(0, (fitWidth - scaledWidth) / 2);
+      const offsetY = Math.max(0, (fitHeight - scaledHeight) / 2);
+      els.board.style.position = 'absolute';
+      els.board.style.left = `${offsetX}px`;
+      els.board.style.top = `${offsetY}px`;
+      els.board.style.transformOrigin = 'top left';
+      els.board.style.transform = `scale(${scale})`;
+    }
 
     state.tiles.forEach((tile) => {
       if (tile.removed) return;

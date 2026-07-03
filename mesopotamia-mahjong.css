@@ -493,6 +493,7 @@ button { -webkit-tap-highlight-color:transparent; }
     min-height:calc(100svh - 300px);
     padding:16px 12px 92px;
     align-items:center;
+    overflow:hidden;
   }
   .board-toolbar { display:none; }
   .mobile-actions { display:grid; }
@@ -512,6 +513,7 @@ button { -webkit-tap-highlight-color:transparent; }
     padding:12px 8px 92px;
     justify-content:center;
     align-items:center;
+    overflow:hidden;
   }
   .mahjong-board { margin:0 auto; }
   .hud strong { font-size:.86rem; }
