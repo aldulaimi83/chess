@@ -52,7 +52,7 @@
     doors: [rect(3558, 350, 42, 120, "door", { id: "temple", open: false }), rect(4550, 350, 42, 120, "door", { id: "exit", open: true })],
     plates: [rect(3420, 458, 56, 12, "plate", { id: "temple", pressed: false, timer: 0 })],
     coins: [coin(155, 420), coin(500, 395), coin(805, 430), coin(1125, 430), coin(1360, 335, true), coin(1635, 430), coin(2050, 416), coin(2240, 372, true), coin(2640, 430), coin(3235, 382), coin(3335, 382), coin(3860, 430), coin(4175, 372), coin(4355, 318, true), coin(4490, 430)],
-    artifacts: [artifact(1325, 318, "Sun Tablet"), artifact(2245, 372, "Cave Idol"), artifact(4358, 318, "Golden Leaf")],
+    artifacts: [artifact(1325, 318, "Sun Tablet"), artifact(2245, 372, "Cave Idol"), artifact(3485, 426, "Temple Seal"), artifact(4358, 318, "Golden Leaf")],
     keys: [key(3290, 388, "temple")],
     checkpoints: [checkpoint(44, 426, "start"), checkpoint(940, 426, "ruins"), checkpoint(1850, 426, "cave"), checkpoint(2875, 426, "temple"), checkpoint(3835, 426, "treasure")],
     hooks: [hook(705, 298), hook(1170, 290), hook(1465, 285), hook(2060, 300), hook(2555, 292), hook(3230, 292), hook(4185, 285)],
@@ -70,7 +70,20 @@
 
   function loadSave() {
     const fallback = { checkpoint: { x: 44, y: 380 }, coins: [], artifacts: [], keys: [], switches: [], deaths: 0, best: null, complete: false };
-    try { return { ...fallback, ...(JSON.parse(localStorage.getItem(SAVE_KEY) || "null") || {}) }; } catch (_) { return fallback; }
+    try { return normalizeSave({ ...fallback, ...(JSON.parse(localStorage.getItem(SAVE_KEY) || "null") || {}) }); } catch (_) { return fallback; }
+  }
+  function normalizeSave(data) {
+    const clean = {
+      checkpoint: data.checkpoint && Number.isFinite(data.checkpoint.x) && Number.isFinite(data.checkpoint.y) ? data.checkpoint : { x: 44, y: 380 },
+      coins: Array.isArray(data.coins) ? data.coins.filter(Number.isInteger) : [],
+      artifacts: Array.isArray(data.artifacts) ? data.artifacts.filter(Number.isInteger) : [],
+      keys: Array.isArray(data.keys) ? data.keys.filter((id) => typeof id === "string") : [],
+      switches: Array.isArray(data.switches) ? data.switches.filter((id) => typeof id === "string") : [],
+      deaths: Number.isFinite(data.deaths) ? Math.max(0, data.deaths) : 0,
+      best: Number.isFinite(data.best) ? data.best : null,
+      complete: data.complete === true
+    };
+    return clean;
   }
   function writeSave() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (_) {} }
   function clone(v) { return JSON.parse(JSON.stringify(v)); }
@@ -89,6 +102,7 @@
       save = { checkpoint: { x: 44, y: 380 }, coins: [], artifacts: [], keys: [], switches: [], deaths: 0, best: save.best || null, complete: false };
       writeSave();
     }
+    save = normalizeSave(save);
     save.checkpoint = safeCheckpoint(save.checkpoint);
     writeSave();
     const world = buildWorld();
