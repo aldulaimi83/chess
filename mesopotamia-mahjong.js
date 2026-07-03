@@ -93,7 +93,7 @@
   });
 
   let save = loadSave();
-  let audio = { ctx:null, muted:!save.sound, music:null };
+  let audio = { ctx:null, muted:!save.sound };
   let state = createEmptyState();
   let timerId = 0;
   let toastId = 0;
@@ -288,7 +288,6 @@
     updateHud();
     startTimer();
     playClick();
-    startMusic();
     showToast(`${state.level.name} begins`);
   }
 
@@ -613,57 +612,30 @@
   }
 
   function playClick(freq = 260) {
-    tone(freq, .07, 'triangle', .025);
+    tone(freq, .04, 'triangle', .022);
+    tone(freq * 1.42, .02, 'sine', .012, .012);
   }
 
   function playMatch() {
-    tone(320, .08, 'sine', .035);
-    tone(520, .14, 'triangle', .03, .05);
+    tone(294, .06, 'sine', .03);
+    tone(392, .08, 'triangle', .026, .025);
+    tone(587, .11, 'sine', .022, .06);
   }
 
   function playShuffle() {
-    tone(180, .09, 'sawtooth', .018);
-    tone(240, .09, 'sawtooth', .016, .08);
-    tone(300, .12, 'sawtooth', .014, .16);
+    tone(180, .05, 'sine', .016);
+    tone(247, .06, 'triangle', .014, .05);
+    tone(330, .07, 'sine', .012, .1);
   }
 
   function playVictory() {
-    [392, 494, 587, 784].forEach((freq, i) => tone(freq, .16, 'triangle', .035, i * .1));
-  }
-
-  function startMusic() {
-    if (audio.muted || audio.music) return;
-    initAudio();
-    if (!audio.ctx) return;
-    const gain = audio.ctx.createGain();
-    gain.gain.value = .012;
-    const low = audio.ctx.createOscillator();
-    const high = audio.ctx.createOscillator();
-    low.type = 'sine';
-    high.type = 'triangle';
-    low.frequency.value = 110;
-    high.frequency.value = 220;
-    low.connect(gain);
-    high.connect(gain);
-    gain.connect(audio.ctx.destination);
-    low.start();
-    high.start();
-    audio.music = { low, high, gain };
-  }
-
-  function stopMusic() {
-    if (!audio.music) return;
-    audio.music.low.stop();
-    audio.music.high.stop();
-    audio.music = null;
+    [262, 330, 392, 523].forEach((freq, i) => tone(freq, .13, 'triangle', .028, i * .08));
   }
 
   function toggleSound(force) {
     audio.muted = typeof force === 'boolean' ? !force : !audio.muted;
     els.soundToggle.textContent = audio.muted ? 'Sound Off' : 'Sound On';
     els.soundSetting.checked = !audio.muted;
-    if (audio.muted) stopMusic();
-    else startMusic();
     writeSave();
   }
 
