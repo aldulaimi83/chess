@@ -56,9 +56,32 @@
   let audioContext = null;
   let whistleBus = null;
   let whistleCooldown = 0;
+  let waveSpawnLock = 0;
   const keys = { left: false, right: false, jumpQueued: false, attack: false };
 
   function writeSave() { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); }
+
+  function clearInputState() {
+    keys.left = false;
+    keys.right = false;
+    keys.jumpQueued = false;
+    keys.attack = false;
+    document.querySelectorAll(".touch-button.active").forEach((button) => button.classList.remove("active"));
+  }
+
+  function centerPlayer() {
+    player.x = W / 2 - player.w / 2;
+    player.y = FLOOR - player.h;
+  }
+
+  function resetPlayerMotion() {
+    player.vx = 0;
+    player.vy = 0;
+    player.grounded = true;
+    player.coyote = .1;
+    player.attackCooldown = 0;
+    player.runTime = 0;
+  }
 
   function sound(frequency, duration = .08, type = "sine") {
     if (!save.sound) return;
@@ -202,7 +225,9 @@
     player = { x: W / 2 - 14, y: FLOOR - 56, w: 28, h: 56, vx: 0, vy: 0, grounded: true, coyote: .1, facing: 1, health: 100, invulnerable: 0, attackCooldown: 0, runTime: 0 };
     enemies = []; projectiles = []; coins = []; effects = [];
     wave = 1; score = 0; kills = 0; betweenWave = 0; traveling = false; worldOffset = 0; whistleCooldown = 0; selectedWeapon = 0;
+    waveSpawnLock = 0;
     running = true; paused = false; gameOver = false;
+    clearInputState();
     dom.startOverlay.classList.remove("visible"); dom.pauseOverlay.classList.remove("visible"); dom.gameOverOverlay.classList.remove("visible");
     document.body.classList.add("playing");
     spawnWave(); updateHud(); canvas.focus();
@@ -214,8 +239,13 @@
       const ranged = wave >= 3 && i % Math.max(2, 6 - Math.floor(wave / 3)) === 0;
       const side = i % 2 ? -1 : 1;
       const health = 2 + Math.floor((wave - 1) / 3) + (ranged ? 0 : Math.floor(wave / 7));
-      enemies.push({ x: side < 0 ? -50 - i * 26 : W + 22 + i * 26, y: FLOOR - 56, w: 28, h: 56, vx: 0, vy: 0, grounded: true, facing: -side, health, maxHealth: health, speed: 72 + wave * 5 + (ranged ? 3 : 0), damage: 7 + Math.floor(wave / 3), type: ranged ? "ranged" : "fighter", attackTimer: .5 + i * .13, stun: 0, knockback: 0, flash: 0, id: `${wave}-${i}` });
+      enemies.push({ x: side < 0 ? -50 - i * 26 : W + 22 + i * 26, y: FLOOR - 56, w: 28, h: 56, vx: 0, vy: 0, grounded: true, facing: -side, health, maxHealth: health, speed: 72 + wave * 5 + (ranged ? 3 : 0), damage: 7 + Math.floor(wave / 3), type: ranged ? "ranged" : "fighter", attackTimer: .5 + i * .13, stun: 0, knockback: 0, flash: 0, spawnDelay: 1 + i * .04, id: `${wave}-${i}` });
     }
+    centerPlayer();
+    resetPlayerMotion();
+    player.invulnerable = 1;
+    waveSpawnLock = 1;
+    clearInputState();
     showToast(`Wave ${wave} — ${count} challengers`, 2.1);
     sound(330 + wave * 8, .12, "triangle");
     save.highestWave = Math.max(save.highestWave, wave); writeSave();
@@ -269,10 +299,15 @@
   }
 
   function updatePlayer(dt) {
+    if (waveSpawnLock > 0) {
+      resetPlayerMotion();
+      centerPlayer();
+      return;
+    }
     const target = (keys.left ? -285 : 0) + (keys.right ? 285 : 0);
-    const acceleration = player.grounded ? 2300 : 1350;
+    const acceleration = player.grounded ? 2800 : 1600;
     if (target) { player.vx += Math.sign(target - player.vx) * Math.min(Math.abs(target - player.vx), acceleration * dt); player.facing = Math.sign(target); }
-    else player.vx *= Math.pow(.001, dt);
+    else player.vx *= Math.pow(.02, dt);
     if (keys.jumpQueued) { if (player.grounded || player.coyote > 0) { player.vy = -570; player.grounded = false; player.coyote = 0; sound(300, .08, "triangle"); } keys.jumpQueued = false; }
     player.vy += 1450 * dt; player.x += player.vx * dt; player.y += player.vy * dt;
     player.grounded = false;
@@ -287,6 +322,11 @@
   function updateEnemies(dt) {
     enemies.forEach(enemy => {
       if (enemy.health <= 0) return;
+      if (enemy.spawnDelay > 0) {
+        enemy.spawnDelay = Math.max(0, enemy.spawnDelay - dt);
+        enemy.flash = Math.max(0, enemy.flash - dt);
+        return;
+      }
       enemy.flash = Math.max(0, enemy.flash - dt); enemy.attackTimer -= dt; enemy.stun = Math.max(0, enemy.stun - dt);
       const delta = player.x - enemy.x; enemy.facing = Math.sign(delta) || enemy.facing;
       if (enemy.knockback) { enemy.x += enemy.knockback * dt; enemy.knockback *= Math.pow(.02, dt); if (Math.abs(enemy.knockback) < 5) enemy.knockback = 0; }
@@ -344,32 +384,16 @@
   }
 
   function updateTravel(dt) {
-    player.facing = 1;
-    player.vx = 175;
-    player.vy = 0;
-    player.y = FLOOR - player.h;
-    player.grounded = true;
-    player.runTime += 3.35 * dt;
-    player.x = Math.min(W * .56, player.x + 72 * dt);
-    worldOffset += (W / 3.35) * dt;
+    resetPlayerMotion();
+    centerPlayer();
     projectiles = [];
   }
 
   function update(dt) {
     if (!running || paused || gameOver) return;
     whistleCooldown = Math.max(0, whistleCooldown - dt);
-    if (traveling) updateTravel(dt);
-    else { updatePlayer(dt); updateEnemies(dt); updateProjectiles(dt); }
-    updateCoins(dt);
-    effects.forEach(effect => effect.life -= dt); effects = effects.filter(effect => effect.life > 0);
-    if (!enemies.length && !traveling) {
-      traveling = true;
-      betweenWave = 3.35;
-      keys.attack = false;
-      showToast("Path clear — walking to the next arena", 2.8);
-      playWhistle(true);
-    }
     if (traveling) {
+      updateTravel(dt);
       betweenWave -= dt;
       if (betweenWave <= 0) {
         traveling = false;
@@ -377,12 +401,29 @@
         score += 250 + wave * 25;
         checkUnlocks();
         player.health = Math.min(100, player.health + 12);
-        player.x = W * .38;
-        player.vx = 0;
-        worldOffset = Math.round(worldOffset / W) * W;
+        resetPlayerMotion();
+        centerPlayer();
+        clearInputState();
+        enemies = [];
+        projectiles = [];
+        coins = [];
+        effects = [];
         spawnWave();
+        showToast(`Wave ${wave}`, 1.4);
       }
+    } else { updatePlayer(dt); updateEnemies(dt); updateProjectiles(dt); }
+    updateCoins(dt);
+    effects.forEach(effect => effect.life -= dt); effects = effects.filter(effect => effect.life > 0);
+    if (!enemies.length && !traveling) {
+      traveling = true;
+      betweenWave = 1.1;
+      clearInputState();
+      resetPlayerMotion();
+      centerPlayer();
+      showToast("Wave cleared", 1.4);
+      playWhistle(true);
     }
+    if (waveSpawnLock > 0) waveSpawnLock = Math.max(0, waveSpawnLock - dt);
     if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) dom.toast.classList.remove("visible"); }
     updateHud();
   }
@@ -411,34 +452,32 @@
     const scene = ((sceneNumber % 4) + 4) % 4;
     ctx.save(); ctx.translate(offsetX, 0);
     if (scene === 0) {
-      ctx.fillStyle = "rgba(255,226,137,.13)"; ctx.beginPath(); ctx.arc(760,105,58,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle = "rgba(19,28,48,.8)"; ctx.beginPath(); ctx.moveTo(0,420);ctx.lineTo(160,260);ctx.lineTo(300,420);ctx.lineTo(470,245);ctx.lineTo(650,420);ctx.lineTo(820,280);ctx.lineTo(W,420);ctx.closePath();ctx.fill();
-      ctx.fillStyle = "rgba(30,43,60,.86)"; ctx.fillRect(90,300,230,170); for(let i=0;i<4;i+=1)ctx.fillRect(75+i*67,280-i%2*18,48,28);
+      ctx.fillStyle = "rgba(255,232,150,.34)"; ctx.beginPath(); ctx.arc(760,105,58,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = "rgba(122,78,38,.9)"; ctx.beginPath(); ctx.moveTo(0,420);ctx.lineTo(140,276);ctx.lineTo(300,420);ctx.lineTo(470,252);ctx.lineTo(650,420);ctx.lineTo(820,292);ctx.lineTo(W,420);ctx.closePath();ctx.fill();
+      ctx.fillStyle = "rgba(148,101,57,.82)"; ctx.fillRect(90,300,230,170); for(let i=0;i<4;i+=1)ctx.fillRect(75+i*67,280-i%2*18,48,28);
     } else if (scene === 1) {
-      ctx.fillStyle = "rgba(22,40,60,.9)"; ctx.fillRect(330,205,300,265); ctx.fillRect(290,250,40,220); ctx.fillRect(630,250,40,220);
-      ctx.fillStyle = "rgba(54,229,255,.08)"; for(let y=230;y<430;y+=42)for(let x=355;x<610;x+=48)ctx.fillRect(x,y,25,18);
-      ctx.fillStyle = "rgba(7,13,25,.75)"; ctx.beginPath();ctx.moveTo(420,470);ctx.lineTo(420,330);ctx.quadraticCurveTo(480,270,540,330);ctx.lineTo(540,470);ctx.fill(); drawPalm(170,470,.9);drawPalm(790,470,.85);
+      ctx.fillStyle = "rgba(126,92,52,.95)"; ctx.fillRect(330,205,300,265); ctx.fillRect(290,250,40,220); ctx.fillRect(630,250,40,220);
+      ctx.fillStyle = "rgba(241,212,148,.14)"; for(let y=230;y<430;y+=42)for(let x=355;x<610;x+=48)ctx.fillRect(x,y,25,18);
+      ctx.fillStyle = "rgba(49,32,17,.8)"; ctx.beginPath();ctx.moveTo(420,470);ctx.lineTo(420,330);ctx.quadraticCurveTo(480,270,540,330);ctx.lineTo(540,470);ctx.fill(); drawPalm(170,470,.9);drawPalm(790,470,.85);
     } else if (scene === 2) {
-      const sun = ctx.createRadialGradient(180,120,5,180,120,85);sun.addColorStop(0,"rgba(255,214,90,.28)");sun.addColorStop(1,"rgba(255,214,90,0)");ctx.fillStyle=sun;ctx.fillRect(80,20,200,200);
-      ctx.fillStyle="rgba(31,43,54,.88)";for(let i=0;i<5;i+=1)ctx.fillRect(565+i*17,350-i*42,230-i*34,120+i*42);
-      ctx.fillStyle="rgba(65,48,40,.35)";ctx.beginPath();ctx.moveTo(0,430);ctx.quadraticCurveTo(180,330,360,430);ctx.quadraticCurveTo(570,340,760,430);ctx.lineTo(W,380);ctx.lineTo(W,470);ctx.lineTo(0,470);ctx.fill();
+      const sun = ctx.createRadialGradient(180,120,5,180,120,85);sun.addColorStop(0,"rgba(255,214,90,.36)");sun.addColorStop(1,"rgba(255,214,90,0)");ctx.fillStyle=sun;ctx.fillRect(80,20,200,200);
+      ctx.fillStyle="rgba(103,76,54,.9)";for(let i=0;i<5;i+=1)ctx.fillRect(565+i*17,350-i*42,230-i*34,120+i*42);
+      ctx.fillStyle="rgba(121,91,61,.42)";ctx.beginPath();ctx.moveTo(0,430);ctx.quadraticCurveTo(180,330,360,430);ctx.quadraticCurveTo(570,340,760,430);ctx.lineTo(W,380);ctx.lineTo(W,470);ctx.lineTo(0,470);ctx.fill();
     } else {
-      ctx.fillStyle="rgba(26,58,74,.6)";ctx.fillRect(0,410,W,60);ctx.strokeStyle="rgba(54,229,255,.18)";ctx.lineWidth=2;for(let i=0;i<8;i+=1){ctx.beginPath();ctx.moveTo(i*140-Math.sin(time)*12,430+i%2*9);ctx.quadraticCurveTo(i*140+45,415,i*140+95,435);ctx.stroke()}
-      ctx.fillStyle="rgba(39,48,52,.86)";for(let i=0;i<5;i+=1){const x=100+i*180;ctx.fillRect(x,310+(i%2)*35,95,160);ctx.strokeStyle="rgba(255,213,74,.13)";ctx.strokeRect(x+16,335+(i%2)*35,62,58)}drawPalm(55,470,.65);drawPalm(900,470,.7);
+      ctx.fillStyle="rgba(86,58,31,.74)";ctx.fillRect(0,410,W,60);ctx.strokeStyle="rgba(255,235,193,.18)";ctx.lineWidth=2;for(let i=0;i<8;i+=1){ctx.beginPath();ctx.moveTo(i*140-Math.sin(time)*12,430+i%2*9);ctx.quadraticCurveTo(i*140+45,415,i*140+95,435);ctx.stroke()}
+      ctx.fillStyle="rgba(92,64,40,.9)";for(let i=0;i<5;i+=1){const x=100+i*180;ctx.fillRect(x,310+(i%2)*35,95,160);ctx.strokeStyle="rgba(255,223,150,.12)";ctx.strokeRect(x+16,335+(i%2)*35,62,58)}drawPalm(55,470,.65);drawPalm(900,470,.7);
     }
-    ctx.fillStyle="rgba(255,255,255,.035)";ctx.font="900 70px Orbitron";ctx.textAlign="center";ctx.fillText("Y",W/2,175+Math.sin(time)*2);
+    ctx.fillStyle="rgba(255,249,235,.08)";ctx.font="900 70px Orbitron";ctx.textAlign="center";ctx.fillText("Y",W/2,175+Math.sin(time)*2);
     ctx.restore();
   }
 
   function drawArena(time) {
-    const scenePosition = worldOffset / W;
-    const sceneNumber = Math.floor(scenePosition);
-    const slide = (scenePosition - sceneNumber) * W;
-    const gradient = ctx.createLinearGradient(0,0,0,H); gradient.addColorStop(0,"#18254a"); gradient.addColorStop(.68,"#14172a"); gradient.addColorStop(1,"#090d18"); ctx.fillStyle=gradient;ctx.fillRect(0,0,W,H);
-    drawScene(sceneNumber,-slide,time); drawScene(sceneNumber+1,W-slide,time);
-    ctx.fillStyle="rgba(22,29,45,.88)";ctx.fillRect(0,FLOOR,W,H-FLOOR);ctx.fillStyle="#36e5ff";ctx.fillRect(0,FLOOR,W,3);
-    const platformShift = traveling ? slide : 0;
-    platforms.forEach(p=>{for(let copy=0;copy<2;copy+=1){const x=p.x-platformShift+copy*W;ctx.fillStyle="#243a58";ctx.fillRect(x,p.y,p.w,p.h);ctx.fillStyle="#36e5ff";ctx.fillRect(x,p.y,p.w,3)}});
+    const sceneNumber = Math.max(0, wave - 1);
+    const gradient = ctx.createLinearGradient(0,0,0,H); gradient.addColorStop(0,"#f2d9a0"); gradient.addColorStop(.45,"#c88d4d"); gradient.addColorStop(1,"#70401f"); ctx.fillStyle=gradient;ctx.fillRect(0,0,W,H);
+    drawScene(sceneNumber,0,time);
+    ctx.fillStyle="rgba(96,58,27,.9)";ctx.fillRect(0,FLOOR,W,H-FLOOR);ctx.fillStyle="rgba(255,229,166,.72)";ctx.fillRect(0,FLOOR,W,3);
+    ctx.fillStyle="rgba(63,40,20,.3)";ctx.fillRect(0,FLOOR+10,W,26);
+    platforms.forEach(p=>{for(let copy=0;copy<2;copy+=1){const x=p.x+copy*W;ctx.fillStyle="#5b4428";ctx.fillRect(x,p.y,p.w,p.h);ctx.fillStyle="rgba(255,233,175,.35)";ctx.fillRect(x,p.y,p.w,3)}});
   }
 
   function drawPlayer() {
@@ -478,7 +517,7 @@
 
   window.addEventListener("keydown",e=>{if(["ArrowLeft","ArrowRight","ArrowUp","Space","KeyA","KeyD","KeyW","KeyJ","KeyQ","KeyE","KeyG"].includes(e.code))e.preventDefault();if(["ArrowLeft","KeyA"].includes(e.code))keys.left=true;if(["ArrowRight","KeyD"].includes(e.code))keys.right=true;if(["ArrowUp","KeyW","Space"].includes(e.code)&&!e.repeat)keys.jumpQueued=true;if(e.code==="KeyJ")keys.attack=true;if(e.code==="KeyQ"&&!e.repeat)switchWeapon(-1);if(e.code==="KeyE"&&!e.repeat)switchWeapon(1);if(e.code==="KeyG"&&!e.repeat)playWhistle();if(e.code==="KeyP"&&!e.repeat)setPaused(!paused)});
   window.addEventListener("keyup",e=>{if(["ArrowLeft","KeyA"].includes(e.code))keys.left=false;if(["ArrowRight","KeyD"].includes(e.code))keys.right=false;if(e.code==="KeyJ")keys.attack=false});
-  window.addEventListener("blur",()=>{keys.left=keys.right=keys.attack=false;if(running&&!gameOver)setPaused(true)});
+  window.addEventListener("blur",()=>{clearInputState();if(running&&!gameOver)setPaused(true)});
   canvas.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse"){e.preventDefault();keys.attack=true;attack()}});window.addEventListener("pointerup",e=>{if(e.pointerType==="mouse")keys.attack=false});
   bindHold(document.getElementById("leftButton"),"left");bindHold(document.getElementById("rightButton"),"right");bindHold(document.getElementById("jumpButton"),"jump");bindHold(dom.attack,"attack");bindTap(dom.previous,()=>switchWeapon(-1));bindTap(dom.next,()=>switchWeapon(1));bindTap(dom.weaponButton,()=>switchWeapon(1));bindTap(dom.whistle,()=>playWhistle());
   ["touchstart","touchmove"].forEach(type=>dom.mobileControls.addEventListener(type,e=>e.preventDefault(),{passive:false}));
