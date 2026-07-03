@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Mesopotamia Mahjong - Ancient Tile Matching Puzzle | YouOOO Games</title>
+  <meta name="description" content="Play Mesopotamia Mahjong, a free ancient Sumer, Babylon, Akkad, and Assyria themed Mahjong solitaire puzzle with campaign levels, daily challenges, hints, shuffles, and saved progress." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://game.youooo.com/mesopotamia-mahjong.html" />
+  <meta property="og:title" content="Mesopotamia Mahjong - Ancient Tile Matching Puzzle" />
+  <meta property="og:description" content="Match clay tablet tiles inspired by Mesopotamia in a free browser Mahjong solitaire game with 50 campaign levels and daily challenges." />
+  <meta property="og:url" content="https://game.youooo.com/mesopotamia-mahjong.html" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://game.youooo.com/og-preview.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Mesopotamia Mahjong - Ancient Tile Matching Puzzle" />
+  <meta name="twitter:description" content="A free Mesopotamia themed Mahjong solitaire puzzle with campaign levels, daily challenges, hints, shuffles, and saved progress." />
+  <meta name="twitter:image" content="https://game.youooo.com/og-preview.png" />
+  <meta name="theme-color" content="#6f431f" />
+  <link rel="icon" href="youooo_logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;family=Cinzel:wght@700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="mesopotamia-mahjong.css?v=20260703-mesopotamia-mahjong-v1" />
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"VideoGame",
+    "name":"Mesopotamia Mahjong",
+    "url":"https://game.youooo.com/mesopotamia-mahjong.html",
+    "description":"A free ancient Mesopotamia themed Mahjong solitaire browser game with campaign levels, daily challenges, hints, shuffles, saved progress, and mobile support.",
+    "genre":["Mahjong solitaire","Puzzle","Tile matching"],
+    "gamePlatform":["Web browser","Desktop","Mobile"],
+    "operatingSystem":"Any",
+    "applicationCategory":"Game",
+    "playMode":"SinglePlayer",
+    "publisher":{"@type":"Organization","name":"YouOOO Games","url":"https://game.youooo.com/"}
+  }
+  </script>
+</head>
+<body>
+  <div class="ancient-bg" aria-hidden="true">
+    <div class="sun-disc"></div>
+    <div class="river river-one"></div>
+    <div class="river river-two"></div>
+    <div class="ziggurat"></div>
+    <div class="palms"></div>
+  </div>
+
+  <header class="topbar">
+    <a class="hub-link" href="index.html">Games</a>
+    <div class="title-wrap">
+      <span class="seal" aria-hidden="true">𒀭</span>
+      <div>
+        <p>YouOOO Games</p>
+        <h1>Mesopotamia Mahjong</h1>
+      </div>
+    </div>
+    <button class="icon-button" id="soundToggle" type="button" aria-label="Toggle sound">Sound On</button>
+  </header>
+
+  <main class="game-shell">
+    <section class="hud" aria-label="Game status">
+      <div><span>Mode</span><strong id="modeLabel">Campaign</strong></div>
+      <div><span>Level</span><strong id="levelLabel">1</strong></div>
+      <div><span>Time</span><strong id="timeLabel">00:00</strong></div>
+      <div><span>Tiles</span><strong id="tilesLabel">0</strong></div>
+      <div><span>Hints</span><strong id="hintsLabel">3</strong></div>
+      <div><span>Shuffle</span><strong id="shuffleLabel">2</strong></div>
+    </section>
+
+    <section class="board-panel" aria-label="Mahjong board">
+      <div class="board-toolbar">
+        <button id="menuButton" type="button">Menu</button>
+        <button id="restartButton" type="button">Restart</button>
+        <button id="hintButton" type="button">Hint</button>
+        <button id="shuffleButton" type="button">Shuffle</button>
+        <button id="pauseButton" type="button">Pause</button>
+      </div>
+      <div class="board-frame">
+        <div id="mahjongBoard" class="mahjong-board" role="grid" aria-label="Mesopotamia Mahjong tiles"></div>
+        <div id="toast" class="toast" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="mobile-actions" aria-label="Game actions">
+    <button id="mobileHint" type="button">Hint</button>
+    <button id="mobileShuffle" type="button">Shuffle</button>
+    <button id="mobileRestart" type="button">Restart</button>
+    <button id="mobileMenu" type="button">Menu</button>
+  </nav>
+
+  <div class="overlay active" id="menuOverlay" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+    <section class="scroll-panel">
+      <p class="eyebrow">Ancient Tile Matching</p>
+      <h2 id="menuTitle">Mesopotamia Mahjong</h2>
+      <p class="panel-copy">Match free clay tablets from Sumer, Babylon, Akkad, and Assyria. Clear every tile, unlock new layouts, and return for a daily challenge.</p>
+      <div class="menu-grid">
+        <button id="playButton" type="button">Play Campaign</button>
+        <button id="dailyButton" type="button">Daily Challenge</button>
+        <button id="levelSelectButton" type="button">Level Select</button>
+        <button id="statsButton" type="button">Statistics</button>
+        <button id="settingsButton" type="button">Settings</button>
+      </div>
+      <p class="small-note">Classic Mahjong solitaire rules: a tile is free when it has no tile above and at least one open side.</p>
+    </section>
+  </div>
+
+  <div class="overlay" id="levelOverlay" role="dialog" aria-modal="true" aria-labelledby="levelsTitle">
+    <section class="scroll-panel wide">
+      <div class="panel-heading">
+        <h2 id="levelsTitle">Campaign Levels</h2>
+        <button class="close-panel" data-close="levelOverlay" type="button">Close</button>
+      </div>
+      <div id="levelGrid" class="level-grid"></div>
+    </section>
+  </div>
+
+  <div class="overlay" id="statsOverlay" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
+    <section class="scroll-panel">
+      <div class="panel-heading">
+        <h2 id="statsTitle">Statistics</h2>
+        <button class="close-panel" data-close="statsOverlay" type="button">Close</button>
+      </div>
+      <div id="statsContent" class="stats-list"></div>
+    </section>
+  </div>
+
+  <div class="overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <section class="scroll-panel">
+      <div class="panel-heading">
+        <h2 id="settingsTitle">Settings</h2>
+        <button class="close-panel" data-close="settingsOverlay" type="button">Close</button>
+      </div>
+      <label class="setting-row"><span>Sound effects and music</span><input id="soundSetting" type="checkbox" checked /></label>
+      <button id="resetProgressButton" class="danger-button" type="button">Reset Mahjong Progress</button>
+    </section>
+  </div>
+
+  <div class="overlay" id="victoryOverlay" role="dialog" aria-modal="true" aria-labelledby="victoryTitle">
+    <section class="scroll-panel victory-panel">
+      <p class="eyebrow">Puzzle Cleared</p>
+      <h2 id="victoryTitle">Victory</h2>
+      <div id="starRating" class="stars" aria-label="Star rating">☆☆☆</div>
+      <p id="victoryStats" class="panel-copy"></p>
+      <div class="menu-grid">
+        <button id="nextLevelButton" type="button">Next Level</button>
+        <button id="replayButton" type="button">Replay</button>
+        <button id="victoryLevelsButton" type="button">Level Select</button>
+        <button id="victoryMenuButton" type="button">Menu</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="mesopotamia-mahjong.js?v=20260703-mesopotamia-mahjong-v1" defer></script>
+</body>
+</html>
