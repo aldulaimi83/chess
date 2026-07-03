@@ -490,9 +490,9 @@ button { -webkit-tap-highlight-color:transparent; }
   .icon-button { grid-column:1 / -1; justify-self:center; }
   .hud { grid-template-columns:repeat(3, 1fr); }
   .board-frame {
-    min-height:560px;
-    padding:20px;
-    align-items:flex-start;
+    min-height:calc(100svh - 300px);
+    padding:16px 12px 92px;
+    align-items:center;
   }
   .board-toolbar { display:none; }
   .mobile-actions { display:grid; }
@@ -506,7 +506,14 @@ button { -webkit-tap-highlight-color:transparent; }
   .title-wrap { justify-content:flex-start; }
   .seal { width:40px; }
   .title-wrap h1 { font-size:1.45rem; }
-  .game-shell { width:calc(100% - 12px); }
+  .game-shell { width:calc(100% - 10px); margin-bottom:104px; }
+  .board-frame {
+    min-height:calc(100svh - 294px);
+    padding:12px 8px 92px;
+    justify-content:center;
+    align-items:center;
+  }
+  .mahjong-board { margin:0 auto; }
   .hud strong { font-size:.86rem; }
   .hud div { padding:8px; min-height:52px; }
   .tile-symbol { font-size:1.28rem; }
