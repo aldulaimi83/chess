@@ -2,9 +2,9 @@
   "use strict";
 
   const SAVE_KEY = "youooo_stickman_odyssey_v1";
-  const W = 960, H = 540, WORLD_W = 3600;
-  const GRAVITY = 1850, MOVE = 3000, FRICTION = 2400, MAX = 280, JUMP = 625;
-  const PLAYER_W = 26, PLAYER_H = 58, COYOTE = .1, JUMP_BUFFER = .12;
+  const W = 960, H = 540, WORLD_W = 4680;
+  const GRAVITY = 1780, MOVE = 3350, AIR_MOVE = 2380, FRICTION = 2850, AIR_FRICTION = 760, MAX = 305, JUMP = 650;
+  const PLAYER_W = 26, PLAYER_H = 58, COYOTE = .14, JUMP_BUFFER = .16;
   const WHISTLE_COOLDOWN = 8.6;
   const $ = (id) => document.getElementById(id);
   const canvas = $("odysseyCanvas");
@@ -18,10 +18,10 @@
 
   const areas = [
     { name: "Jungle Entrance", x: 0, color: "#91b86b" },
-    { name: "Ancient Ruins", x: 720, color: "#b99b66" },
-    { name: "Cave Path", x: 1480, color: "#4b3b30" },
-    { name: "Temple Gate", x: 2240, color: "#9f7a49" },
-    { name: "Hidden Treasure Room", x: 3020, color: "#c28b3c" }
+    { name: "Ancient Ruins", x: 880, color: "#b99b66" },
+    { name: "Cave Path", x: 1760, color: "#4b3b30" },
+    { name: "Temple Gate", x: 2780, color: "#9f7a49" },
+    { name: "Treasure Room", x: 3820, color: "#c28b3c" }
   ];
   const input = { left: false, right: false, jump: false, jumpPressed: false, yoyoPressed: false };
   let save = loadSave();
@@ -38,29 +38,32 @@
   const baseWorld = {
     start: { x: 44, y: 380 },
     platforms: [
-      rect(0, 470, 420, 70, "dirt"), rect(470, 438, 240, 32, "wood"), rect(760, 470, 420, 70, "stone"),
-      rect(1215, 420, 170, 28, "stone"), rect(1430, 470, 520, 70, "cave"), rect(2020, 430, 180, 30, "move", { sx: 2020, sy: 430, dx: 150, period: 3 }),
-      rect(2280, 470, 420, 70, "stone"), rect(2740, 420, 120, 24, "crumble", { timer: 0, used: false }),
-      rect(2920, 470, 680, 70, "treasure"), rect(880, 382, 170, 24, "hidden", { revealed: false }), rect(3180, 382, 170, 24, "hidden", { revealed: false })
+      rect(0, 470, 360, 70, "dirt"), rect(420, 445, 190, 28, "wood"), rect(660, 470, 230, 70, "dirt"),
+      rect(930, 470, 260, 70, "stone"), rect(1260, 420, 190, 28, "move", { sx: 1260, sy: 420, dx: 125, period: 3.2 }), rect(1510, 470, 260, 70, "stone"),
+      rect(1840, 470, 250, 70, "cave"), rect(2140, 410, 170, 26, "hidden", { revealed: false }), rect(2385, 470, 300, 70, "cave"),
+      rect(2705, 405, 150, 26, "hidden", { revealed: false }), rect(2870, 470, 250, 70, "stone"), rect(3185, 425, 190, 28, "move", { sx: 3185, sy: 425, dx: 120, period: 2.5 }),
+      rect(3450, 470, 330, 70, "stone"), rect(3820, 470, 250, 70, "treasure"), rect(4125, 414, 130, 24, "crumble", { timer: 0, used: false }),
+      rect(4300, 360, 120, 24, "treasure"), rect(4455, 470, 225, 70, "treasure"), rect(1225, 360, 155, 24, "hidden", { revealed: false })
     ],
-    spikes: [rect(420, 500, 50, 28), rect(1180, 500, 70, 28), rect(2700, 500, 70, 28)],
-    axes: [{ x: 1690, y: 245, len: 112, angle: 0, speed: 1.5 }],
-    rocks: [{ x: 1520, y: 120, r: 16, armed: false, vy: 0 }, { x: 2380, y: 120, r: 18, armed: false, vy: 0 }],
-    boulders: [{ x: 2460, y: 430, r: 22, vx: 0, armed: false }],
-    doors: [rect(2845, 350, 42, 120, "door", { id: "temple", open: false })],
-    plates: [rect(2365, 458, 54, 12, "plate", { id: "temple", pressed: false, timer: 0 })],
-    coins: [coin(160, 420), coin(535, 398), coin(845, 430), coin(985, 310, true), coin(1320, 376), coin(1815, 400), coin(2140, 384), coin(2765, 384), coin(3210, 292, true), coin(3440, 428)],
-    artifacts: [artifact(1015, 342, "Sun Tablet"), artifact(1855, 390, "Cave Idol"), artifact(3310, 342, "Golden Leaf")],
-    keys: [key(2305, 388, "temple")],
-    checkpoints: [checkpoint(40, 426, "start"), checkpoint(920, 426, "ruins"), checkpoint(1650, 426, "cave"), checkpoint(2350, 426, "temple")],
-    hooks: [hook(610, 300), hook(1360, 300), hook(2100, 300), hook(2810, 290)],
-    switches: [yoyoSwitch(1960, 330, "bridge"), yoyoSwitch(2520, 320, "temple")],
+    spikes: [rect(360, 500, 60, 28), rect(1770, 500, 70, 28), rect(2815, 500, 55, 28), rect(3380, 500, 70, 28), rect(4255, 500, 70, 28)],
+    axes: [{ x: 3045, y: 245, len: 112, angle: 0, speed: 1.55 }],
+    rocks: [{ x: 1925, y: 120, r: 17, armed: false, vy: 0 }, { x: 2505, y: 120, r: 18, armed: false, vy: 0 }],
+    boulders: [{ x: 3310, y: 430, r: 22, vx: 0, armed: false, min: 3180, max: 3520 }],
+    doors: [rect(3558, 350, 42, 120, "door", { id: "temple", open: false }), rect(4550, 350, 42, 120, "door", { id: "exit", open: true })],
+    plates: [rect(3420, 458, 56, 12, "plate", { id: "temple", pressed: false, timer: 0 })],
+    coins: [coin(155, 420), coin(500, 395), coin(805, 430), coin(1125, 430), coin(1360, 335, true), coin(1635, 430), coin(2050, 416), coin(2240, 372, true), coin(2640, 430), coin(3235, 382), coin(3335, 382), coin(3860, 430), coin(4175, 372), coin(4355, 318, true), coin(4490, 430)],
+    artifacts: [artifact(1325, 318, "Sun Tablet"), artifact(2245, 372, "Cave Idol"), artifact(4358, 318, "Golden Leaf")],
+    keys: [key(3290, 388, "temple")],
+    checkpoints: [checkpoint(44, 426, "start"), checkpoint(940, 426, "ruins"), checkpoint(1850, 426, "cave"), checkpoint(2875, 426, "temple"), checkpoint(3835, 426, "treasure")],
+    hooks: [hook(705, 298), hook(1170, 290), hook(1465, 285), hook(2060, 300), hook(2555, 292), hook(3230, 292), hook(4185, 285)],
+    switches: [yoyoSwitch(1540, 330, "bridge"), yoyoSwitch(3375, 326, "temple")],
     signs: [
-      { x: 120, y: 420, text: "Coins mark the path" },
-      { x: 820, y: 420, text: "F catches hooks" },
-      { x: 1510, y: 420, text: "G reveals cave paths" },
-      { x: 2320, y: 420, text: "Step plates wake doors" },
-      { x: 3110, y: 420, text: "Find all artifacts" }
+      { x: 120, y: 420, text: "Move and jump" },
+      { x: 950, y: 420, text: "F catches hooks" },
+      { x: 1515, y: 420, text: "Pull the switch" },
+      { x: 1855, y: 420, text: "G reveals cave paths" },
+      { x: 2885, y: 420, text: "Key and plate" },
+      { x: 3840, y: 420, text: "Risk for artifacts" }
     ],
     leaves: []
   };
@@ -86,11 +89,13 @@
       save = { checkpoint: { x: 44, y: 380 }, coins: [], artifacts: [], keys: [], switches: [], deaths: 0, best: save.best || null, complete: false };
       writeSave();
     }
+    save.checkpoint = safeCheckpoint(save.checkpoint);
+    writeSave();
     const world = buildWorld();
     run = {
       world, time: 0, keys: new Set(save.keys), dead: false, won: false, dust: [], particles: [], pieces: [], waves: [], whistle: 0, shake: 0, areaName: "",
-      player: { x: save.checkpoint.x, y: save.checkpoint.y, vx: 0, vy: 0, facing: 1, grounded: false, coyote: 0, jumpBuffer: 0, jumpHeld: false, runTime: 0, pose: "idle", checkpoint: { ...save.checkpoint }, invuln: 1 },
-      yoyo: { state: "ready", x: 0, y: 0, vx: 0, vy: 0, distance: 0, hook: null, target: null, kind: null, t: 0 }
+      player: { x: save.checkpoint.x, y: save.checkpoint.y, vx: 0, vy: 0, facing: 1, grounded: false, wasGrounded: false, coyote: 0, jumpBuffer: 0, jumpHeld: false, runTime: 0, pose: "idle", checkpoint: { ...save.checkpoint }, invuln: 1 },
+      yoyo: { state: "ready", x: 0, y: 0, vx: 0, vy: 0, distance: 0, hook: null, target: null, kind: null, t: 0, charge: 0, flash: 0, trail: [] }
     };
     applySwitches();
     state = "playing";
@@ -99,9 +104,17 @@
     canvas.focus({ preventScroll: true });
   }
 
+  function safeCheckpoint(point) {
+    const ordered = [...baseWorld.checkpoints].sort((a, b) => a.x - b.x);
+    const match = ordered.find((c) => Math.abs((point?.x || 0) - c.x) < 8);
+    if (match) return { x: match.x, y: match.y - 44 };
+    const fallback = ordered.reduce((best, c) => (c.x <= (point?.x || 0) ? c : best), ordered[0]);
+    return { x: fallback.x, y: fallback.y - 44 };
+  }
+
   function applySwitches() {
     const bridge = run.world.platforms.find((p) => p.id === "bridge");
-    if (!bridge) run.world.platforms.push(rect(1900, 385, 250, 24, "wood", { id: "bridge", visible: run.world.switches.find((s) => s.id === "bridge")?.pulled }));
+    if (!bridge) run.world.platforms.push(rect(1605, 382, 190, 24, "wood", { id: "bridge", visible: run.world.switches.find((s) => s.id === "bridge")?.pulled }));
     const temple = run.world.switches.find((s) => s.id === "temple")?.pulled;
     run.world.doors.forEach((d) => { if (d.id === "temple") d.open = temple || run.keys.has("temple"); });
   }
@@ -121,6 +134,7 @@
     run.dust = [];
     run.particles = [];
     run.shake = 0;
+    if (run.yoyo) run.yoyo.trail = [];
   }
 
   function update(dt) {
@@ -172,8 +186,8 @@
       }
     });
     run.world.boulders.forEach((b) => {
-      if (canArmHazards && !b.armed && run.player.x > 2320) { b.armed = true; b.vx = 130; toast("Rolling boulder"); }
-      if (b.armed && run.whistle <= 0) { b.x += b.vx * dt; if (b.x > 2780 || b.x < 2460) b.vx *= -1; }
+      if (canArmHazards && !b.armed && run.player.x > 3180) { b.armed = true; b.vx = 130; toast("Rolling boulder"); }
+      if (b.armed && run.whistle <= 0) { b.x += b.vx * dt; if (b.x > (b.max || 2780) || b.x < (b.min || 2460)) b.vx *= -1; }
     });
     run.world.plates.forEach((plate) => {
       plate.pressed = overlap(run.player, plate);
@@ -189,31 +203,42 @@
 
   function updatePlayer(dt) {
     const p = run.player;
+    p.wasGrounded = p.grounded;
     p.invuln = Math.max(0, (p.invuln || 0) - dt);
     p.jumpBuffer = input.jumpPressed ? JUMP_BUFFER : Math.max(0, p.jumpBuffer - dt);
     input.jumpPressed = false;
-    if (input.yoyoPressed) throwYoyo();
+    if (input.yoyoPressed) {
+      if (run.yoyo.state === "hooked") releaseYoyo(true);
+      else throwYoyo();
+    }
     input.yoyoPressed = false;
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     if (dir) p.facing = dir;
-    p.vx += dir * MOVE * dt;
-    if (!dir && p.grounded) p.vx = approach(p.vx, 0, FRICTION * dt);
+    p.vx += dir * (p.grounded ? MOVE : AIR_MOVE) * dt;
+    if (!dir) p.vx = approach(p.vx, 0, (p.grounded ? FRICTION : AIR_FRICTION) * dt);
     p.vx = clamp(p.vx, -MAX, MAX);
     updateYoyo(dt);
     if (run.yoyo.state === "hooked" && run.yoyo.hook) {
       run.yoyo.t += dt;
       const cx = p.x + PLAYER_W / 2, cy = p.y + 24;
       const dx = run.yoyo.hook.x - cx, dy = run.yoyo.hook.y - cy, dist = Math.max(1, Math.hypot(dx, dy));
-      p.vx += dx / dist * 1150 * dt; p.vy += dy / dist * 1050 * dt;
-      if (dist < 35 || run.yoyo.t > .9) returnYoyo();
+      const pull = dist > 145 ? 1420 : 760;
+      p.vx += dx / dist * pull * dt;
+      p.vy += dy / dist * (pull * .82) * dt;
+      p.vx += -dy / dist * input.right * 420 * dt;
+      p.vx += dy / dist * input.left * 420 * dt;
+      p.vx = clamp(p.vx, -MAX * 1.45, MAX * 1.45);
+      p.vy = clamp(p.vy, -760, 760);
+      if (dist < 38 || run.yoyo.t > 1.25) releaseYoyo(true);
     }
     if (p.jumpBuffer > 0 && p.coyote > 0) {
       p.vy = -JUMP; p.grounded = false; p.coyote = 0; p.jumpBuffer = 0; p.jumpHeld = true; puff(p.x + 13, p.y + 58); beep(260, .035, "square");
     }
-    if (!input.jump && p.jumpHeld && p.vy < -215) p.vy = -215;
+    if (!input.jump && p.jumpHeld && p.vy < -235) p.vy = -235;
     if (!input.jump) p.jumpHeld = false;
     p.vy = Math.min(p.vy + GRAVITY * dt, 930);
     move(p, dt);
+    if (!p.wasGrounded && p.grounded) { puff(p.x + 13, p.y + 58); run.shake = Math.max(run.shake, .05); }
     p.coyote = p.grounded ? COYOTE : Math.max(0, p.coyote - dt);
     p.pose = !p.grounded ? (p.vy < 0 ? "jump" : "fall") : Math.abs(p.vx) > 25 ? "walk" : "idle";
     if (p.y > H + 130) die("Back to checkpoint");
@@ -221,8 +246,11 @@
   }
 
   function move(p, dt) {
-    p.x += p.vx * dt; collide(p, "x");
-    p.y += p.vy * dt; p.grounded = false; collide(p, "y");
+    const steps = Math.max(1, Math.ceil((Math.abs(p.vx) * dt + Math.abs(p.vy) * dt) / 18));
+    for (let i = 0; i < steps; i += 1) {
+      p.x += p.vx * dt / steps; collide(p, "x");
+      p.y += p.vy * dt / steps; p.grounded = false; collide(p, "y");
+    }
     p.x = clamp(p.x, 0, WORLD_W - PLAYER_W);
   }
 
@@ -232,9 +260,11 @@
       if (axis === "x") { if (p.vx > 0) p.x = o.x - PLAYER_W; else if (p.vx < 0) p.x = o.x + o.w; p.vx = 0; }
       else {
         if (p.vy > 0) {
+          const impact = p.vy;
           p.y = o.y - PLAYER_H; p.vy = 0; p.grounded = true;
           if (o.type === "move") p.x += o.x - (o.prevX ?? o.x);
           if (o.type === "crumble") { o.used = true; toast("Bridge crumbling"); }
+          if (impact > 520) puff(p.x + 13, p.y + 58);
         } else if (p.vy < 0) { p.y = o.y + o.h; p.vy = 0; }
       }
     }
@@ -256,7 +286,7 @@
     });
     run.world.rocks.forEach((r) => { if (circleRect(r.x, r.y, r.r, p.x, p.y, PLAYER_W, PLAYER_H)) die("Falling rock"); });
     run.world.boulders.forEach((b) => { if (circleRect(b.x, b.y, b.r, p.x, p.y, PLAYER_W, PLAYER_H)) die("Rolling boulder"); });
-    if (p.x > 3480 && run.world.artifacts.every((a) => a.taken || save.artifacts.includes(a.id))) completeGame();
+    run.world.doors.forEach((d) => { if (d.id === "exit" && circleRect(p.x + PLAYER_W / 2, p.y + PLAYER_H / 2, 16, d.x, d.y, d.w, d.h)) completeGame(); });
   }
 
   function updateCollectibles() {
@@ -308,18 +338,22 @@
     run.world.coins.filter((c) => !c.taken).forEach((c) => consider(c, "coin", 260));
     run.world.keys.filter((k) => !k.taken).forEach((k) => consider({ ...k, x: k.x + 14, y: k.y + 8, key: k }, "key", 260));
     const dx = best ? best.x - hand.x : run.player.facing, dy = best ? best.y - hand.y : 0, len = Math.max(1, Math.hypot(dx, dy));
-    Object.assign(y, { state: "out", x: hand.x, y: hand.y, vx: dx / len * 850, vy: dy / len * 850, distance: 0, target: best, kind, hook: null, t: 0 });
+    Object.assign(y, { state: "out", x: hand.x, y: hand.y, vx: dx / len * 910, vy: dy / len * 910, distance: 0, target: best, kind, hook: null, t: 0, charge: 1, flash: .12, trail: [] });
     play("yoyo");
   }
 
   function updateYoyo(dt) {
     const y = run.yoyo, hand = yoyoHand();
+    y.charge = Math.max(0, (y.charge || 0) - dt * 1.8);
+    y.flash = Math.max(0, (y.flash || 0) - dt);
+    y.trail = (y.trail || []).filter((point) => (point.life -= dt) > 0);
+    if (y.state !== "ready") y.trail.push({ x: y.x, y: y.y, life: .18 });
     if (y.state === "ready") { y.x = hand.x; y.y = hand.y; return; }
     if (y.state === "out") {
       const sx = y.vx * dt, sy = y.vy * dt; y.x += sx; y.y += sy; y.distance += Math.hypot(sx, sy);
       run.world.platforms.forEach((p) => { if (p.type === "hidden" && circleRect(y.x, y.y, 8, p.x, p.y, p.w, p.h)) { p.revealed = true; p.visible = true; toast("Yo-yo revealed a ledge"); } });
       if (y.target && Math.hypot(y.x - y.target.x, y.y - y.target.y) < 26) {
-        if (y.kind === "hook") { y.state = "hooked"; y.hook = y.target; y.t = 0; toast("Yo-yo attached"); play("hook"); }
+        if (y.kind === "hook") { y.state = "hooked"; y.hook = y.target; y.t = 0; y.flash = .34; toast("Yo-yo attached"); play("hook"); }
         if (y.kind === "switch") pullSwitch(y.target);
         if (y.kind === "coin") { collectCoin(y.target); returnYoyo(); }
         if (y.kind === "key") { y.target.key.x = run.player.x + 8; y.target.key.y = run.player.y + 24; returnYoyo(); toast("Yo-yo pulled the key"); }
@@ -338,11 +372,22 @@
     s.pulled = true;
     if (!save.switches.includes(s.id)) save.switches.push(s.id);
     if (s.id === "bridge") toast("Old bridge mechanism woke up");
-    if (s.id === "temple") { run.keys.add("temple"); save.keys.push("temple"); toast("Temple door unlocked"); }
+    if (s.id === "temple") { run.keys.add("temple"); if (!save.keys.includes("temple")) save.keys.push("temple"); toast("Temple door unlocked"); }
     applySwitches(); play("hook"); writeSave(); returnYoyo();
   }
 
-  function returnYoyo() { if (run.yoyo.state !== "ready") run.yoyo.state = "return"; run.yoyo.hook = null; }
+  function releaseYoyo(boost = false) {
+    if (boost && run.yoyo.hook) {
+      const p = run.player;
+      const dx = p.x + PLAYER_W / 2 - run.yoyo.hook.x;
+      const dy = p.y + 24 - run.yoyo.hook.y;
+      const dist = Math.max(1, Math.hypot(dx, dy));
+      p.vx += dx / dist * 155;
+      p.vy -= Math.max(70, Math.abs(p.vx) * .08);
+    }
+    returnYoyo();
+  }
+  function returnYoyo() { if (run.yoyo.state !== "ready") run.yoyo.state = "return"; run.yoyo.hook = null; run.yoyo.flash = Math.max(run.yoyo.flash || 0, .1); }
   function yoyoHand() { const p = run.player; return { x: p.x + PLAYER_W / 2 + p.facing * 12, y: p.y + 35 }; }
 
   function whistle() {
@@ -427,6 +472,18 @@
       const x = (i * 220 - camera * .2) % (W + 240);
       ctx.beginPath(); ctx.moveTo(x, 470); ctx.quadraticCurveTo(x + 120, 360, x + 260, 470); ctx.fill();
     }
+    if (area.name === "Jungle Entrance") {
+      ctx.strokeStyle = "rgba(42,88,42,.34)"; ctx.lineWidth = 5;
+      for (let i = 0; i < 8; i += 1) { const x = (i * 150 - camera * .32) % (W + 180); ctx.beginPath(); ctx.moveTo(x, 0); ctx.quadraticCurveTo(x + 20, 95, x - 12, 190); ctx.stroke(); }
+    }
+    if (area.name === "Ancient Ruins" || area.name === "Temple Gate") {
+      ctx.fillStyle = "rgba(71,48,28,.18)";
+      for (let i = 0; i < 6; i += 1) { const x = (i * 190 - camera * .14) % (W + 220); ctx.fillRect(x, 270, 34, 200); ctx.fillRect(x - 12, 250, 58, 18); }
+    }
+    if (area.name === "Treasure Room") {
+      ctx.fillStyle = "rgba(242,196,94,.16)";
+      for (let i = 0; i < 18; i += 1) { const x = (i * 70 - camera * .18) % (W + 80); ctx.fillRect(x, 435 + (i % 3) * 8, 34, 8); }
+    }
   }
 
   function drawWorld() {
@@ -484,9 +541,14 @@
   function drawYoyo() {
     if (run.dead) return;
     const y = run.yoyo, hand = yoyoHand();
-    ctx.save(); ctx.strokeStyle = "rgba(255,248,219,.85)"; ctx.lineWidth = 1.5; ctx.fillStyle = "#d99a2b";
+    ctx.save();
+    (y.trail || []).forEach((p) => { ctx.globalAlpha = Math.max(0, p.life * 4); ctx.fillStyle = "#f0c36a"; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill(); });
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = y.state === "hooked" ? "#fff2bf" : "rgba(255,248,219,.85)"; ctx.lineWidth = y.state === "hooked" ? 2.4 : 1.5; ctx.fillStyle = "#d99a2b";
     if (y.state !== "ready") { ctx.beginPath(); ctx.moveTo(hand.x, hand.y); ctx.lineTo(y.x, y.y); ctx.stroke(); }
-    ctx.beginPath(); ctx.arc(y.x, y.y, y.state === "ready" ? 7 : 9, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#fff4be"; ctx.stroke(); ctx.restore();
+    const pulse = (y.flash || 0) > 0 ? 4 + Math.sin(run.time * 34) * 2 : 0;
+    if (pulse > 0) { ctx.strokeStyle = "rgba(255,244,190,.65)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(y.x, y.y, 14 + pulse, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(y.x, y.y, (y.state === "ready" ? 7 : 9) + (y.charge || 0) * 2, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#fff4be"; ctx.stroke(); ctx.restore();
   }
 
   function drawEffects() {
