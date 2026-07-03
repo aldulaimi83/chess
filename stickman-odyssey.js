@@ -17,11 +17,11 @@
   };
 
   const areas = [
-    { name: "Jungle Entrance", x: 0, color: "#91b86b" },
-    { name: "Ancient Ruins", x: 880, color: "#b99b66" },
-    { name: "Cave Path", x: 1760, color: "#4b3b30" },
-    { name: "Temple Gate", x: 2780, color: "#9f7a49" },
-    { name: "Treasure Room", x: 3820, color: "#c28b3c" }
+    { name: "Jungle Entrance", x: 0, color: "#91b86b", mechanic: "Movement, coins, first checkpoint" },
+    { name: "Ancient Ruins", x: 880, color: "#b99b66", mechanic: "Yo-yo hooks, pull switch, moving stone" },
+    { name: "Cave Path", x: 1760, color: "#4b3b30", mechanic: "Falling rocks, whistle secrets" },
+    { name: "Temple Gate", x: 2780, color: "#9f7a49", mechanic: "Key, pressure plate, spikes" },
+    { name: "Treasure Room", x: 3820, color: "#c28b3c", mechanic: "Risky coins, final artifact, exit" }
   ];
   const input = { left: false, right: false, jump: false, jumpPressed: false, yoyoPressed: false };
   let save = loadSave();
@@ -58,12 +58,12 @@
     hooks: [hook(705, 298), hook(1170, 290), hook(1465, 285), hook(2060, 300), hook(2555, 292), hook(3230, 292), hook(4185, 285)],
     switches: [yoyoSwitch(1540, 330, "bridge"), yoyoSwitch(3375, 326, "temple")],
     signs: [
-      { x: 120, y: 420, text: "Move and jump" },
-      { x: 950, y: 420, text: "F catches hooks" },
+      { x: 120, y: 420, text: "World 1: Move and jump" },
+      { x: 950, y: 420, text: "World 2: F catches hooks" },
       { x: 1515, y: 420, text: "Pull the switch" },
-      { x: 1855, y: 420, text: "G reveals cave paths" },
-      { x: 2885, y: 420, text: "Key and plate" },
-      { x: 3840, y: 420, text: "Risk for artifacts" }
+      { x: 1855, y: 420, text: "World 3: G reveals paths" },
+      { x: 2885, y: 420, text: "World 4: Key and plate" },
+      { x: 3840, y: 420, text: "World 5: Risk for artifacts" }
     ],
     leaves: []
   };
@@ -502,6 +502,7 @@
 
   function drawWorld() {
     run.world.platforms.forEach((p) => { if (p.visible === false) return; drawPlatform(p); });
+    drawWorldMarkers();
     run.world.spikes.forEach(drawSpikes);
     run.world.doors.forEach(drawDoor);
     run.world.hooks.forEach((h) => drawHook(h));
@@ -528,6 +529,31 @@
     run.world.coins.forEach((c) => { if (c.taken) return; ctx.fillStyle = c.secret ? "#f0c36a" : "#d99a2b"; ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#fff4be"; ctx.fillRect(c.x - 2, c.y - 6, 4, 12); });
     run.world.artifacts.forEach((a) => { if (a.taken) return; ctx.fillStyle = "#f2c45e"; ctx.beginPath(); ctx.moveTo(a.x, a.y - 14); ctx.lineTo(a.x + 12, a.y); ctx.lineTo(a.x, a.y + 14); ctx.lineTo(a.x - 12, a.y); ctx.closePath(); ctx.fill(); });
     run.world.keys.forEach((k) => { if (k.taken) return; ctx.strokeStyle = "#f6d66f"; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.beginPath(); ctx.arc(k.x + 7, k.y + 9, 7, 0, Math.PI * 2); ctx.moveTo(k.x + 14, k.y + 9); ctx.lineTo(k.x + 30, k.y + 9); ctx.lineTo(k.x + 30, k.y + 15); ctx.stroke(); });
+  }
+
+  function drawWorldMarkers() {
+    areas.forEach((area, index) => {
+      const gateX = area.x + 26;
+      ctx.save();
+      ctx.globalAlpha = .86;
+      ctx.strokeStyle = "#4d321e";
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(gateX, 470);
+      ctx.lineTo(gateX, 365);
+      ctx.quadraticCurveTo(gateX + 56, 312, gateX + 112, 365);
+      ctx.lineTo(gateX + 112, 470);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,242,196,.75)";
+      roundRect(gateX - 8, 330, 128, 34, 8, true, false);
+      ctx.fillStyle = "#3b2818";
+      ctx.font = "900 10px Orbitron";
+      ctx.textAlign = "center";
+      ctx.fillText(`WORLD ${index + 1}/5`, gateX + 56, 344);
+      ctx.font = "800 8px Inter";
+      ctx.fillText(area.name, gateX + 56, 357);
+      ctx.restore();
+    });
   }
 
   function drawTamer() {
@@ -592,15 +618,17 @@
   function updateCamera() { camera = clamp(run.player.x - W * .42, 0, WORLD_W - W); }
   function currentArea() { return [...areas].reverse().find((a) => run?.player.x >= a.x) || areas[0]; }
   function updateArea() {
-    const area = currentArea().name;
-    if (area !== run.areaName) {
-      run.areaName = area;
-      toast(area);
+    const area = currentArea();
+    const label = `World ${areas.indexOf(area) + 1}/5: ${area.name}`;
+    if (label !== run.areaName) {
+      run.areaName = label;
+      toast(label);
     }
   }
   function updateHud() {
     if (!run) return;
-    ui.area.textContent = currentArea().name; ui.coins.textContent = `${save.coins.length}/${run.world.coins.length}`; ui.artifacts.textContent = `${save.artifacts.length}/${run.world.artifacts.length}`;
+    const area = currentArea();
+    ui.area.textContent = `World ${areas.indexOf(area) + 1}/5 · ${area.name}`; ui.coins.textContent = `${save.coins.length}/${run.world.coins.length}`; ui.artifacts.textContent = `${save.artifacts.length}/${run.world.artifacts.length}`;
     ui.keys.textContent = String(save.keys.length); ui.deaths.textContent = String(save.deaths || 0); ui.time.textContent = formatTime(run.time);
     const whistleButton = $("whistleButton");
     if (whistleButton) {
@@ -610,7 +638,10 @@
   }
   function renderMap() {
     const x = run?.player.x || save.checkpoint.x;
-    ui.map.innerHTML = areas.map((a, i) => `<div><span>${x >= a.x && (!areas[i + 1] || x < areas[i + 1].x) ? "Tamer" : ""}</span><strong>${a.name}</strong></div>`).join("");
+    ui.map.innerHTML = areas.map((a, i) => {
+      const here = x >= a.x && (!areas[i + 1] || x < areas[i + 1].x);
+      return `<div><span>${here ? "Tamer" : `World ${i + 1}`}</span><strong>${a.name}</strong><em>${a.mechanic}</em></div>`;
+    }).join("");
   }
 
   function showOverlay(name) { [ui.menu, ui.pause, ui.complete].forEach((el) => el.classList.remove("visible")); if (name) ui[name].classList.add("visible"); }
