@@ -761,6 +761,235 @@ body {
 }
 .gems-over-score { color:#d8e0fb; font-size:1rem; }
 
+/* ── Gems Crush polish override ───────────────────────── */
+.gems-layout {
+  position:relative;
+  grid-template-columns:300px minmax(0,1fr);
+  gap:22px;
+  max-width:1180px;
+}
+.gems-sidebar { gap:12px; }
+.gems-sidebar .sidebar-card {
+  background:
+    radial-gradient(circle at top left, rgba(255,241,210,.16), transparent 30%),
+    linear-gradient(180deg, rgba(116,78,42,.96), rgba(66,41,24,.95));
+  border:1px solid rgba(255,228,179,.15);
+  box-shadow:0 20px 45px rgba(25,14,7,.24), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.gems-score-num {
+  color:#ffcf6b;
+  text-shadow:0 0 18px rgba(255,199,110,.18);
+}
+.gems-best-txt { color:#e4d0b2; }
+.gems-progress-card .gems-progress-buttons {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-top:10px;
+}
+.gems-progress-card .gems-progress-buttons button { min-height:42px; }
+.gems-daily-note {
+  margin-top:10px;
+  font-size:.77rem;
+  color:#ead8be;
+  line-height:1.45;
+}
+.gems-bar {
+  background:
+    linear-gradient(90deg, rgba(255,214,111,.16), rgba(214,138,75,.16), rgba(255,255,255,0)),
+    rgba(48,28,17,.92);
+}
+.gems-sound-btn {
+  margin-left:auto;
+  white-space:nowrap;
+  min-height:40px;
+  border-color:rgba(255,229,183,.18);
+  background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+}
+.gems-stage-name { color:#ffd66f; }
+.gems-progress-fill {
+  background:linear-gradient(90deg,#f6c667,#e08643,#de5d64);
+  box-shadow:0 0 18px rgba(255,199,110,.28);
+}
+.gems-gift-fill {
+  background:linear-gradient(90deg,#ffb84e,#ff7a59,#ef5f82);
+}
+.gems-board-shell {
+  padding:16px;
+  background:
+    radial-gradient(circle at top left, rgba(255,255,255,.18), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(255,215,138,.14), transparent 24%),
+    linear-gradient(180deg, rgba(121,80,43,.98), rgba(72,43,25,.98));
+  border:1px solid rgba(255,227,181,.12);
+  box-shadow:0 30px 75px rgba(0,0,0,.24);
+}
+.gems-shell-title { color:#fff3d5; text-shadow:none; }
+.gems-shell-subtitle { color:#e5d2b2; }
+.gems-shell-badge {
+  background:linear-gradient(135deg, rgba(255,225,173,.3), rgba(222,104,73,.22));
+  border-color:rgba(255,230,186,.12);
+  color:#fff8e8;
+}
+.gems-board {
+  gap:7px;
+  padding:15px;
+  width:min(580px,calc(100vw - 330px));
+  border-radius:26px;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(255,255,255,.08), transparent 26%),
+    linear-gradient(180deg, rgba(243,198,122,.2), rgba(125,69,36,.22)),
+    linear-gradient(180deg, rgba(90,57,34,.98), rgba(45,27,16,.98));
+  border:1px solid rgba(255,235,196,.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    0 0 0 1px rgba(0,0,0,.15),
+    0 22px 52px rgba(0,0,0,.24);
+}
+.gems-board-shake { animation:gemsBoardShake .28s cubic-bezier(.34,.82,.3,1); }
+@keyframes gemsBoardShake {
+  0%{transform:translate(0,0)}
+  20%{transform:translate(-3px,2px)}
+  40%{transform:translate(4px,-2px)}
+  60%{transform:translate(-2px,3px)}
+  80%{transform:translate(3px,-1px)}
+  100%{transform:translate(0,0)}
+}
+.gem-cell {
+  border-radius:18px;
+  box-shadow:
+    inset 0 10px 18px rgba(255,255,255,.16),
+    inset 0 -14px 16px rgba(0,0,0,.18),
+    0 12px 18px rgba(0,0,0,.16);
+}
+.gem-cell::before {
+  background:rgba(255,255,255,.42);
+  width:42%; height:30%;
+}
+.gem-cell.selected {
+  box-shadow:0 0 0 4px rgba(255,244,203,.96), 0 0 24px rgba(255,213,111,.35);
+}
+.gem-cell.matched { animation:gemPop .34s cubic-bezier(.2,.9,.22,1) forwards; }
+.gem-cell.falling { animation:gemFall .24s ease; }
+.gem-cell.swapping { animation:gemSwap .18s ease; }
+.gem-0 { background:radial-gradient(circle at 35% 28%,#d9fff9,#66d1c4 48%,#27826f); }
+.gem-1 { background:radial-gradient(circle at 35% 28%,#fff0e2,#f8b870 48%,#d56b3c); }
+.gem-2 { background:radial-gradient(circle at 35% 28%,#ffe5ec,#ff90a6 48%,#cf4d74); }
+.gem-3 { background:radial-gradient(circle at 35% 28%,#fff6cf,#f0c766 48%,#b07a2b); }
+.gem-4 { background:radial-gradient(circle at 35% 28%,#efe2ff,#af8df0 48%,#7d4fd2); }
+.gem-5 { background:radial-gradient(circle at 35% 28%,#dff1ff,#78a6ff 48%,#4465d6); }
+.gem-stone, .gem-frozen, .gem-locked, .gem-bomb, .gem-chest {
+  position:relative;
+  overflow:hidden;
+}
+.gem-stone { filter:saturate(.9) brightness(.92); }
+.gem-stone::after,
+.gem-frozen::after,
+.gem-locked::after,
+.gem-bomb::after,
+.gem-chest::after {
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.12));
+}
+.gem-frozen { box-shadow:inset 0 0 0 2px rgba(219,240,255,.3), inset 0 0 20px rgba(219,240,255,.12), 0 12px 18px rgba(0,0,0,.14); }
+.gem-locked { box-shadow:inset 0 0 0 2px rgba(250,220,140,.35), inset 0 0 16px rgba(250,220,140,.08), 0 12px 18px rgba(0,0,0,.14); }
+.gem-bomb { box-shadow:inset 0 0 0 2px rgba(255,135,117,.35), inset 0 0 18px rgba(255,135,117,.12), 0 12px 18px rgba(0,0,0,.14); }
+.gem-chest { box-shadow:inset 0 0 0 2px rgba(235,195,101,.35), inset 0 0 18px rgba(235,195,101,.08), 0 12px 18px rgba(0,0,0,.14); }
+.gem-overlay-icon {
+  font-size:1rem;
+  opacity:.9;
+  text-shadow:0 1px 6px rgba(0,0,0,.45);
+}
+.gem-chest-icon { font-size:1.1rem; color:#5f3518; }
+.gems-level-modal {
+  position:absolute;
+  inset:0;
+  z-index:30;
+  display:grid;
+  place-items:center;
+  padding:18px;
+  background:rgba(25,17,11,.82);
+  backdrop-filter:blur(10px);
+}
+.gems-level-modal.hidden { display:none; }
+.gems-level-modal-inner {
+  width:min(760px,100%);
+  padding:18px;
+  border-radius:26px;
+  border:1px solid rgba(255,232,186,.16);
+  background:
+    radial-gradient(circle at top left, rgba(255,255,255,.15), transparent 32%),
+    linear-gradient(180deg, rgba(104,68,38,.98), rgba(57,34,20,.98));
+  box-shadow:0 24px 60px rgba(0,0,0,.35);
+}
+.gems-level-modal-head {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+}
+.gems-level-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(86px, 1fr));
+  gap:10px;
+  max-height:min(56vh, 520px);
+  overflow:auto;
+  padding-right:4px;
+}
+.gems-level-btn {
+  min-height:76px;
+  padding:10px;
+  border-radius:16px;
+  border:1px solid rgba(255,235,196,.14);
+  background:rgba(255,255,255,.05);
+  color:#fff4dc;
+  display:grid;
+  gap:5px;
+  align-content:center;
+  justify-items:center;
+  font-weight:800;
+}
+.gems-level-btn.locked { opacity:.45; }
+.gems-level-btn .lvl-num { font-family:'Orbitron',sans-serif; font-size:1.05rem; }
+.gems-level-btn .lvl-stars { color:#ffcf6b; font-size:.7rem; letter-spacing:.04em; }
+.gems-progress-stack { display:grid; gap:4px; margin-top:8px; }
+.gems-progress-buttons button { border-radius:14px; }
+.gems-status-toast {
+  background:linear-gradient(135deg,rgba(255,248,231,.98),rgba(255,227,187,.96));
+  color:#92400e;
+}
+.gems-floater {
+  color:#fff9ef;
+  text-shadow:0 0 10px rgba(255,192,91,.8);
+}
+.gems-combo-burst {
+  color:#fff3c4;
+  text-shadow:0 0 20px rgba(255,199,110,.8);
+}
+.gems-celebration.active::before {
+  background:linear-gradient(135deg,#fff4d2,#ffd67d);
+  color:#7a3f10;
+}
+@media (max-width: 980px) {
+  .gems-layout { grid-template-columns:1fr; }
+  .gems-board { width:min(100%, 560px); }
+}
+@media (max-width: 720px) {
+  .gems-progress-card .gems-progress-buttons { grid-template-columns:1fr 1fr 1fr; }
+  .gems-progress-card .gems-progress-buttons button { min-height:40px; font-size:.78rem; }
+  .gems-level-grid { grid-template-columns:repeat(auto-fit, minmax(74px, 1fr)); }
+}
+@media (max-width: 520px) {
+  .gems-progress-card .gems-progress-buttons { grid-template-columns:1fr; }
+  .gems-progress-card .gems-progress-buttons button { width:100%; }
+  .gems-board { width:100%; gap:5px; padding:12px; }
+  .gem-cell { border-radius:12px; }
+  .gems-overlay-inner { padding:26px; }
+}
+
 /* ═══════════════════════════════════════════════════════
    2048
    ═══════════════════════════════════════════════════════ */
