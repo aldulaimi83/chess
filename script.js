@@ -103,6 +103,7 @@ applyGameFilter();
 
 document.getElementById('viewAllGames')?.addEventListener('click', () => document.getElementById('gamesHeading')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
 document.getElementById('statsLeaderboardButton')?.addEventListener('click', () => document.getElementById('openLeaderBtn')?.click());
+document.getElementById('topLeaderboardsButton')?.addEventListener('click', () => document.getElementById('openLeaderBtn')?.click());
 
 let deferredInstallPrompt = null;
 const installBanner = document.getElementById('installBanner');
