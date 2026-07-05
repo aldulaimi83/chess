@@ -203,6 +203,17 @@ body {
 }
 .play-btn { display:block; text-align:center; text-decoration:none; }
 .play-btn:hover { opacity:1; transform:translateY(-1px); }
+.itch-btn {
+  background:linear-gradient(135deg,#ff9e4f,#ff5f6d);
+}
+.itch-link {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 12px;
+  white-space: nowrap;
+}
 
 .hub-footer { width:min(1120px,calc(100% - 48px)); margin:8px auto 24px; padding:24px; display:grid; grid-template-columns:.7fr 1.3fr; gap:28px; border:1px solid var(--border); border-radius:24px; background:rgba(255,255,255,.035); }
 .footer-group h2 { margin:0 0 11px; color:#fff; font:900 .78rem Orbitron; letter-spacing:.08em; text-transform:uppercase; }.footer-group div { display:flex; flex-wrap:wrap; gap:9px 15px; }.hub-footer a { color:var(--muted); text-decoration:none; transition:color .2s; font-size:.8rem; }
