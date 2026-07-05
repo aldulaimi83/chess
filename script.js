@@ -189,6 +189,7 @@ let chessMode = 'ai', chessDiff = 'medium';
 let chessOnlineColor = 'w', chessRoomCode = null, chessOnlineRef = null;
 let chessTouchSelection = null;
 let chessTouchBound = false;
+let chessStarted = false;
 const CVALS = {p:100,n:320,b:330,r:500,q:900,k:20000};
 
 const isCoarsePointer = typeof window !== 'undefined' && window.matchMedia
@@ -209,6 +210,11 @@ function initChessView() {
   bindChessTouchControls();
   updateChessStatus(); clearChessMoveHistory();
   document.getElementById('chessDiffCard').style.display = '';
+  chessStarted = true;
+  if (isCoarsePointer) {
+    const status = document.getElementById('chessStatus');
+    if (status) status.textContent = 'Tap a piece, then tap a destination square.';
+  }
 }
 
 function bindChessTouchControls() {
@@ -226,12 +232,20 @@ function bindChessTouchControls() {
   boardEl.addEventListener('touchend', event => {
     if (!boardEl.contains(event.target)) return;
     event.preventDefault();
+    handleChessMobileTap(event);
   }, { passive: false });
   boardEl.addEventListener('pointerdown', event => {
     if (!boardEl.contains(event.target)) return;
     if (event.pointerType === 'touch' || event.pointerType === 'pen') event.preventDefault();
   });
-  boardEl.addEventListener('click', handleChessMobileTap);
+  boardEl.addEventListener('pointerup', event => {
+    if (!boardEl.contains(event.target)) return;
+    if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+      event.preventDefault();
+      handleChessMobileTap(event);
+    }
+  });
+  if (!isCoarsePointer) boardEl.addEventListener('click', handleChessMobileTap);
 }
 
 function getChessSquareFromNode(node) {
@@ -270,7 +284,13 @@ function moveChessPiece(from, to) {
 
 function handleChessMobileTap(event) {
   if (!isCoarsePointer || !chessBoard || !chessGame) return;
-  const square = getChessSquareFromNode(event.target);
+  const touchPoint = event.changedTouches?.[0] || event.touches?.[0];
+  const clientX = event.clientX ?? touchPoint?.clientX;
+  const clientY = event.clientY ?? touchPoint?.clientY;
+  const pointTarget = clientX != null && clientY != null
+    ? document.elementFromPoint(clientX, clientY)
+    : null;
+  const square = getChessSquareFromNode(pointTarget || event.target);
   if (!square) return;
 
   const piece = chessGame.get(square);
@@ -312,6 +332,16 @@ function handleChessMobileTap(event) {
     clearChessSelection();
   }
   event.preventDefault();
+}
+
+function startChessGame() {
+  chessStarted = true;
+  initChessView();
+  const status = document.getElementById('chessStatus');
+  if (status) status.textContent = isCoarsePointer
+    ? 'Tap a piece, then tap a destination square.'
+    : 'White♙\'s turn';
+  setTimeout(() => chessBoard?.resize(), 50);
 }
 
 function chOnDragStart(src, piece) {
@@ -416,6 +446,7 @@ document.querySelectorAll('[data-chess-diff]').forEach(btn => {
 });
 
 document.getElementById('chessResetBtn').addEventListener('click', initChessView);
+document.getElementById('chessStartBtn')?.addEventListener('click', startChessGame);
 document.getElementById('chessFlipBtn').addEventListener('click', () => { if (chessBoard) chessBoard.flip(); });
 
 function syncChessMove() {
