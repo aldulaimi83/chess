@@ -187,20 +187,131 @@ openGameFromHash();
 let chessGame = null, chessBoard = null;
 let chessMode = 'ai', chessDiff = 'medium';
 let chessOnlineColor = 'w', chessRoomCode = null, chessOnlineRef = null;
+let chessTouchSelection = null;
+let chessTouchBound = false;
 const CVALS = {p:100,n:320,b:330,r:500,q:900,k:20000};
+
+const isCoarsePointer = typeof window !== 'undefined' && window.matchMedia
+  ? window.matchMedia('(pointer: coarse)').matches
+  : false;
 
 function initChessView() {
   if (chessBoard) { chessBoard.destroy(); chessBoard = null; }
+  chessTouchSelection = null;
   chessGame = new Chess();
   chessBoard = Chessboard('chessboard', {
-    draggable: true, position: 'start',
+    draggable: !isCoarsePointer, position: 'start',
     pieceTheme: 'https://raw.githubusercontent.com/oakmac/chessboardjs/master/website/img/chesspieces/wikipedia/{piece}.png',
     onDragStart: chOnDragStart, onDrop: chOnDrop,
     onSnapEnd: () => chessBoard.position(chessGame.fen()),
   });
   chessBoard.resize();
+  bindChessTouchControls();
   updateChessStatus(); clearChessMoveHistory();
   document.getElementById('chessDiffCard').style.display = '';
+}
+
+function bindChessTouchControls() {
+  const boardEl = document.getElementById('chessboard');
+  if (!boardEl || chessTouchBound) return;
+  chessTouchBound = true;
+
+  const blockScroll = event => {
+    if (!boardEl.contains(event.target)) return;
+    event.preventDefault();
+  };
+
+  boardEl.addEventListener('touchstart', blockScroll, { passive: false });
+  boardEl.addEventListener('touchmove', blockScroll, { passive: false });
+  boardEl.addEventListener('touchend', event => {
+    if (!boardEl.contains(event.target)) return;
+    event.preventDefault();
+  }, { passive: false });
+  boardEl.addEventListener('pointerdown', event => {
+    if (!boardEl.contains(event.target)) return;
+    if (event.pointerType === 'touch' || event.pointerType === 'pen') event.preventDefault();
+  });
+  boardEl.addEventListener('click', handleChessMobileTap);
+}
+
+function getChessSquareFromNode(node) {
+  const el = node?.closest?.('[class*="square-"]');
+  if (!el) return null;
+  const match = [...el.classList].find(cls => /^square-[a-h][1-8]$/.test(cls));
+  return match ? match.slice(7) : null;
+}
+
+function clearChessSelection() {
+  const boardEl = document.getElementById('chessboard');
+  if (!boardEl) return;
+  boardEl.querySelectorAll('.chess-piece-selected').forEach(el => el.classList.remove('chess-piece-selected'));
+  chessTouchSelection = null;
+}
+
+function highlightChessSquare(square) {
+  const boardEl = document.getElementById('chessboard');
+  if (!boardEl) return;
+  boardEl.querySelectorAll('.chess-piece-selected').forEach(el => el.classList.remove('chess-piece-selected'));
+  const squareEl = boardEl.querySelector(`.square-${square}`);
+  if (squareEl) squareEl.classList.add('chess-piece-selected');
+}
+
+function moveChessPiece(from, to) {
+  const move = chessGame.move({ from, to, promotion: 'q' });
+  if (!move) return false;
+  addChessMove(move.san);
+  updateChessStatus();
+  chessBoard.position(chessGame.fen());
+  clearChessSelection();
+  if (chessMode === 'ai' && !chessGame.game_over()) setTimeout(makeChessAiMove, 350);
+  if (chessMode === 'online' && chessRoomCode) syncChessMove();
+  return true;
+}
+
+function handleChessMobileTap(event) {
+  if (!isCoarsePointer || !chessBoard || !chessGame) return;
+  const square = getChessSquareFromNode(event.target);
+  if (!square) return;
+
+  const piece = chessGame.get(square);
+  const selectedPiece = chessTouchSelection ? chessGame.get(chessTouchSelection) : null;
+  const turn = chessGame.turn();
+  const ownPiece = piece && piece.color === turn;
+
+  if (!chessTouchSelection) {
+    if (ownPiece) {
+      chessTouchSelection = square;
+      highlightChessSquare(square);
+      event.preventDefault();
+    }
+    return;
+  }
+
+  if (square === chessTouchSelection) {
+    clearChessSelection();
+    event.preventDefault();
+    return;
+  }
+
+  if (ownPiece && (!selectedPiece || piece.color === selectedPiece.color)) {
+    chessTouchSelection = square;
+    highlightChessSquare(square);
+    event.preventDefault();
+    return;
+  }
+
+  if (moveChessPiece(chessTouchSelection, square)) {
+    event.preventDefault();
+    return;
+  }
+
+  if (ownPiece) {
+    chessTouchSelection = square;
+    highlightChessSquare(square);
+  } else {
+    clearChessSelection();
+  }
+  event.preventDefault();
 }
 
 function chOnDragStart(src, piece) {
@@ -213,12 +324,7 @@ function chOnDragStart(src, piece) {
 }
 
 function chOnDrop(src, tgt) {
-  const m = chessGame.move({from:src,to:tgt,promotion:'q'});
-  if (!m) return 'snapback';
-  addChessMove(m.san);
-  updateChessStatus();
-  if (chessMode === 'ai') setTimeout(makeChessAiMove, 350);
-  if (chessMode === 'online' && chessRoomCode) syncChessMove();
+  if (!moveChessPiece(src, tgt)) return 'snapback';
 }
 
 function makeChessAiMove() {
