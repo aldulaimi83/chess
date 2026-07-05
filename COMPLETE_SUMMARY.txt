@@ -145,7 +145,6 @@ GUIDES.md (Expert Strategies):
   ├── Chess: Beginner to Master level
   ├── Checkers: Opening & tactical principles
   ├── Gems Crush: Combo and power-up strategies
-  ├── 2048: Detailed "Corner Method"
   ├── ChromaMaze: Navigation & planning techniques
   ├── Snake: Scoring and pattern strategies
   ├── General improvement methodology

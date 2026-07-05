@@ -13,7 +13,6 @@
   --chess:     #fbbf24;
   --checkers:  #00d9ff;
   --gems:      #f472b6;
-  --t2048:     #fb923c;
   --online:    #34d399;
 }
 
@@ -141,9 +140,9 @@ body {
 .game-card:focus-visible { border-color:var(--cc,#36e5ff); box-shadow:0 0 0 3px rgba(54,229,255,.18),0 20px 50px rgba(0,0,0,.35); }
 .game-preview { position:relative; height:150px; margin:0 -20px 8px; overflow:hidden; display:flex; align-items:center; justify-content:center; border-bottom:1px solid rgba(255,255,255,.08); background:linear-gradient(135deg,#17223c,#0b1020); }
 .game-preview::before { content:""; position:absolute; inset:0; opacity:.45; background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px); background-size:26px 26px; }
-.preview-icon { position:relative; z-index:1; font-size:3.4rem; filter:drop-shadow(0 8px 18px rgba(0,0,0,.35)); }.preview-2048 .preview-icon { font:900 2.1rem Orbitron; color:#fff; padding:17px 10px; border-radius:14px; background:#fb923c; }
+.preview-icon { position:relative; z-index:1; font-size:3.4rem; filter:drop-shadow(0 8px 18px rgba(0,0,0,.35)); }
 .preview-title { position:absolute; left:14px; bottom:11px; z-index:2; color:rgba(255,255,255,.88); font:900 .7rem Orbitron; letter-spacing:.08em; text-transform:uppercase; }
-.preview-chess{background:radial-gradient(circle at 70% 30%,rgba(251,191,36,.35),transparent 28%),linear-gradient(135deg,#2b2414,#101522)}.preview-checkers{background:radial-gradient(circle at 30% 35%,rgba(0,217,255,.32),transparent 30%),linear-gradient(135deg,#092936,#121325)}.preview-gems{background:radial-gradient(circle at 70% 30%,rgba(244,114,182,.45),transparent 30%),linear-gradient(135deg,#2d1230,#101426)}.preview-2048{background:linear-gradient(135deg,#4b2714,#161729)}.preview-snake{background:radial-gradient(circle at 70% 32%,rgba(34,197,94,.4),transparent 32%),linear-gradient(135deg,#092819,#111827)}.preview-fruit{background:radial-gradient(circle at 70% 28%,rgba(251,113,133,.4),transparent 30%),linear-gradient(135deg,#331426,#17152a)}.preview-escape,.preview-arena{background:linear-gradient(#16304d 0 65%,#1b2942 65%)}.preview-maze{background:linear-gradient(135deg,#0c2634,#161637)}.preview-smart{background:linear-gradient(#123226 0 63%,#172235 63%)}.preview-odyssey{background:linear-gradient(#d79a55 0 50%,#5d7f47 50% 68%,#6b4a2c 68%)}.preview-mahjong{background:linear-gradient(#d8a45c 0 54%,#8b552c 54%);color:#3b210f}
+.preview-chess{background:radial-gradient(circle at 70% 30%,rgba(251,191,36,.35),transparent 28%),linear-gradient(135deg,#2b2414,#101522)}.preview-checkers{background:radial-gradient(circle at 30% 35%,rgba(0,217,255,.32),transparent 30%),linear-gradient(135deg,#092936,#121325)}.preview-gems{background:radial-gradient(circle at 70% 30%,rgba(244,114,182,.45),transparent 30%),linear-gradient(135deg,#2d1230,#101426)}.preview-snake{background:radial-gradient(circle at 70% 32%,rgba(34,197,94,.4),transparent 32%),linear-gradient(135deg,#092819,#111827)}.preview-fruit{background:radial-gradient(circle at 70% 28%,rgba(251,113,133,.4),transparent 30%),linear-gradient(135deg,#331426,#17152a)}.preview-escape,.preview-arena{background:linear-gradient(#16304d 0 65%,#1b2942 65%)}.preview-maze{background:linear-gradient(135deg,#0c2634,#161637)}.preview-smart{background:linear-gradient(#123226 0 63%,#172235 63%)}.preview-odyssey{background:linear-gradient(#d79a55 0 50%,#5d7f47 50% 68%,#6b4a2c 68%)}.preview-mahjong{background:linear-gradient(#d8a45c 0 54%,#8b552c 54%);color:#3b210f}
 .preview-stickman { left:42%; top:42px; transform:scale(.68); transform-origin:top left; }.preview-portal { position:absolute; right:26px; bottom:22px; width:38px; height:64px; display:grid; place-items:center; border:3px solid #36e5ff; border-radius:20px; color:#fff; font:900 12px Orbitron; box-shadow:0 0 18px #36e5ff; }.preview-enemy { position:absolute; right:34px; bottom:30px; width:29px; height:29px; border:4px solid #ff4f9a; border-radius:50%; box-shadow:0 0 16px rgba(255,79,154,.6); }.preview-enemy::after { content:""; position:absolute; left:9px; top:25px; width:4px; height:47px; border-radius:5px; background:#ff4f9a; }
 .preview-maze-lines{position:absolute;inset:16px 18px 28px;background:repeating-linear-gradient(90deg,rgba(54,229,255,.34) 0 3px,transparent 3px 35px),repeating-linear-gradient(rgba(54,229,255,.28) 0 3px,transparent 3px 29px);clip-path:polygon(0 0,100% 0,100% 28%,76% 28%,76% 52%,100% 52%,100% 100%,46% 100%,46% 72%,20% 72%,20% 100%,0 100%)}.preview-maze-key{position:absolute;right:30px;top:36px;display:grid;place-items:center;width:24px;height:24px;border-radius:7px;color:#091522;background:#ffd54a;font:900 11px Orbitron;box-shadow:0 0 16px rgba(255,213,74,.65)}
 .preview-smart-key{position:absolute;left:28px;top:34px;display:grid;place-items:center;width:24px;height:24px;border-radius:7px;color:#091522;background:#fde047;font:900 11px Orbitron;box-shadow:0 0 16px rgba(253,224,71,.65)}.preview-smart-door{position:absolute;right:24px;bottom:18px;width:36px;height:62px;display:grid;place-items:center;border:3px solid #4ade80;border-radius:18px;color:#fff;font:900 12px Orbitron;box-shadow:0 0 18px rgba(74,222,128,.75)}.preview-smart-saw{position:absolute;left:62%;top:50%;width:34px;height:34px;border:7px dashed #e5e7eb;border-radius:50%;box-shadow:0 0 16px rgba(239,68,68,.4);animation:spinPreview 2s linear infinite}@keyframes spinPreview{to{transform:rotate(360deg)}}
@@ -155,7 +154,6 @@ body {
 .chess-card    { --cc:var(--chess); }
 .checkers-card { --cc:var(--checkers); }
 .gems-card     { --cc:var(--gems); }
-.t2048-card    { --cc:var(--t2048); }
 .snake-card    { --cc:var(--snake); }
 .fruit-card    { --cc:var(--fruit); }
 .stickman-card { --cc:#36e5ff; text-decoration:none; }
@@ -164,7 +162,6 @@ body {
 .chess-card:hover    { border-color:rgba(251,191,36,.5); box-shadow:0 0 40px rgba(251,191,36,.18); transform:translateY(-5px); }
 .checkers-card:hover { border-color:rgba(0,217,255,.5);  box-shadow:0 0 40px rgba(0,217,255,.18);  transform:translateY(-5px); }
 .gems-card:hover     { border-color:rgba(244,114,182,.5);box-shadow:0 0 40px rgba(244,114,182,.18);transform:translateY(-5px); }
-.t2048-card:hover    { border-color:rgba(251,146,60,.5); box-shadow:0 0 40px rgba(251,146,60,.18); transform:translateY(-5px); }
 .fruit-card:hover    { border-color:rgba(251,113,133,.5); box-shadow:0 0 40px rgba(251,113,133,.18); transform:translateY(-5px); }
 .stickman-card:hover { border-color:rgba(54,229,255,.5); box-shadow:0 0 40px rgba(54,229,255,.18); transform:translateY(-5px); }
 .mahjong-card:hover { border-color:rgba(217,154,67,.58); box-shadow:0 0 40px rgba(217,154,67,.18); transform:translateY(-5px); }
@@ -188,6 +185,7 @@ body {
   font-weight:900; color:white;
 }
 .game-card-desc { color:var(--muted); font-size:0.9rem; }
+.game-hint { font-size:.82rem; color:var(--muted); line-height:1.6; }
 .game-tags { display:flex; flex-wrap:wrap; gap:8px; margin:4px 0; }
 .tag {
   padding:5px 10px; border-radius:999px;
@@ -324,7 +322,6 @@ body {
 .chess-bar    { background:rgba(4,8,15,.85); border-bottom-color:rgba(251,191,36,.15); }
 .checkers-bar { background:rgba(4,8,15,.85); border-bottom-color:rgba(0,217,255,.15); }
 .gems-bar     { background:rgba(4,8,15,.85); border-bottom-color:rgba(244,114,182,.15); }
-.t2048-bar    { background:rgba(4,8,15,.85); border-bottom-color:rgba(251,146,60,.15); }
 
 .back-btn {
   padding:8px 14px; border-radius:10px; border:1px solid var(--border);
@@ -1021,96 +1018,6 @@ body {
   .gems-overlay-inner { padding:26px; }
 }
 
-/* ═══════════════════════════════════════════════════════
-   2048
-   ═══════════════════════════════════════════════════════ */
-.t2048-layout {
-  display:grid; grid-template-columns:220px 1fr; gap:20px;
-  padding:20px; align-items:start; max-width:900px; margin:0 auto; width:100%;
-}
-.t2048-sidebar { display:grid; gap:14px; }
-
-.t2048-score-num {
-  font-family:'Orbitron',sans-serif; font-size:2.4rem; font-weight:900;
-  color:var(--t2048); text-shadow:0 0 20px rgba(251,146,60,.4); line-height:1;
-}
-.t2048-best-txt { font-size:.8rem; color:var(--muted); margin-top:4px; }
-.t2048-hint { font-size:.82rem; color:var(--muted); line-height:1.6; }
-
-.t2048-board-wrap {
-  display:flex; justify-content:center; align-items:flex-start;
-  position:relative;
-}
-.t2048-board {
-  position:relative;
-  width:min(440px,calc(100vw - 280px));
-  aspect-ratio:1;
-  background:rgba(251,146,60,.08);
-  border:1px solid rgba(251,146,60,.2);
-  border-radius:20px; padding:12px;
-  box-shadow:0 0 40px rgba(251,146,60,.08);
-}
-.t2048-bg-grid {
-  display:grid; grid-template-columns:repeat(4,1fr);
-  gap:10px; width:100%; height:100%;
-}
-.t2048-bg-cell {
-  background:rgba(255,255,255,.05); border-radius:10px;
-}
-.t2048-tiles {
-  position:absolute; inset:12px;
-  display:grid; grid-template-columns:repeat(4,1fr);
-  gap:10px;
-}
-.t2048-tile {
-  border-radius:10px;
-  display:flex; align-items:center; justify-content:center;
-  font-family:'Orbitron',sans-serif; font-weight:900;
-  font-size:clamp(.9rem,2.5vw,1.5rem);
-  color:white; aspect-ratio:1;
-  transition:background .15s;
-  animation:tileAppear .12s ease;
-}
-@keyframes tileAppear {
-  from { transform:scale(.5); opacity:0; }
-  to   { transform:scale(1); opacity:1; }
-}
-.t2048-tile.merged { animation:tileMerge .18s ease; }
-@keyframes tileMerge {
-  0%   { transform:scale(1); }
-  50%  { transform:scale(1.15); }
-  100% { transform:scale(1); }
-}
-
-/* tile colors */
-.t-2    { background:#1a3a4a; color:#a5d8ff; }
-.t-4    { background:#1a3060; color:#a5c8ff; }
-.t-8    { background:#0e4a2a; color:#86efac; }
-.t-16   { background:#164a10; color:#bbf7d0; }
-.t-32   { background:#7c2d12; color:#fed7aa; }
-.t-64   { background:#9a3412; color:#fdba74; }
-.t-128  { background:#78350f; color:#fde68a; }
-.t-256  { background:#713f12; color:#fef08a; }
-.t-512  { background:#5b21b6; color:#ddd6fe; }
-.t-1024 { background:#4c1d95; color:#e9d5ff; }
-.t-2048 { background:linear-gradient(135deg,#fbbf24,#f59e0b); color:white; box-shadow:0 0 30px rgba(251,191,36,.5); }
-
-/* 2048 overlay */
-.t2048-overlay {
-  position:absolute; inset:0; border-radius:20px;
-  background:rgba(4,8,15,.88); backdrop-filter:blur(8px);
-  display:flex; align-items:center; justify-content:center; z-index:10;
-}
-.t2048-overlay-inner {
-  display:grid; gap:16px; text-align:center; padding:32px;
-}
-.t2048-over-icon { font-size:3.5rem; }
-.t2048-over-title {
-  font-family:'Orbitron',sans-serif; font-size:1.4rem;
-  font-weight:900; color:white;
-}
-.t2048-over-score { color:var(--muted); font-size:1rem; }
-
 /* ── Online Room Modal ────────────────────────────────── */
 .modal-overlay {
   position:fixed; inset:0; background:rgba(0,0,0,.7); backdrop-filter:blur(8px);
@@ -1185,13 +1092,12 @@ body {
   .category-tabs { justify-content:flex-start; }
   .game-hub-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; padding:16px; }
   .hub-footer { width:calc(100% - 28px); }
-  .chess-layout,.gems-layout,.t2048-layout,.fruit-layout { grid-template-columns:1fr; }
-  .chess-sidebar,.gems-sidebar,.t2048-sidebar,.fruit-sidebar { order:2; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .board-center,.ck-board-wrap,.gems-board-wrap,.t2048-board-wrap,.fruit-board-wrap { order:1; }
+  .chess-layout,.gems-layout,.fruit-layout { grid-template-columns:1fr; }
+  .chess-sidebar,.gems-sidebar,.fruit-sidebar { order:2; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .board-center,.ck-board-wrap,.gems-board-wrap,.fruit-board-wrap { order:1; }
   #chessBoardWrap { width:min(400px,calc(100vw - 32px)); }
   .ck-board { width:min(400px,calc(100vw - 32px)); }
   .gems-board { width:min(430px,calc(100vw - 20px)); }
-  .t2048-board { width:min(360px,calc(100vw - 32px)); }
   .sidebar-card { padding:14px; }
   .game-topbar { padding:10px 14px; }
   .hub-header { padding:24px 16px 12px; }
@@ -1220,7 +1126,7 @@ body {
   .category-tabs { width:100%; flex-wrap:nowrap; overflow-x:auto; padding:2px 2px 7px; scrollbar-width:none; }
   .category-filter { flex:0 0 auto; }
   .game-hub-grid { grid-template-columns:1fr; padding:14px 9px 22px; }
-  .chess-sidebar,.gems-sidebar,.t2048-sidebar,.fruit-sidebar { grid-template-columns:1fr; }
+  .chess-sidebar,.gems-sidebar,.fruit-sidebar { grid-template-columns:1fr; }
   .game-card { padding:0 18px 18px; }
   .game-preview { height:138px; margin-inline:-18px; }
   .hub-footer { width:calc(100% - 18px); grid-template-columns:1fr; gap:20px; padding:20px; }
@@ -1239,7 +1145,6 @@ body {
   .gems-sound-btn { min-height:38px; font-size:.8rem; padding:9px 10px; }
   .gems-shell-badge { width:100%; text-align:center; }
   .gems-over-title { font-size:1.1rem; }
-  .t2048-tile { font-size:.75rem; }
   .snake-layout { grid-template-columns:1fr; }
   .snake-sidebar { order:2; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .snake-board-wrap { order:1; }
@@ -1512,7 +1417,6 @@ body {
 #view-hub .preview-chess { background:linear-gradient(135deg,#f4d9a0,#d69b4e 62%,#7d4a22); }
 #view-hub .preview-checkers { background:linear-gradient(135deg,#f7e3c3,#d8b17a 60%,#8d5a36); }
 #view-hub .preview-gems { background:linear-gradient(135deg,#ffd7cb,#f4a46d 60%,#b55a37); }
-#view-hub .preview-2048 { background:linear-gradient(135deg,#f7d48c,#f09f3e 60%,#8c4f1f); }
 #view-hub .preview-snake { background:linear-gradient(135deg,#e7f1c8,#8fbc67 60%,#496430); }
 #view-hub .preview-fruit { background:linear-gradient(135deg,#f8e0b8,#f3a55c 60%,#c66439); }
 #view-hub .preview-escape { background:linear-gradient(180deg,#f4c36e 0 44%,#d89a53 44% 68%,#7a4a23 68%); }
@@ -1600,7 +1504,6 @@ body {
 #view-hub .fruit-card,
 #view-hub .gems-card,
 #view-hub .snake-card,
-#view-hub .t2048-card,
 #view-hub .checkers-card,
 #view-hub .chess-card {
   --cc:#c98639;

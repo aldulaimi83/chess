@@ -9,7 +9,7 @@
     { emoji: '🍑', r: 42, score: 256, color: '#ffb173' },
     { emoji: '🍍', r: 48, score: 512, color: '#f6d55c' },
     { emoji: '🥥', r: 56, score: 1024, color: '#c8a87a' },
-    { emoji: '🍉', r: 66, score: 2048, color: '#70e18d' },
+    { emoji: '🍉', r: 66, score: 2000, color: '#70e18d' },
   ];
 
   const GRAVITY = 0.18;

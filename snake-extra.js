@@ -252,16 +252,3 @@ window.showView = function(name) {
   _origShowViewSnake(name);
   if (name==='snake' && window._initSnake) window._initSnake();
 };
-
-// ── Submit 2048 scores to Firebase leaderboard ────────────
-// Wrap t2048NewGame to catch scores on game over (via overlay display)
-const _t2048OverlayObserver = new MutationObserver(()=>{
-  const overlay = document.getElementById('t2048Overlay');
-  if (overlay && !overlay.classList.contains('hidden')) {
-    const sc = parseInt((document.getElementById('t2048Score')||{}).textContent||'0',10);
-    const nm = localStorage.getItem('t2048_player_name')||'Player';
-    if (sc>0) submitLeaderScore('t2048', nm, sc);
-  }
-});
-const t2048OverlayEl = document.getElementById('t2048Overlay');
-if (t2048OverlayEl) _t2048OverlayObserver.observe(t2048OverlayEl, {attributes:true, attributeFilter:['class']});

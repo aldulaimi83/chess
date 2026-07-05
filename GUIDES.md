@@ -126,7 +126,6 @@ Master these games with expert strategies and pro tips!
 
 ---
 
-## 🔢 2048 Mastery
 
 ### Core Strategy - "The Corner Method"
 1. **Lock One Corner**
@@ -169,7 +168,6 @@ Else → Accept your fate or reset
 - **256** - Easy, just practice
 - **512** - Intermediate, need strategy
 - **1024** - Good play, consistent corner method
-- **2048** - Expert, perfect moves required
 - **4096+** - Master player territory
 
 ---

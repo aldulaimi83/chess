@@ -29,7 +29,6 @@ Go to: **https://game.youooo.com**
   - [ ] Chess ♟
   - [ ] Checkers ⬡
   - [ ] Gems Crush 💎
-  - [ ] 2048 🔢
   - [ ] Snake 🐍
   - [ ] ChromaMaze 🎨 (NEW!)
 - [ ] "🏆 Global Leaderboard" button visible
@@ -58,8 +57,6 @@ Go to: **https://game.youooo.com**
 3. Try swapping gems
 4. **Result:** ✅ Working / ❌ Issue
 
-### 2048 🔢
-1. Click "Play 2048"
 2. Verify tiles appear
 3. Press arrow key to move
 4. **Result:** ✅ Working / ❌ Issue
@@ -90,7 +87,6 @@ Go to: **https://game.youooo.com**
 1. Click "🏆 Global Leaderboard" button
 2. Verify modal popup appears with tabs:
    - [ ] 🐍 Snake tab
-   - [ ] 🔢 2048 tab
    - [ ] 💎 Gems tab
 3. Try clicking different tabs
 4. Check if any scores show (might be empty - that's OK)
@@ -245,7 +241,6 @@ After fixes are deployed (~5-10 minutes):
 | Chess | ✅ Should work |
 | Checkers | ✅ Should work |
 | Gems Crush | ✅ Should work |
-| 2048 | ✅ Should work |
 | Snake | ✅ Should work |
 | ChromaMaze | ✅ Should work (if cache cleared) |
 | Leaderboards | ✅ Should work (if cache cleared) |

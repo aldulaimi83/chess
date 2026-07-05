@@ -60,7 +60,6 @@ All files backed up in: `/Users/ahmed/Desktop/sofi/chess_repo_backups/`
 - Chess: Beginner to advanced
 - Checkers: Opening principles & tactics
 - Gems Crush: Combos and level strategies
-- 2048: Detailed "Corner Method"
 - ChromaMaze: Pattern and planning
 - Snake: Classic scoring techniques
 - General improvement tips

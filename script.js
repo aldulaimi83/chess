@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════
-   YOUOOO GAMES — Chess · Checkers · Gems Crush · 2048
+   YOUOOO GAMES — Chess · Checkers · Gems Crush
    ════════════════════════════════════════════════════════════ */
 'use strict';
 
@@ -136,8 +136,6 @@ const GAME_HASHES = {
   '#checkers': 'checkers',
   '#gems': 'gems',
   '#gems-crush': 'gems',
-  '#2048': 't2048',
-  '#t2048': 't2048',
   '#snake': 'snake',
   '#merge-fruit': 'fruit',
   '#fruit': 'fruit',
@@ -153,9 +151,7 @@ function showView(name) {
   viewEl.classList.add('active');
 
   if (name !== 'hub') {
-    const hash = name === 't2048'
-      ? '#2048'
-      : name === 'gems'
+    const hash = name === 'gems'
         ? '#gems-crush'
         : name === 'fruit'
           ? '#merge-fruit'
@@ -168,7 +164,6 @@ function showView(name) {
   if (name === 'chess')    requestAnimationFrame(()=>requestAnimationFrame(initChessView));
   if (name === 'checkers') initCheckersView();
   if (name === 'gems')     initGemsView();
-  if (name === 't2048')    initT2048View();
   if (name === 'snake' && window._initSnake) window._initSnake();
   if (name === 'fruit' && window._initFruit) window._initFruit();
 }
@@ -1708,177 +1703,3 @@ document.getElementById('gemsPlayerName').addEventListener('change', updateGemsP
 document.addEventListener('touchstart', unlockGemsAudio, { passive: true });
 document.addEventListener('pointerdown', unlockGemsAudio, { passive: true });
 document.addEventListener('click', unlockGemsAudio, { passive: true });
-
-// ════════════════════════════════════════════════════════════
-// ██████  2048
-// ════════════════════════════════════════════════════════════
-const T_SIZE = 4;
-let tGrid = [], tScore = 0, tBest = 0, tGameOver = false, tWon = false, tKeptGoing = false;
-
-function initT2048View() {
-  tBest = parseInt(localStorage.getItem('t2048_best') || '0');
-  document.getElementById('t2048Best').textContent = `Best: ${tBest.toLocaleString()}`;
-  t2048NewGame();
-}
-
-function t2048NewGame() {
-  tGrid = Array.from({length:T_SIZE}, () => Array(T_SIZE).fill(0));
-  tScore = 0; tGameOver = false; tWon = false; tKeptGoing = false;
-  document.getElementById('t2048Overlay').classList.add('hidden');
-  t2048AddRandom(); t2048AddRandom();
-  t2048UpdateScore();
-  t2048Render();
-}
-
-function t2048AddRandom() {
-  const empty = [];
-  for (let r=0;r<T_SIZE;r++) for (let c=0;c<T_SIZE;c++) if (!tGrid[r][c]) empty.push({r,c});
-  if (!empty.length) return;
-  const {r,c} = empty[Math.floor(Math.random()*empty.length)];
-  tGrid[r][c] = Math.random() < 0.9 ? 2 : 4;
-}
-
-function t2048Render() {
-  const container = document.getElementById('t2048Tiles');
-  if (!container) return;
-  container.innerHTML = '';
-  for (let r=0;r<T_SIZE;r++) for (let c=0;c<T_SIZE;c++) {
-    if (!tGrid[r][c]) continue;
-    const tile = document.createElement('div');
-    tile.className = `t2048-tile t-${Math.min(tGrid[r][c],2048)}`;
-    tile.textContent = tGrid[r][c].toLocaleString();
-    // Position using grid
-    tile.style.gridRow = r+1;
-    tile.style.gridColumn = c+1;
-    container.appendChild(tile);
-  }
-}
-
-function t2048Slide(row) {
-  const filtered = row.filter(v=>v);
-  const merged = [];
-  let i=0, gained=0;
-  while (i<filtered.length) {
-    if (i+1<filtered.length && filtered[i]===filtered[i+1]) {
-      const val = filtered[i]*2;
-      merged.push(val);
-      gained += val;
-      i += 2;
-    } else { merged.push(filtered[i]); i++; }
-  }
-  while (merged.length<T_SIZE) merged.push(0);
-  return {row:merged, gained};
-}
-
-function t2048Move(dir) {
-  if (tGameOver) return;
-  let moved=false, totalGained=0;
-  const prev = JSON.stringify(tGrid);
-
-  if (dir==='left') {
-    for (let r=0;r<T_SIZE;r++) {
-      const {row,gained}=t2048Slide(tGrid[r]);
-      tGrid[r]=row; totalGained+=gained;
-    }
-  } else if (dir==='right') {
-    for (let r=0;r<T_SIZE;r++) {
-      const {row,gained}=t2048Slide([...tGrid[r]].reverse());
-      tGrid[r]=row.reverse(); totalGained+=gained;
-    }
-  } else if (dir==='up') {
-    for (let c=0;c<T_SIZE;c++) {
-      const col=tGrid.map(r=>r[c]);
-      const {row,gained}=t2048Slide(col);
-      row.forEach((v,r)=>tGrid[r][c]=v); totalGained+=gained;
-    }
-  } else if (dir==='down') {
-    for (let c=0;c<T_SIZE;c++) {
-      const col=tGrid.map(r=>r[c]).reverse();
-      const {row,gained}=t2048Slide(col);
-      row.reverse().forEach((v,r)=>tGrid[r][c]=v); totalGained+=gained;
-    }
-  }
-
-  moved = JSON.stringify(tGrid) !== prev;
-  if (!moved) return;
-
-  tScore += totalGained;
-  t2048AddRandom();
-  t2048UpdateScore();
-  t2048Render();
-
-  // Check win
-  if (!tWon && !tKeptGoing) {
-    const flat = tGrid.flat();
-    if (flat.includes(2048)) {
-      tWon = true;
-      document.getElementById('t2048OverIcon').textContent = '🏆';
-      document.getElementById('t2048OverTitle').textContent = 'You reached 2048!';
-      document.getElementById('t2048OverScore').textContent = `Score: ${tScore.toLocaleString()}`;
-      document.getElementById('t2048ContinueBtn').style.display = '';
-      document.getElementById('t2048Overlay').classList.remove('hidden');
-      return;
-    }
-  }
-
-  // Check game over
-  if (!t2048HasMoves()) {
-    tGameOver = true;
-    document.getElementById('t2048OverIcon').textContent = '😓';
-    document.getElementById('t2048OverTitle').textContent = 'Game Over!';
-    document.getElementById('t2048OverScore').textContent = `Score: ${tScore.toLocaleString()}`;
-    document.getElementById('t2048ContinueBtn').style.display = 'none';
-    document.getElementById('t2048Overlay').classList.remove('hidden');
-  }
-}
-
-function t2048HasMoves() {
-  for (let r=0;r<T_SIZE;r++) for (let c=0;c<T_SIZE;c++) {
-    if (!tGrid[r][c]) return true;
-    if (c+1<T_SIZE && tGrid[r][c]===tGrid[r][c+1]) return true;
-    if (r+1<T_SIZE && tGrid[r][c]===tGrid[r+1][c]) return true;
-  }
-  return false;
-}
-
-function t2048UpdateScore() {
-  document.getElementById('t2048Score').textContent = tScore.toLocaleString();
-  if (tScore > tBest) {
-    tBest = tScore; localStorage.setItem('t2048_best', tBest);
-    document.getElementById('t2048Best').textContent = `Best: ${tBest.toLocaleString()}`;
-  }
-}
-
-// Keyboard controls
-document.addEventListener('keydown', e => {
-  const view = document.querySelector('.view.active');
-  if (!view || view.id !== 'view-t2048') return;
-  const map = {ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'};
-  if (map[e.key]) { e.preventDefault(); t2048Move(map[e.key]); }
-});
-
-// Touch/swipe controls
-(function() {
-  let tx=0,ty=0;
-  document.addEventListener('touchstart', e=>{
-    const v=document.querySelector('.view.active');
-    if (!v||v.id!=='view-t2048') return;
-    tx=e.touches[0].clientX; ty=e.touches[0].clientY;
-  }, {passive:true});
-  document.addEventListener('touchend', e=>{
-    const v=document.querySelector('.view.active');
-    if (!v||v.id!=='view-t2048') return;
-    const dx=e.changedTouches[0].clientX-tx;
-    const dy=e.changedTouches[0].clientY-ty;
-    if (Math.max(Math.abs(dx),Math.abs(dy))<30) return;
-    if (Math.abs(dx)>Math.abs(dy)) t2048Move(dx>0?'right':'left');
-    else t2048Move(dy>0?'down':'up');
-  }, {passive:true});
-})();
-
-document.getElementById('t2048NewBtn').addEventListener('click', t2048NewGame);
-document.getElementById('t2048RetryBtn').addEventListener('click', t2048NewGame);
-document.getElementById('t2048ContinueBtn').addEventListener('click', ()=>{
-  tKeptGoing=true; tWon=false;
-  document.getElementById('t2048Overlay').classList.add('hidden');
-});

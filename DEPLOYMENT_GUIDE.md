@@ -72,7 +72,6 @@ Your game website has been completely enhanced with new content, games, and soci
 - Chess: Beginner to advanced
 - Checkers: Opening principles
 - Gems Crush: Combo strategies
-- 2048: "Corner method" explained
 - ChromaMaze: Navigation techniques
 - Snake: Scoring strategies
 - **8000+ words of expert content**

@@ -75,30 +75,6 @@ Get started in seconds with these quick guides!
 
 ---
 
-## 🔢 2048 - 30 Second Intro
-
-**Goal**: Slide tiles to merge them and reach 2048
-
-**Setup**:
-1. Click "Play 2048"
-2. Start playing immediately
-
-**How to Play**:
-1. **Press arrow keys** to slide all tiles (↑ ↓ ← →)
-2. **Tiles with same number merge** when they touch
-3. 2+2=4, 4+4=8, 8+8=16, etc.
-4. **Reach 2048 to win** (can continue to 4096+)
-
-**Tips**:
-- Each move spawns a new tile (usually 2, sometimes 4)
-- **Plan 3-4 moves ahead**
-- **Keep your highest tile in one corner**
-- **Undo available** for learning
-
-**New Tile Rules**: 90% spawn as 2s, 10% as 4s
-
----
-
 ## 🎨 ChromaMaze - 30 Second Intro
 
 **Goal**: Navigate maze collecting colors in the correct sequence

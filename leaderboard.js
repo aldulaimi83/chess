@@ -2,7 +2,7 @@
 class GameLeaderboard {
     constructor() {
         this.storageKey = 'youooo_leaderboard';
-        this.games = ['chess', 'checkers', 'gems', 't2048', 'snake', 'fruit'];
+        this.games = ['chess', 'checkers', 'gems', 'snake', 'fruit'];
         this.loadLeaderboards();
         this.initializeUI();
     }
@@ -211,7 +211,6 @@ class GameLeaderboard {
             chess: '♟',
             checkers: '⬡',
             gems: '💎',
-            t2048: '🔢',
             snake: '🐍',
             fruit: '🍉'
         };
@@ -223,7 +222,6 @@ class GameLeaderboard {
             chess: 'Chess',
             checkers: 'Checkers',
             gems: 'Gems Crush',
-            t2048: '2048',
             snake: 'Snake',
             fruit: 'Merge Fruit'
         };
@@ -249,7 +247,6 @@ class GameSharing {
             chess: `I just scored ${score} in Chess! Can you beat me? 🎮♟️`,
             checkers: `Dominating at Checkers with a score of ${score}! 🎮⬡`,
             gems: `Just crushed Gems Crush with ${score} points! 💎✨`,
-            t2048: `Reached ${score} in 2048! 🏆🔢`,
             snake: `Snake high score: ${score}! 🐍`,
             fruit: `I scored ${score} in Merge Fruit! 🍉`
         };

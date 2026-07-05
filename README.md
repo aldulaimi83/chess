@@ -1,6 +1,6 @@
 # 🎮 Youooo Games - Free Online Game Hub
 
-Play free browser games online with no signup required. Chess, Checkers, Snake, 2048, Gems Crush, and exclusive puzzle games. Works on desktop and mobile.
+Play free browser games online with no signup required. Chess, Checkers, Snake, Gems Crush, and exclusive puzzle games. Works on desktop and mobile.
 
 **🌐 [Play Now](https://game.youooo.com)**
 
@@ -25,8 +25,6 @@ Play free browser games online with no signup required. Chess, Checkers, Snake, 
   - Addictive arcade mechanics
   - Leaderboard tracking
 
-- **🔢 2048** - Slide tiles and merge numbers
-  - Reach the 2048 tile
   - Smooth animations
   - High score tracking
   - Undo moves
@@ -63,7 +61,6 @@ Play free browser games online with no signup required. Chess, Checkers, Snake, 
 3. For online: Create room or join with code
 4. Make your moves and checkmate!
 
-### Puzzle Games (2048, Gems Crush)
 1. Learn the rules (quick tutorial on game page)
 2. Make strategic moves
 3. Beat your high score
@@ -98,7 +95,6 @@ Track your progress and compete:
 - Don't lose pieces early game
 - Control the king row for promotion
 
-### 2048
 - Keep one corner locked
 - Build up one side first
 - Don't random tap

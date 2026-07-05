@@ -1,7 +1,7 @@
 {
   "name": "Youooo Games",
   "short_name": "YGames",
-  "description": "Chess, Checkers, Snake, Gems Crush & 2048 — play free online",
+  "description": "Chess, Checkers, Snake, Gems Crush — play free online",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
