@@ -133,6 +133,7 @@
   const car = createCar();
   let level = null;
   let levelRuntime = null;
+  let particles = [];
   let raf = 0;
   let toastTimer = 0;
 
