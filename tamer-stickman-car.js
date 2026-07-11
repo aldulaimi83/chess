@@ -5,6 +5,7 @@
   const H = 720;
   const STORAGE_KEY = "youooo.tamer-stickman-car.v1";
   const LEVEL_COUNT = 12;
+  const FIXED_DT = 1 / 120;
 
   const $ = (id) => document.getElementById(id);
   const dom = {
@@ -85,6 +86,7 @@
     time: 0,
     dt: 0,
     lastTs: 0,
+    accumulator: 0,
     shake: 0,
     revealTimer: 0,
     freezeTimer: 0,
@@ -97,7 +99,8 @@
     complete: false,
     completeInfo: null,
     activePanel: "menu",
-    collectedCoins: 0
+    collectedCoins: 0,
+    debug: false
   };
 
   const controls = {
@@ -157,10 +160,12 @@
       angle: 0,
       angVel: 0,
       facing: 1,
-      width: 148,
-      bodyHeight: 46,
-      wheelBase: 112,
-      wheelRadius: 18,
+      width: 176,
+      bodyHeight: 86,
+      wheelBase: 124,
+      wheelRadius: 24,
+      bodyCenterDrop: 30,
+      cabinLean: 0,
       wheelL: { y: 0, vy: 0, grounded: false, wobble: 0 },
       wheelR: { y: 0, vy: 0, grounded: false, wobble: 0 },
       fuel: 100,
@@ -178,7 +183,8 @@
       whistleCooldown: 0,
       respawnShield: 0,
       noControlTimer: 0,
-      deathTimer: 0
+      deathTimer: 0,
+      landed: false
     };
   }
 
@@ -972,7 +978,7 @@
     const cp = forceCheckpoint || nearestCheckpoint(levelIndex);
     car.x = cp.x;
     const ground = sampleSolid(level, cp.x);
-    car.y = ground ? ground.y - car.wheelRadius - car.bodyHeight / 2 - 8 : cp.y;
+    car.y = ground ? ground.y - car.wheelRadius - car.bodyCenterDrop : cp.y - 28;
     car.vx = 0;
     car.vy = 0;
     car.angle = 0;
@@ -992,14 +998,15 @@
     car.noControlTimer = 0.35;
     car.deathTimer = 0;
     car.whistleCooldown = 0;
-    car.wheelL.y = car.y + 18;
-    car.wheelR.y = car.y + 18;
+    car.wheelL.y = car.y + car.bodyCenterDrop;
+    car.wheelR.y = car.y + car.bodyCenterDrop;
     car.wheelL.vy = 0;
     car.wheelR.vy = 0;
     car.wheelL.grounded = false;
     car.wheelR.grounded = false;
     car.yoyo = { state: "ready", x: car.x, y: car.y, tx: car.x, ty: car.y, timer: 0, cooldown: 0, target: null, returning: false };
     state.time = 0;
+    state.accumulator = 0;
     state.shake = 0;
     state.revealTimer = 0;
     state.freezeTimer = 0;
@@ -1007,9 +1014,9 @@
     state.messageTimer = 0;
     state.complete = false;
     state.completeInfo = null;
-    state.cameraX = clamp(car.x - 260, 0, level.length - 1280);
-    state.cameraY = 380;
-    state.cameraZoom = 1;
+    state.cameraZoom = 1.18;
+    state.cameraX = clamp(car.x - W * 0.4, 0, Math.max(0, level.length - W / state.cameraZoom));
+    state.cameraY = 350;
     showToast(level.intro || level.name, 1.6);
     updateHud();
     clearInputs();
@@ -1266,7 +1273,7 @@
   }
 
   function carBounds() {
-    return rect(car.x - 62, car.y - 34, 124, 70);
+    return rect(car.x - 78, car.y - 46, 156, 96);
   }
 
   function wheelX(side) {
@@ -1275,7 +1282,7 @@
 
   function handPosition() {
     const forward = car.facing;
-    return { x: car.x + forward * 28, y: car.y - 20 };
+    return { x: car.x + forward * 18, y: car.y - 12 };
   }
 
   function revealHiddenThings(duration = 3) {
@@ -1422,7 +1429,7 @@
     const cp = nearestCheckpoint(state.levelIndex);
     const ground = sampleSolid(level, cp.x);
     car.x = cp.x;
-    car.y = ground ? ground.y - car.wheelRadius - car.bodyHeight / 2 - 8 : cp.y;
+    car.y = ground ? ground.y - car.wheelRadius - car.bodyCenterDrop : cp.y - 28;
     car.vx = 0;
     car.vy = 0;
     car.angle = 0;
@@ -1430,6 +1437,10 @@
     car.health = car.maxHealth;
     car.invuln = 0.8;
     car.upsideDown = 0;
+    car.wheelL.y = car.y + car.bodyCenterDrop;
+    car.wheelR.y = car.y + car.bodyCenterDrop;
+    car.wheelL.vy = 0;
+    car.wheelR.vy = 0;
     car.yoyo = { state: "ready", x: car.x, y: car.y, tx: car.x, ty: car.y, timer: 0, cooldown: 0, target: null, returning: false };
     playSound("recover");
     showToast("Car recovered", 1.2);
@@ -1601,24 +1612,25 @@
     const rightGround = sampleSolid(levelObj, rightX);
     const leftTarget = leftGround ? leftGround.y - car.wheelRadius : null;
     const rightTarget = rightGround ? rightGround.y - car.wheelRadius : null;
-    const spring = 42 + save.upgrades.suspension * 7;
-    const damping = 8 + save.upgrades.suspension * 1.2;
-    const gravity = 980;
-    let grounded = false;
+    const spring = 56 + save.upgrades.suspension * 9;
+    const damping = 12 + save.upgrades.suspension * 1.6;
+    const gravity = 1180;
+    let groundedCount = 0;
 
     function settleWheel(wheel, target, surface) {
       if (target != null) {
-        const diff = target - wheel.y;
-        wheel.vy += diff * spring * dt;
-        wheel.vy *= Math.max(0, 1 - damping * dt * 0.06);
+        const offset = target - wheel.y;
+        wheel.vy += offset * spring * dt;
+        wheel.vy -= wheel.vy * Math.min(1, damping * dt);
         wheel.y += wheel.vy * dt;
         if (wheel.y > target) {
           wheel.y = target;
           wheel.vy = Math.min(0, wheel.vy);
         }
-        wheel.grounded = Math.abs(diff) < 5;
-        grounded = grounded || wheel.grounded;
-        if (surface === "sand") wheel.vy *= 0.98;
+        wheel.grounded = Math.abs(target - wheel.y) < 2.5 && wheel.vy <= 0.5;
+        if (wheel.grounded) groundedCount += 1;
+        if (surface === "sand") wheel.vy *= 0.99;
+        if (surface === "ice") wheel.vy *= 0.995;
       } else {
         wheel.vy += gravity * dt;
         wheel.y += wheel.vy * dt;
@@ -1629,63 +1641,63 @@
     settleWheel(car.wheelL, leftTarget, leftGround ? leftGround.surface : "air");
     settleWheel(car.wheelR, rightTarget, rightGround ? rightGround.surface : "air");
 
+    const grounded = groundedCount > 0;
     const avgWheel = (car.wheelL.y + car.wheelR.y) / 2;
-    const slopeAngle = Math.atan2(car.wheelR.y - car.wheelL.y, car.wheelBase);
+    const wheelSlope = Math.atan2(car.wheelR.y - car.wheelL.y, car.wheelBase);
     const surf = getSurface(levelObj, car.x);
-    const grip = 1 + save.upgrades.grip * 0.15;
-    const engine = 180 * (1 + save.upgrades.engine * 0.18);
-    const maxSpeed = 420 + save.upgrades.engine * 38;
-    const brakeDrag = 0.82 - Math.min(0.25, save.upgrades.grip * 0.02);
+    const grip = 1 + save.upgrades.grip * 0.12;
+    const engine = 150 * (1 + save.upgrades.engine * 0.19);
+    const maxSpeed = 350 + save.upgrades.engine * 52;
+    const maxReverse = 130 + save.upgrades.engine * 16;
+    const brakeDrag = 0.72 - Math.min(0.2, save.upgrades.grip * 0.02);
+    const coastDrag = surf === "ice" ? 0.993 : surf === "sand" ? 0.972 : surf === "mud" ? 0.965 : surf === "conveyorL" || surf === "conveyorR" ? 0.99 : 0.984;
+
+    let throttle = 0;
+    if (controls.right) throttle += 1;
+    if (controls.left) throttle -= 1;
+    if (car.noControlTimer > 0 || car.fuel <= 0) throttle = 0;
+
+    if (grounded) {
+      car.facing = throttle !== 0 ? Math.sign(throttle) : (Math.abs(car.vx) > 10 ? Math.sign(car.vx) : car.facing);
+      car.vx += throttle * engine * dt;
+      if (surf === "conveyorL") car.vx -= 110 * dt;
+      if (surf === "conveyorR") car.vx += 110 * dt;
+      const slopeAssist = Math.sin(-wheelSlope) * 240;
+      car.vx += slopeAssist * dt;
+      car.vx *= Math.pow(coastDrag, dt * 60 * grip);
+      if (controls.brake) car.vx *= Math.pow(brakeDrag, dt * 60);
+      if (Math.abs(car.vx) < 1.2 && throttle === 0) car.vx = 0;
+      car.angle = lerp(car.angle, clamp(wheelSlope, -0.85, 0.85), Math.min(1, dt * 8));
+      car.angVel *= Math.pow(0.42, dt * 60);
+      if (Math.abs(car.vx) > 14) {
+        car.dust = Math.min(1, car.dust + dt * 2);
+      }
+      if (!car.landed && Math.abs(car.vx) > 18) {
+        spawnDust(car.x - car.facing * 20, car.y + 28, 8);
+        playSound("impact");
+      }
+      car.landed = true;
+    } else {
+      if (controls.up) car.angVel -= 3.0 * dt;
+      car.angVel += clamp(car.vx / 520, -0.55, 0.55) * dt;
+      car.angVel *= Math.pow(0.985, dt * 60);
+      car.angle += car.angVel * dt;
+      car.vx *= Math.pow(0.998, dt * 60);
+      car.landed = false;
+    }
 
     car.x += car.vx * dt;
     if (car.x < 20) car.x = 20;
     if (car.x > level.length - 20) car.x = level.length - 20;
 
-    let throttle = 0;
-    if (controls.right) throttle += 1;
-    if (controls.left) throttle -= 1;
-
-    if (car.noControlTimer > 0) throttle = 0;
-    if (car.fuel <= 0) throttle = 0;
-
-    if (grounded) {
-      car.facing = throttle !== 0 ? Math.sign(throttle) || car.facing : (Math.abs(car.vx) > 20 ? Math.sign(car.vx) : car.facing);
-      car.vx += throttle * engine * dt;
-      const surfaceDrag = surf === "ice" ? 0.985 : surf === "sand" ? 0.972 : surf === "mud" ? 0.965 : surf === "conveyorL" || surf === "conveyorR" ? 0.992 : 0.988;
-      car.vx *= Math.pow(surfaceDrag, dt * 60 * grip);
-      if (controls.brake) car.vx *= Math.pow(brakeDrag, dt * 60);
-      if (surf === "conveyorL") car.vx -= 120 * dt;
-      if (surf === "conveyorR") car.vx += 120 * dt;
-      const slopePush = Math.sin(-slopeAngle) * 260;
-      car.vx += slopePush * dt;
-      car.angVel *= Math.pow(0.35, dt * 60);
-      car.angle = lerp(car.angle, clamp(slopeAngle, -0.95, 0.95), Math.min(1, dt * 6));
-      if (Math.abs(car.vx) < 4 && Math.abs(throttle) < 0.1) car.vx = 0;
-    } else {
-      if (controls.up) car.angVel -= 2.7 * dt;
-      if (controls.down) car.angVel += 2.7 * dt;
-      car.angVel *= Math.pow(0.985, dt * 60);
-      car.angle += car.angVel * dt;
-      if (Math.abs(car.angle) > 1.3) car.upsideDown += dt;
-      else car.upsideDown = Math.max(0, car.upsideDown - dt * 1.5);
-      if (controls.brake) car.vx *= Math.pow(0.995, dt * 60);
-    }
-
-    car.y = avgWheel - car.bodyHeight / 2 - 12;
-    if (grounded && Math.abs(car.vx) > 14) {
-      car.dust = Math.min(1, car.dust + dt * 2);
-      if (!car.landed && Math.abs(car.vy) > 260) {
-        spawnDust(car.x, car.y + 20, 10);
-        playSound("impact");
-      }
-      car.landed = true;
-    } else {
-      car.landed = false;
-    }
-
+    car.y = avgWheel - car.bodyCenterDrop;
     car.vy = (car.wheelL.vy + car.wheelR.vy) / 2;
-    if (Math.abs(car.vx) > 10 && grounded) {
-      const fuelDrain = dt * (0.6 + Math.abs(throttle) * 0.5);
+
+    if (Math.abs(car.angle) > 1.2) car.upsideDown += dt;
+    else car.upsideDown = Math.max(0, car.upsideDown - dt * 1.5);
+
+    if (Math.abs(car.vx) > 12 && grounded) {
+      const fuelDrain = dt * (0.48 + Math.abs(throttle) * 0.28 + Math.abs(car.vx) / 1150);
       car.fuel = Math.max(0, car.fuel - fuelDrain);
     }
     if (car.invuln > 0) car.invuln -= dt;
@@ -1694,16 +1706,16 @@
     if (car.whistleCooldown > 0) car.whistleCooldown -= dt;
     if (car.smoke > 0) {
       car.smoke -= dt;
-      spawnSmoke(car.x - 42, car.y - 18, 1);
+      spawnSmoke(car.x - 48 * car.facing, car.y - 10, 1);
     }
 
-    if (controls.brake && Math.abs(car.vx) > 10 && grounded) spawnDust(car.x, car.y + 20, 2);
-    if (Math.abs(car.vx) > 14 && grounded && Math.random() < 0.12 * dt * 60) spawnDust(car.x - 42, car.y + 20, 1);
+    if (controls.brake && grounded && Math.abs(car.vx) > 14) spawnDust(car.x - car.facing * 38, car.y + 28, 2);
+    if (Math.abs(car.vx) > 18 && grounded && Math.random() < 0.09 * dt * 60) spawnDust(car.x - car.facing * 34, car.y + 28, 1);
 
     car.wheelL.wobble = car.health <= 1 ? Math.sin(state.time * 20) * 0.15 : 0;
     car.wheelR.wobble = car.health <= 1 ? Math.cos(state.time * 22) * 0.15 : 0;
-    car.exhaust = Math.abs(car.vx) > 30 || throttle !== 0 ? 1 : 0;
-    car.vx = clamp(car.vx, -maxSpeed * 0.65, maxSpeed);
+    car.exhaust = grounded ? (Math.abs(car.vx) > 10 || throttle !== 0 ? 1 : 0.4) : 0.7;
+    car.vx = clamp(car.vx, -maxReverse, maxSpeed);
 
     if (levelObj.script) levelObj.script(dt, { car, level: levelObj, state, save, controls });
     toggleCheckpointByX(car.x);
@@ -1930,13 +1942,14 @@
   }
 
   function updateCamera(dt) {
-    const targetX = clamp(car.x - 300 + clamp(car.vx * 0.28, -80, 180), 0, Math.max(0, level.length - W));
-    const targetY = clamp(car.y - 300, 120, 540);
-    const speed = 4.2;
+    const viewW = W / state.cameraZoom;
+    const targetX = clamp(car.x - viewW * 0.4 + clamp(car.vx * 0.22, -110, 180), 0, Math.max(0, level.length - viewW));
+    const targetY = clamp(car.y - 250, 160, 500);
+    const speed = 4.8;
     state.cameraX = lerp(state.cameraX, targetX, Math.min(1, dt * speed));
     state.cameraY = lerp(state.cameraY, targetY, Math.min(1, dt * 3));
-    const jumpZoom = clamp(1 - Math.min(0.1, Math.abs(car.vy) / 2200), 0.92, 1);
-    state.cameraZoom = lerp(state.cameraZoom, jumpZoom, Math.min(1, dt * 4));
+    const jumpZoom = clamp(1.18 - Math.min(0.12, Math.abs(car.vy) / 2600), 1.06, 1.22);
+    state.cameraZoom = lerp(state.cameraZoom, jumpZoom, Math.min(1, dt * 3.5));
     if (state.shake > 0) state.shake = Math.max(0, state.shake - dt);
     if (state.revealTimer > 0) state.revealTimer = Math.max(0, state.revealTimer - dt);
     if (state.freezeTimer > 0) state.freezeTimer = Math.max(0, state.freezeTimer - dt);
@@ -2071,6 +2084,7 @@
     drawBackdrop();
     ctx.setTransform(zoom, 0, 0, zoom, offsetX, offsetY);
     drawTerrain();
+    drawLevelDecorations();
     drawCheckpoints();
     drawPickups();
     drawHazards();
@@ -2090,6 +2104,66 @@
       if (s.hidden && state.revealTimer <= 0) return;
       drawSolid(s, theme);
     });
+  }
+
+  function drawLevelDecorations() {
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    if (state.levelIndex === 0) {
+      const props = [
+        { x: 108, y: 432, text: "D / A", sub: "Drive" },
+        { x: 420, y: 400, text: "Space", sub: "Brake" },
+        { x: 760, y: 360, text: "W", sub: "Air tilt only" },
+        { x: 1190, y: 332, text: "F", sub: "Yo-Yo" }
+      ];
+      props.forEach((p) => {
+        ctx.fillStyle = "rgba(88, 58, 34, .82)";
+        ctx.fillRect(p.x, p.y, 14, 34);
+        ctx.fillStyle = "#8a623a";
+        roundRect(p.x - 18, p.y - 20, 86, 34, 8, true, false);
+        ctx.fillStyle = "#f7e8c2";
+        ctx.font = "900 11px Orbitron";
+        ctx.textAlign = "center";
+        ctx.fillText(p.text, p.x + 25, p.y - 1);
+        ctx.fillStyle = "rgba(40, 24, 15, .78)";
+        ctx.font = "700 9px Inter";
+        ctx.fillText(p.sub, p.x + 25, p.y + 11);
+      });
+      const cones = [250, 325, 1450];
+      cones.forEach((x) => {
+        ctx.fillStyle = "#e18738";
+        ctx.beginPath();
+        ctx.moveTo(x, 470);
+        ctx.lineTo(x + 12, 446);
+        ctx.lineTo(x + 24, 470);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#f5dcb1";
+        ctx.fillRect(x + 4, 458, 16, 4);
+      });
+      ctx.strokeStyle = "rgba(245,220,177,.42)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(550, 424);
+      ctx.lineTo(715, 398);
+      ctx.stroke();
+      ctx.fillStyle = "#8d6239";
+      roundRect(680, 388, 58, 18, 6, true, false);
+      ctx.fillStyle = "#f7e8c2";
+      ctx.font = "800 8px Inter";
+      ctx.fillText("Small ramp", 709, 404);
+      ctx.fillStyle = "rgba(255,255,255,.12)";
+      ctx.fillRect(980, 468, 240, 5);
+    }
+    if (state.levelIndex > 0) {
+      ctx.fillStyle = "rgba(255, 240, 209, .10)";
+      for (let i = 0; i < 10; i += 1) {
+        const x = 140 + i * 140;
+        ctx.fillRect(x, 470 + (i % 2) * 6, 36, 4);
+      }
+    }
+    ctx.restore();
   }
 
   function drawSolid(s, theme) {
@@ -2280,19 +2354,24 @@
   }
 
   function drawCar() {
-    const wobble = car.health <= 1 ? Math.sin(state.time * 24) * 0.05 : 0;
-    const driveLean = clamp(car.angle + wobble, -1.2, 1.2);
-    const seatY = car.y - 6;
+    const wobble = car.health <= 1 ? Math.sin(state.time * 24) * 0.04 : 0;
+    const driveLean = clamp(car.angle + wobble, -1.05, 1.05);
     const flip = car.facing < 0 ? -1 : 1;
+    const wheelLY = car.wheelL.y - car.y;
+    const wheelRY = car.wheelR.y - car.y;
     ctx.save();
     ctx.translate(car.x, car.y);
-    ctx.rotate(driveLean * 0.45);
+    ctx.rotate(driveLean * 0.52);
+    ctx.scale(flip, 1);
     drawCarShadow();
-    drawWheel(-1);
-    drawWheel(1);
-    drawFrame();
-    drawHeadlights();
+    drawSuspension(-1, wheelLY);
+    drawSuspension(1, wheelRY);
+    drawWheel(-1, wheelLY);
+    drawWheel(1, wheelRY);
+    drawChassis();
+    drawCabin();
     drawDriver();
+    drawHeadlights();
     drawExhaust();
     drawDamage();
     ctx.restore();
@@ -2301,89 +2380,148 @@
   function drawCarShadow() {
     ctx.fillStyle = "rgba(22, 12, 7, .16)";
     ctx.beginPath();
-    ctx.ellipse(0, 24, 72, 18, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 34, 82, 20, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  function drawWheel(side) {
-    const wobble = side < 0 ? car.wheelL.wobble : car.wheelR.wobble;
-    const x = side * car.wheelBase / 2;
-    const y = 28 + (side < 0 ? car.wheelL.y - car.y : car.wheelR.y - car.y);
+  function drawSuspension(side, wheelY) {
     ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate((state.time * 10 + car.vx * 0.02) * (side < 0 ? 1 : -1) + wobble);
-    ctx.fillStyle = "#23170f";
+    ctx.strokeStyle = "rgba(52, 31, 20, .9)";
+    ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.arc(0, 0, car.wheelRadius + 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#f1c86f";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(0, 0, car.wheelRadius - 2, 0, Math.PI * 2);
+    ctx.moveTo(side * 44, 12);
+    ctx.lineTo(side * 54, wheelY - 10);
     ctx.stroke();
-    ctx.strokeStyle = "rgba(255,255,255,.16)";
+    ctx.strokeStyle = "rgba(255,236,180,.22)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(-11, 0);
-    ctx.lineTo(11, 0);
-    ctx.moveTo(0, -11);
-    ctx.lineTo(0, 11);
+    ctx.moveTo(side * 42, 10);
+    ctx.lineTo(side * 50, wheelY - 12);
     ctx.stroke();
     ctx.restore();
   }
 
-  function drawFrame() {
+  function drawWheel(side, wheelY) {
+    const wobble = side < 0 ? car.wheelL.wobble : car.wheelR.wobble;
+    const x = side * car.wheelBase / 2;
+    const y = wheelY;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((state.time * 10 + car.vx * 0.02) * (side < 0 ? 1 : -1) + wobble);
+    ctx.fillStyle = "#20140d";
+    ctx.beginPath();
+    ctx.arc(0, 0, car.wheelRadius + 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#d7ad53";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, car.wheelRadius - 3, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,.18)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-12, 0);
+    ctx.lineTo(12, 0);
+    ctx.moveTo(0, -12);
+    ctx.lineTo(0, 12);
+    ctx.moveTo(-8, -8);
+    ctx.lineTo(8, 8);
+    ctx.moveTo(-8, 8);
+    ctx.lineTo(8, -8);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawChassis() {
     const damage = 1 - (car.health - 1) / Math.max(1, car.maxHealth - 1);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.strokeStyle = "rgba(255, 220, 154, .26)";
-    ctx.lineWidth = 12;
+    ctx.strokeStyle = "rgba(255, 220, 154, .22)";
+    ctx.lineWidth = 10;
     ctx.beginPath();
-    ctx.moveTo(-54, 14);
-    ctx.lineTo(-28, -12);
-    ctx.lineTo(26, -12);
-    ctx.lineTo(52, 6);
+    ctx.moveTo(-58, 18);
+    ctx.lineTo(-40, -2);
+    ctx.lineTo(-6, -10);
+    ctx.lineTo(34, -10);
+    ctx.lineTo(62, 10);
     ctx.stroke();
-    ctx.strokeStyle = "#3b2314";
-    ctx.lineWidth = 9;
+    ctx.strokeStyle = "#462a18";
+    ctx.lineWidth = 7;
     ctx.beginPath();
-    ctx.moveTo(-54, 14);
-    ctx.lineTo(-28, -12);
-    ctx.lineTo(26, -12);
-    ctx.lineTo(52, 6);
+    ctx.moveTo(-58, 18);
+    ctx.lineTo(-40, -2);
+    ctx.lineTo(-6, -10);
+    ctx.lineTo(34, -10);
+    ctx.lineTo(62, 10);
     ctx.stroke();
-    ctx.fillStyle = "#b78142";
-    ctx.fillRect(-30, -28, 72, 16);
-    ctx.fillStyle = "#8b5d33";
-    ctx.fillRect(-16, -46, 44, 26);
-    ctx.strokeStyle = "rgba(255,255,255,.12)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(-16, -46, 44, 26);
-    ctx.fillStyle = "rgba(245, 222, 176, .12)";
-    ctx.fillRect(-12, -42, 36, 8);
-    ctx.fillStyle = "#5b351d";
-    ctx.fillRect(-5, -18, 22, 8);
-    ctx.fillStyle = "#f2cf7c";
-    ctx.fillRect(-20, -38, 6, 10);
-    ctx.fillRect(44, -38, 6, 10);
+    ctx.fillStyle = "#8c6036";
+    ctx.beginPath();
+    ctx.moveTo(-64, 16);
+    ctx.lineTo(-46, -8);
+    ctx.lineTo(-12, -22);
+    ctx.lineTo(18, -22);
+    ctx.lineTo(42, -14);
+    ctx.lineTo(64, 4);
+    ctx.lineTo(60, 18);
+    ctx.lineTo(-60, 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#6f4728";
+    ctx.fillRect(-48, 0, 104, 18);
+    ctx.fillStyle = "#5d381f";
+    roundRect(-22, -18, 60, 20, 8, true, false);
+    ctx.fillStyle = "#4b2d1d";
+    ctx.fillRect(-56, 12, 18, 8);
+    ctx.fillRect(44, 12, 18, 8);
+    ctx.fillStyle = "#d9b06a";
+    ctx.fillRect(-52, -14, 8, 8);
+    ctx.fillRect(50, -12, 10, 8);
     ctx.fillStyle = "#7b4e2a";
-    ctx.fillRect(-34, 2, 66, 16);
+    ctx.fillRect(-10, -6, 56, 18);
     ctx.fillStyle = damage > 0.6 ? "#a64c36" : "#7b4e2a";
-    ctx.fillRect(26, -22, 18, 6);
+    ctx.fillRect(56, 4, 16, 8);
     ctx.fillStyle = "#f1dbae";
-    ctx.fillRect(26, -21, 18, 3);
+    ctx.fillRect(56, 6, 16, 3);
+  }
+
+  function drawCabin() {
+    ctx.save();
+    ctx.fillStyle = "#5e3d24";
+    roundRect(-24, -31, 58, 28, 10, true, false);
+    ctx.fillStyle = "rgba(23, 14, 9, .88)";
+    roundRect(-18, -26, 28, 20, 7, true, false);
+    ctx.fillStyle = "rgba(235, 236, 228, .16)";
+    ctx.beginPath();
+    ctx.moveTo(18, -30);
+    ctx.lineTo(46, -24);
+    ctx.lineTo(52, -4);
+    ctx.lineTo(18, -8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255, 236, 180, .35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(20, -28);
+    ctx.lineTo(46, -22);
+    ctx.lineTo(50, -6);
+    ctx.stroke();
+    ctx.fillStyle = "#392318";
+    ctx.fillRect(-4, -8, 20, 4);
+    ctx.fillStyle = "rgba(255, 247, 220, .08)";
+    ctx.fillRect(-20, -20, 24, 4);
+    ctx.restore();
   }
 
   function drawHeadlights() {
-    ctx.fillStyle = "rgba(255, 230, 171, .9)";
-    ctx.shadowColor = "rgba(255, 230, 171, .8)";
-    ctx.shadowBlur = 12;
-    ctx.fillRect(50, -18, 10, 8);
-    ctx.fillRect(50, -6, 10, 8);
+    ctx.fillStyle = "rgba(255, 230, 171, .92)";
+    ctx.shadowColor = "rgba(255, 230, 171, .86)";
+    ctx.shadowBlur = 14;
+    ctx.fillRect(60, -8, 10, 8);
+    ctx.fillRect(60, 4, 10, 8);
     ctx.shadowBlur = 0;
-    ctx.fillStyle = "rgba(255, 106, 98, .8)";
-    ctx.fillRect(-62, -10, 8, 6);
-    ctx.fillRect(-62, 0, 8, 6);
+    ctx.fillStyle = "rgba(255, 106, 98, .85)";
+    ctx.fillRect(-70, -2, 8, 6);
+    ctx.fillRect(-70, 10, 8, 6);
   }
 
   function drawExhaust() {
@@ -2391,8 +2529,10 @@
     const smokeAlpha = car.health <= 1 ? 0.8 : 0.45;
     ctx.fillStyle = `rgba(242, 236, 228, ${smokeAlpha})`;
     ctx.beginPath();
-    ctx.arc(-72, -10, 10 + Math.sin(state.time * 8) * 2, 0, Math.PI * 2);
+    ctx.arc(-72, 8, 10 + Math.sin(state.time * 8) * 2, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = "#5c3b24";
+    ctx.fillRect(-76, 3, 10, 5);
   }
 
   function drawDamage() {
@@ -2400,69 +2540,78 @@
       ctx.globalAlpha = 0.5;
     }
     if (car.smoke > 0 || car.health <= 1) {
-      spawnSmoke(car.x - 16, car.y - 42, 0);
+      spawnSmoke(car.x - 16, car.y - 50, 0);
       ctx.fillStyle = "rgba(255,255,255,.2)";
-      ctx.fillRect(-10, -54, 16, 2);
+      ctx.fillRect(-14, -60, 18, 2);
     }
     ctx.globalAlpha = 1;
   }
 
   function drawDriver() {
-    const bodyLean = clamp(car.angle * 0.35, -0.5, 0.5);
+    const bodyLean = clamp(car.angle * 0.28, -0.36, 0.36);
     const mirror = car.facing < 0 ? -1 : 1;
-    const seatX = 0;
-    const seatY = -18;
+    const seatX = -7;
+    const seatY = -10;
+    const wheelXPos = 20;
+    const wheelYPos = -2;
     ctx.save();
     ctx.translate(seatX, seatY);
     ctx.scale(mirror, 1);
     ctx.rotate(bodyLean);
-    ctx.strokeStyle = "rgba(80,220,255,.45)";
-    ctx.lineWidth = 8;
+    ctx.strokeStyle = "rgba(80,220,255,.42)";
+    ctx.lineWidth = 7;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.beginPath();
-    ctx.arc(0, -32, 9, 0, Math.PI * 2);
-    ctx.moveTo(0, -23);
-    ctx.lineTo(0, 5);
-    ctx.moveTo(0, -13);
-    ctx.lineTo(-16, -2);
-    ctx.moveTo(0, -13);
-    ctx.lineTo(20, 2);
-    ctx.moveTo(0, 5);
-    ctx.lineTo(-10, 30);
-    ctx.moveTo(0, 5);
-    ctx.lineTo(8, 30);
+    ctx.arc(0, -26, 9, 0, Math.PI * 2);
+    ctx.moveTo(0, -17);
+    ctx.lineTo(0, 8);
+    ctx.moveTo(0, -5);
+    ctx.lineTo(wheelXPos - 8, wheelYPos - 2);
+    ctx.moveTo(0, 1);
+    ctx.lineTo(wheelXPos - 2, wheelYPos + 8);
+    ctx.moveTo(0, 8);
+    ctx.lineTo(-8, 28);
+    ctx.moveTo(0, 8);
+    ctx.lineTo(10, 28);
     ctx.stroke();
     ctx.strokeStyle = "#020308";
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 4.5;
     ctx.beginPath();
-    ctx.arc(0, -32, 9, 0, Math.PI * 2);
-    ctx.moveTo(0, -23);
-    ctx.lineTo(0, 5);
-    ctx.moveTo(0, -13);
-    ctx.lineTo(-16, -2);
-    ctx.moveTo(0, -13);
-    ctx.lineTo(20, 2);
-    ctx.moveTo(0, 5);
-    ctx.lineTo(-10, 30);
-    ctx.moveTo(0, 5);
-    ctx.lineTo(8, 30);
+    ctx.arc(0, -26, 9, 0, Math.PI * 2);
+    ctx.moveTo(0, -17);
+    ctx.lineTo(0, 8);
+    ctx.moveTo(0, -5);
+    ctx.lineTo(wheelXPos - 8, wheelYPos - 2);
+    ctx.moveTo(0, 1);
+    ctx.lineTo(wheelXPos - 2, wheelYPos + 8);
+    ctx.moveTo(0, 8);
+    ctx.lineTo(-8, 28);
+    ctx.moveTo(0, 8);
+    ctx.lineTo(10, 28);
     ctx.stroke();
     ctx.fillStyle = "#36e5ff";
     ctx.font = "900 8px Orbitron";
     ctx.textAlign = "center";
-    ctx.fillText("Y", 0, -10);
+    ctx.fillText("Y", 0, -6);
     ctx.strokeStyle = "#020308";
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(-16, -2);
-    ctx.lineTo(0, 4);
+    ctx.moveTo(0, -5);
     ctx.lineTo(14, 0);
+    ctx.lineTo(wheelXPos - 2, wheelYPos);
+    ctx.stroke();
+    ctx.strokeStyle = "#020308";
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 8);
+    ctx.lineTo(-7, 22);
+    ctx.moveTo(0, 8);
+    ctx.lineTo(7, 22);
     ctx.stroke();
     ctx.restore();
-    const wheel = 30;
     ctx.save();
-    ctx.translate(20 * mirror, -12);
+    ctx.translate(20, -10);
     ctx.strokeStyle = "#2d1b12";
     ctx.lineWidth = 4;
     ctx.beginPath();
@@ -2566,16 +2715,65 @@
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, W, H);
     if (level) drawWorld();
+    if (state.debug && level) drawDebugOverlay();
     if (state.complete) buildCompletionPanel(state.levelIndex === LEVELS.length - 1 && save.unlocked >= LEVELS.length);
+  }
+
+  function drawDebugOverlay() {
+    const wheelLY = car.wheelL.y - car.y;
+    const wheelRY = car.wheelR.y - car.y;
+    const zoom = state.cameraZoom;
+    const toScreen = (x, y) => ({ x: (x - state.cameraX) * zoom + W / 2, y: (y - state.cameraY) * zoom + H / 2 });
+    const chassis = carBounds();
+    const c = toScreen(car.x, car.y);
+    const wl = toScreen(car.x - car.wheelBase / 2, car.wheelL.y);
+    const wr = toScreen(car.x + car.wheelBase / 2, car.wheelR.y);
+    const cb = toScreen(chassis.x, chassis.y);
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = "rgba(9, 12, 16, .74)";
+    ctx.fillRect(16, 16, 330, 170);
+    ctx.strokeStyle = "rgba(255, 236, 180, .55)";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(16, 16, 330, 170);
+    ctx.fillStyle = "#f7e8c2";
+    ctx.font = "900 12px Orbitron";
+    ctx.fillText("DEBUG F2", 30, 38);
+    ctx.font = "700 11px Inter";
+    ctx.fillText(`Velocity: ${car.vx.toFixed(1)}, ${car.vy.toFixed(1)}`, 30, 60);
+    ctx.fillText(`Angular: ${car.angVel.toFixed(2)} | Angle: ${car.angle.toFixed(2)}`, 30, 78);
+    ctx.fillText(`Input: L ${controls.left ? 1 : 0} R ${controls.right ? 1 : 0} B ${controls.brake ? 1 : 0} U ${controls.up ? 1 : 0}`, 30, 96);
+    ctx.fillText(`Ground: ${car.wheelL.grounded ? "L" : "-"} ${car.wheelR.grounded ? "R" : "-"}`, 30, 114);
+    ctx.fillText(`Wheel Y: ${wheelLY.toFixed(1)} / ${wheelRY.toFixed(1)}`, 30, 132);
+    ctx.fillText(`COG: ${car.x.toFixed(1)}, ${car.y.toFixed(1)}`, 30, 150);
+    ctx.fillText(`Camera: ${state.cameraX.toFixed(1)}, ${state.cameraY.toFixed(1)} z ${state.cameraZoom.toFixed(2)}`, 30, 168);
+    ctx.strokeStyle = "rgba(255, 127, 127, .8)";
+    ctx.strokeRect(cb.x, cb.y, chassis.w * zoom, chassis.h * zoom);
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = "#ff7f7f";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(127, 221, 255, .85)";
+    ctx.beginPath();
+    ctx.arc(wl.x, wl.y, car.wheelRadius * zoom, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(wr.x, wr.y, car.wheelRadius * zoom, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
   }
 
   function updateNow(ts) {
     if (!state.lastTs) state.lastTs = ts;
     const rawDt = (ts - state.lastTs) / 1000;
     state.lastTs = ts;
-    const dt = clamp(rawDt, 0, 0.033);
-    if (state.mode === "playing") updateLevel(dt);
-    else updateCamera(dt);
+    const dt = clamp(rawDt, 0, 0.05);
+    state.accumulator = Math.min(0.25, state.accumulator + dt);
+    while (state.accumulator >= FIXED_DT) {
+      if (state.mode === "playing") updateLevel(FIXED_DT);
+      else updateCamera(FIXED_DT);
+      state.accumulator -= FIXED_DT;
+    }
     drawScene();
     raf = requestAnimationFrame(updateNow);
   }
@@ -2645,6 +2843,12 @@
         e.preventDefault();
         return;
       }
+      if (e.code === "F2") {
+        state.debug = !state.debug;
+        showToast(state.debug ? "Debug mode on" : "Debug mode off", 1.0);
+        e.preventDefault();
+        return;
+      }
     }
     const map = {
       ArrowLeft: "left",
@@ -2653,8 +2857,8 @@
       KeyD: "right",
       ArrowUp: "up",
       KeyW: "up",
-      ArrowDown: "down",
-      KeyS: "down",
+      ArrowDown: "brake",
+      KeyS: "brake",
       Space: "brake"
     };
     const key = map[e.code];
@@ -2724,7 +2928,7 @@
     bindHold(dom.leftButton, "left");
     bindHold(dom.rightButton, "right");
     bindHold(dom.upButton, "up");
-    bindHold(dom.downButton, "down");
+    bindHold(dom.downButton, "brake");
     bindHold(dom.brakeButton, "brake");
     bindTap(dom.interactButton, useInteract);
     bindTap(dom.yoyoButton, useYoyo);
