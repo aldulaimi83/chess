@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Classic Browser Games | Youooo Games</title>
+  <meta name="description" content="Play free online games with no signup. Enjoy chess, checkers, Snake, Merge Fruit, Gems Crush, Mesopotamia Mahjong, Stickman Escape, Stickman Odyssey, Stickman Smart Escape, and Stickman Arena on desktop or mobile." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://game.youooo.com/classic-games.html" />
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#f3d7a0" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Youooo Games" />
+  <!-- Open Graph (WhatsApp / Facebook / Twitter previews) -->
+    <meta property="og:title" content="Play Free Online Games - Mahjong, Stickman Odyssey &amp; More" />
+  <meta property="og:description" content="Free browser games with no signup, including Mesopotamia Mahjong, Stickman Odyssey, Stickman Smart Escape, Stickman Arena, and Stickman Escape." />
+  <meta property="og:image" content="https://game.youooo.com/og-preview.png" />
+  <meta property="og:url" content="https://game.youooo.com/classic-games.html" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Play Free Online Games - Mahjong, Stickman Odyssey &amp; More" />
+  <meta name="twitter:description" content="Play free online games with no signup, including Mesopotamia Mahjong, Stickman Odyssey, Stickman Smart Escape, Stickman Arena, and Stickman Escape, on desktop or mobile." />
+  <meta name="twitter:image" content="https://game.youooo.com/og-preview.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Orbitron:wght@700;900&amp;family=Rajdhani:wght@700&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css" />
+  <link rel="stylesheet" href="style.css?v=20260704-homepage-nav-v2" />
+  <link rel="icon" href="youooo_logo.png" />
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"WebSite",
+    "name":"Youooo Games",
+    "url":"https://game.youooo.com/",
+    "description":"A free browser game hub with eleven mobile-friendly games.",
+    "mainEntity":{
+      "@type":"ItemList",
+      "numberOfItems":11,
+      "itemListElement":[
+        {"@type":"ListItem","position":1,"name":"Chess","url":"https://game.youooo.com/chess.html"},
+        {"@type":"ListItem","position":2,"name":"Checkers","url":"https://game.youooo.com/checkers.html"},
+        {"@type":"ListItem","position":3,"name":"Gems Crush","url":"https://game.youooo.com/gems-crush.html"},
+        {"@type":"ListItem","position":4,"name":"Snake","url":"https://game.youooo.com/snake.html"},
+        {"@type":"ListItem","position":5,"name":"Merge Fruit","url":"https://game.youooo.com/merge-fruit.html"},
+        {"@type":"ListItem","position":6,"name":"Stickman Escape","url":"https://game.youooo.com/stickman-escape.html"},
+        {"@type":"ListItem","position":7,"name":"Stickman Arena","url":"https://game.youooo.com/stickman-arena.html"},
+        {"@type":"ListItem","position":8,"name":"Stickman Maze Run","url":"https://game.youooo.com/stickman-maze-run.html"},
+        {"@type":"ListItem","position":9,"name":"Stickman Smart Escape","url":"https://game.youooo.com/stickman-smart-escape.html"},
+        {"@type":"ListItem","position":10,"name":"Stickman Odyssey","url":"https://game.youooo.com/stickman-odyssey.html"},
+        {"@type":"ListItem","position":11,"name":"Mesopotamia Mahjong","url":"https://game.youooo.com/mesopotamia-mahjong.html"}
+      ]
+    }
+  }
+  </script>
+  <style>
+    #splash{position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .8s ease}
+    #splash.fade-out{opacity:0;pointer-events:none}
+    #splash img{width:min(420px,80vw);animation:splashPulse 1.2s ease-in-out infinite alternate}
+    @keyframes splashPulse{from{transform:scale(1);opacity:.9}to{transform:scale(1.04);opacity:1}}
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════ SPLASH ════════════════════ -->
+<div id="splash"><img src="youooo_logo.png" alt="Youooo" /></div>
+<script>(function(){var s=document.getElementById('splash');try{if(localStorage.getItem('youooo_splash_seen')){s.style.display='none';return}localStorage.setItem('youooo_splash_seen','1')}catch(e){}setTimeout(function(){s.classList.add('fade-out');setTimeout(function(){s.style.display='none'},500)},850)})()</script>
+
+  <!-- Animated background -->
+  <div class="bg-layer" aria-hidden="true">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+    <div class="grid-bg"></div>
+  </div>
+
+  <!-- ══ ONLINE ROOM MODAL ══════════════════════════════════════ -->
+  <div class="modal-overlay hidden" id="roomModal">
+    <div class="modal-box">
+      <button class="modal-close" id="closeRoomModal">✕</button>
+      <div id="createRoomPanel" class="room-panel hidden">
+        <div class="room-icon">🔗</div>
+        <h3>Room Created</h3>
+        <p class="room-label">Share this code with your friend:</p>
+        <div class="room-code-display" id="displayRoomCode">—</div>
+        <div class="room-waiting">
+          <div class="waiting-dot"></div>
+          <span id="waitingText">Waiting for opponent...</span>
+        </div>
+        <button class="btn-secondary" id="copyRoomCodeBtn">Copy Code</button>
+      </div>
+      <div id="joinRoomPanel" class="room-panel hidden">
+        <div class="room-icon">🎮</div>
+        <h3>Join a Game</h3>
+        <p class="room-label">Enter the room code from your friend:</p>
+        <input class="room-input" type="text" id="joinCodeInput" placeholder="e.g. XKRT42" maxlength="6" autocomplete="off" />
+        <button class="btn-primary" id="confirmJoinBtn">Join Room</button>
+        <p class="room-error hidden" id="roomError">Room not found or already full.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ HUB VIEW ═══════════════════════════════════════════════ -->
+  <div id="view-hub" class="view active">
+    <header class="hub-header" data-build="20260704-homepage-nav-v2">
+      <div class="hub-logo">
+        <img src="youooo_logo.png" alt="Youooo" style="height:52px;width:auto;flex-shrink:0;" />
+        <div>
+          <div class="logo-title" style="font-family:'Inter',sans-serif;font-weight:900;letter-spacing:1px;">Youooo Games</div>
+          <div class="logo-sub">12 games · Play free · Online &amp; Offline</div>
+        </div>
+      </div>
+      <nav class="hub-nav" aria-label="Primary">
+        <a href="#featuredTitle">Featured</a>
+        <a href="#gamesHeading">Games</a>
+        <button type="button" id="topLeaderboardsButton">Leaderboards</button>
+      </nav>
+    </header>
+
+    <section class="featured-game" aria-labelledby="featuredTitle">
+      <div class="featured-copy">
+        <p class="featured-eyebrow">Play Free Browser Games</p>
+        <h1 id="featuredTitle">Puzzle, adventure, strategy, and stickman games</h1>
+        <p>Jump into polished browser games with warm visuals, simple controls, and fast-loading sessions for desktop or mobile.</p>
+        <div class="featured-badges" aria-label="Game features"><span>Family Friendly</span><span>Mobile Ready</span><span>Save Progress</span><span>New &amp; Updated</span></div>
+        <div class="featured-actions"><a class="featured-primary" href="stickman-smart-escape.html">Play Smart Escape</a><button class="featured-secondary" id="viewAllGames" type="button">Browse Games</button></div>
+      </div>
+      <div class="featured-art featured-smart-art" aria-hidden="true">
+        <img class="featured-shot" src="https://game.youooo.com/og-preview.png" alt="" loading="eager" fetchpriority="high" />
+        <div class="featured-shot-label">Smart Escape</div>
+      </div>
+    </section>
+
+    <div class="hub-stats" aria-label="Game hub features"><span><strong>12</strong> Games</span><span><strong>✓</strong> Mobile Friendly</span><span><strong>💾</strong> Save Progress</span><span><strong>★</strong> Free to Play</span></div>
+
+    <aside class="install-banner hidden" id="installBanner" aria-live="polite"><div><strong>Install Youooo Games</strong><span>Play faster from your home screen.</span></div><button id="installAppButton" type="button">Install Game Hub</button><button id="dismissInstallButton" class="install-dismiss" type="button" aria-label="Dismiss install suggestion">×</button></aside>
+
+    <section class="games-browser" aria-labelledby="gamesHeading">
+      <div class="games-browser-heading"><div><p class="featured-eyebrow">Choose your next game</p><h2 id="gamesHeading">All Games</h2></div><div class="category-tabs" id="gameFilters" role="tablist" aria-label="Filter games by category"><button class="category-filter active" type="button" data-filter="all" role="tab" aria-selected="true">All</button><button class="category-filter" type="button" data-filter="stickman" role="tab" aria-selected="false">Stickman</button><button class="category-filter" type="button" data-filter="puzzle" role="tab" aria-selected="false">Puzzle</button><button class="category-filter" type="button" data-filter="strategy" role="tab" aria-selected="false">Strategy</button><button class="category-filter" type="button" data-filter="arcade" role="tab" aria-selected="false">Arcade</button></div></div>
+      <p class="favorites-empty hidden" id="favoritesEmpty">No favorites yet. Tap a heart on any game to save it here.</p>
+    </section>
+
+    <div class="game-hub-grid" id="gamesGrid">
+
+      <div class="game-card chess-card" data-game="chess" data-game-id="chess" data-categories="strategy" tabindex="0" role="link" aria-label="Play Chess">
+        <div class="card-glow"></div>
+        <button class="favorite-button" type="button" aria-label="Add Chess to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-chess" aria-hidden="true"><span class="preview-icon">♟</span><span class="preview-title">Chess</span></div>
+        <h2 class="game-card-name">Chess</h2>
+        <p class="game-card-desc">Strategy, tactics &amp; AI challenge</p>
+        <div class="game-tags">
+          <span class="tag">vs AI</span>
+          <span class="tag">2 Players</span>
+          <span class="tag tag-online">Online</span>
+        </div>
+        <button class="play-btn">Play Now</button>
+      </div>
+
+      <div class="game-card checkers-card" data-game="checkers" data-game-id="checkers" data-categories="strategy" tabindex="0" role="link" aria-label="Play Checkers">
+        <div class="card-glow"></div>
+        <button class="favorite-button" type="button" aria-label="Add Checkers to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-checkers" aria-hidden="true"><span class="preview-icon">⬡</span><span class="preview-title">Checkers</span></div>
+        <h2 class="game-card-name">Checkers</h2>
+        <p class="game-card-desc">Classic draughts with online rooms</p>
+        <div class="game-tags">
+          <span class="tag">vs AI</span>
+          <span class="tag">2 Players</span>
+          <span class="tag tag-online">Online</span>
+        </div>
+        <button class="play-btn">Play Now</button>
+      </div>
+
+      <div class="game-card gems-card" data-game="gems" data-game-id="gems" data-categories="puzzle" tabindex="0" role="link" aria-label="Play Gems Crush">
+        <div class="card-glow"></div>
+        <button class="favorite-button" type="button" aria-label="Add Gems Crush to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-gems" aria-hidden="true"><span class="preview-icon">💎</span><span class="preview-title">Gems Crush</span></div>
+        <h2 class="game-card-name">Gems Crush</h2>
+        <p class="game-card-desc">Swap &amp; match gems to score big!</p>
+        <div class="game-tags">
+          <span class="tag">Puzzle</span>
+          <span class="tag">Match-3</span>
+          <span class="tag tag-new">New!</span>
+        </div>
+        <button class="play-btn">Play Now</button>
+      </div>
+
+      <div class="game-card snake-card" data-game="snake" data-game-id="snake" data-categories="arcade" tabindex="0" role="link" aria-label="Play Snake">
+        <div class="card-glow"></div>
+        <button class="favorite-button" type="button" aria-label="Add Snake to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-snake" aria-hidden="true"><span class="preview-icon">🐍</span><span class="preview-title">Snake</span></div>
+        <h2 class="game-card-name">Snake</h2>
+        <p class="game-card-desc">Eat, grow, survive — classic arcade!</p>
+        <div class="game-tags">
+          <span class="tag">Arcade</span>
+          <span class="tag">High Score</span>
+          <span class="tag tag-new">New!</span>
+        </div>
+        <button class="play-btn">Play Now</button>
+      </div>
+
+      <div class="game-card fruit-card" data-game="fruit" data-game-id="merge-fruit" data-categories="arcade" tabindex="0" role="link" aria-label="Play Merge Fruit">
+        <div class="card-glow"></div>
+        <button class="favorite-button" type="button" aria-label="Add Merge Fruit to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-fruit" aria-hidden="true"><span class="preview-icon">🍉</span><span class="preview-title">Merge Fruit</span></div>
+        <h2 class="game-card-name">Merge Fruit</h2>
+        <p class="game-card-desc">Drop, merge, climb the score — viral mobile chaos!</p>
+        <div class="game-tags">
+          <span class="tag">Physics</span>
+          <span class="tag">High Score</span>
+          <span class="tag tag-new">Hot!</span>
+        </div>
+        <button class="play-btn">Play Now</button>
+      </div>
+
+      <article class="game-card stickman-card" data-game-id="stickman-escape" data-categories="stickman arcade" data-href="stickman-escape.html" tabindex="0" role="link" aria-label="Play Stickman Escape">
+        <div class="card-glow"></div>
+        <button class="favorite-button" type="button" aria-label="Add Stickman Escape to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-escape" aria-hidden="true"><div class="preview-stickman"><span>Y</span></div><span class="preview-title">Stickman Escape</span><i class="preview-portal">Y</i></div>
+        <h2 class="game-card-name">Stickman Escape</h2>
+        <p class="game-card-desc">Run, jump, dodge traps, and find the portal</p>
+        <div class="game-tags">
+          <span class="tag">Platformer</span>
+          <span class="tag">30 Levels</span>
+          <span class="tag tag-new">New!</span>
+        </div>
+        <a class="play-btn" href="stickman-escape.html">Play Now</a>
+        <a class="play-btn itch-btn" href="https://youooo.itch.io/stickman-escape" target="_blank" rel="noopener noreferrer">Play on itch.io</a>
+      </article>
+
+      <article class="game-card stickman-card" data-game-id="stickman-arena" data-categories="stickman arcade" data-href="stickman-arena.html" tabindex="0" role="link" aria-label="Play Stickman Arena">
+        <div class="card-glow"></div>
+        <button class="favorite-button" type="button" aria-label="Add Stickman Arena to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-arena" aria-hidden="true"><div class="preview-stickman"><span>Y</span></div><span class="preview-title">Stickman Arena</span><i class="preview-enemy"></i></div>
+        <h2 class="game-card-name">Stickman Arena</h2>
+        <p class="game-card-desc">Fight enemy waves, unlock weapons, and chase a high score</p>
+        <div class="game-tags">
+          <span class="tag">Arena Action</span>
+          <span class="tag">5 Weapons</span>
+          <span class="tag tag-new">New!</span>
+        </div>
+        <a class="play-btn" href="stickman-arena.html">Play Now</a>
+      </article>
+
+      <article class="game-card stickman-card" data-game-id="stickman-maze-run" data-categories="stickman puzzle" data-href="stickman-maze-run.html" tabindex="0" role="link" aria-label="Play Stickman Maze Run">
+        <div class="card-glow"></div>
+        <button class="favorite-button" type="button" aria-label="Add Stickman Maze Run to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-maze" aria-hidden="true"><div class="preview-stickman"><span>Y</span></div><span class="preview-title">Stickman Maze Run</span><i class="preview-maze-lines"></i><i class="preview-maze-key">K</i></div>
+        <h2 class="game-card-name">Stickman Maze Run</h2>
+        <p class="game-card-desc">Solve unpredictable mazes packed with traps and puzzles</p>
+        <div class="game-tags"><span class="tag">Puzzle Maze</span><span class="tag">Procedural</span><span class="tag tag-new">New!</span></div>
+        <a class="play-btn" href="stickman-maze-run.html">Play Now</a>
+      </article>
+
+      <article class="game-card stickman-card" data-game-id="stickman-smart-escape" data-categories="stickman puzzle" data-href="stickman-smart-escape.html" tabindex="0" role="link" aria-label="Play Stickman Smart Escape">
+        <div class="card-glow"></div>
+        <button class="favorite-button" type="button" aria-label="Add Stickman Smart Escape to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-smart" aria-hidden="true"><div class="preview-stickman"><span>Y</span></div><span class="preview-title">Stickman Smart Escape</span><i class="preview-smart-key">K</i><i class="preview-smart-saw"></i><i class="preview-smart-door">Y</i></div>
+        <h2 class="game-card-name">Stickman Smart Escape</h2>
+        <p class="game-card-desc">Think, time traps, use the yo-yo, and unlock the exit</p>
+        <div class="game-tags"><span class="tag">Puzzle Trap</span><span class="tag">20 Levels</span><span class="tag tag-new">New!</span></div>
+        <a class="play-btn" href="stickman-smart-escape.html">Play Now</a>
+      </article>
+
+      <article class="game-card stickman-card" data-game-id="stickman-odyssey" data-categories="stickman puzzle" data-href="stickman-odyssey.html" tabindex="0" role="link" aria-label="Play Stickman Odyssey">
+        <div class="card-glow"></div>
+        <button class="favorite-button" type="button" aria-label="Add Stickman Odyssey to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-odyssey" aria-hidden="true"><div class="preview-stickman"><span>Y</span></div><span class="preview-title">Stickman Odyssey</span><i class="preview-ody-vine"></i><i class="preview-ody-artifact">A</i><i class="preview-ody-door"></i></div>
+        <h2 class="game-card-name">Stickman Odyssey</h2>
+        <p class="game-card-desc">Explore jungle ruins with Tamer's yo-yo and whistle</p>
+        <div class="game-tags"><span class="tag">Adventure</span><span class="tag">Connected World</span><span class="tag tag-new">New!</span></div>
+        <a class="play-btn" href="stickman-odyssey.html">Play Now</a>
+      </article>
+
+      <article class="game-card mahjong-card" data-game-id="mesopotamia-mahjong" data-categories="puzzle strategy" data-href="mesopotamia-mahjong.html" tabindex="0" role="link" aria-label="Play Mesopotamia Mahjong">
+        <div class="card-glow"></div>
+        <button class="favorite-button" type="button" aria-label="Add Mesopotamia Mahjong to favorites" aria-pressed="false">♡</button>
+        <div class="game-preview preview-mahjong" aria-hidden="true"><span class="preview-title">Mesopotamia Mahjong</span><i class="preview-mahjong-sun"></i><i class="preview-mahjong-tile tile-one">𒀭</i><i class="preview-mahjong-tile tile-two">𒈗</i><i class="preview-mahjong-tile tile-three">𒆍</i><i class="preview-mahjong-zig"></i></div>
+        <h2 class="game-card-name">Mesopotamia Mahjong</h2>
+        <p class="game-card-desc">Match ancient clay tiles through 50 puzzle layouts</p>
+        <div class="game-tags"><span class="tag">Mahjong</span><span class="tag">50 Levels</span><span class="tag tag-new">New!</span></div>
+        <a class="play-btn" href="mesopotamia-mahjong.html">Play Now</a>
+      </article>
+
+    </div>
+
+    <!-- Leaderboard button -->
+    <div style="text-align:center;margin:0 0 20px">
+      <button class="btn-secondary" id="openLeaderBtn" style="padding:12px 32px;font-size:1rem;">🏆 Global Leaderboard</button>
+    </div>
+
+    <footer class="hub-footer">
+      <div class="footer-group"><h2>Games</h2><div><a href="mesopotamia-mahjong.html">Mesopotamia Mahjong</a><a href="stickman-escape.html">Stickman Escape</a><a href="stickman-odyssey.html">Stickman Odyssey</a><a href="stickman-smart-escape.html">Stickman Smart Escape</a><a href="stickman-arena.html">Stickman Arena</a><a href="stickman-maze-run.html">Stickman Maze Run</a><a href="#gamesGrid">All Games</a></div></div>
+      <div class="footer-group"><h2>Links</h2><div><a href="#privacy">Privacy Policy</a><a href="#contact">Contact</a><a href="sitemap.xml">Sitemap</a></div></div>
+      <div class="footer-group"><h2>Other YouOOO Tools</h2><div><a href="https://youooo.com" target="_blank" rel="noopener">Username Checker</a><a href="https://resume.youooo.com" target="_blank" rel="noopener">Resume Builder</a><a href="https://linux.youooo.com" target="_blank" rel="noopener">Learn Linux</a><a href="https://quran.youooo.com" target="_blank" rel="noopener">Quran</a></div></div>
+    </footer>
+
+    <section class="portal-notes">
+      <article id="privacy">
+        <h2>Privacy Policy</h2>
+        <p>Youooo Games uses local storage for favorites, progress, and settings. No account is required to play the browser games on this page.</p>
+      </article>
+      <article id="contact">
+        <h2>Contact</h2>
+        <p>For questions or feedback, visit Youooo support through the main site or email the team from the contact page.</p>
+      </article>
+    </section>
+
+    <section class="seo-games-panel">
+      <p class="seo-eyebrow">Free Browser Games</p>
+      <h1>Play Free Browser Games - Puzzle, Adventure, Strategy and Stickman</h1>
+      <p>
+        Youooo Games is a casual browser game hub for quick play. Enjoy strategy games, puzzle games, arcade classics, and stickman adventures with fast loading, clean layout, and mobile support.
+        No signup is required, and the games work on desktop and mobile browsers.
+      </p>
+      <div class="seo-game-links" aria-label="Game pages">
+        <a href="chess.html">Play chess online free no login</a>
+        <a href="checkers.html">Play checkers online free</a>
+        <a href="snake.html">Play snake game online classic</a>
+        <a href="merge-fruit.html">Play merge fruit game online free</a>
+        <a href="gems-crush.html">Play Gems Crush match-3 online</a>
+        <a href="mesopotamia-mahjong.html">Play Mesopotamia Mahjong solitaire</a>
+        <a href="stickman-escape.html">Play Stickman Escape platform game</a>
+        <a href="stickman-odyssey.html">Play Stickman Odyssey adventure platformer</a>
+        <a href="stickman-smart-escape.html">Play Stickman Smart Escape puzzle platformer</a>
+        <a href="stickman-arena.html">Play Stickman Arena fighting game</a>
+        <a href="stickman-maze-run.html">Play Stickman Maze Run puzzle game</a>
+      </div>
+    </section>
+  </div>
+
+  <!-- ══ CHESS VIEW ═════════════════════════════════════════════ -->
+  <div id="view-chess" class="view">
+    <div class="game-topbar chess-bar">
+      <button class="back-btn" data-target="hub">← Hub</button>
+      <span class="game-topbar-title">♟ Chess</span>
+      <span class="online-badge hidden" id="chessOnlineBadge">🟢 Online</span>
+    </div>
+    <div class="chess-layout">
+      <div class="chess-sidebar">
+        <div class="sidebar-card">
+          <h3>Mode</h3>
+          <div class="btn-group">
+            <button class="mode-btn active" data-chess-mode="ai">vs AI</button>
+            <button class="mode-btn" data-chess-mode="local">2 Players</button>
+            <button class="mode-btn" data-chess-mode="create">Create Room</button>
+            <button class="mode-btn" data-chess-mode="join">Join Room</button>
+          </div>
+        </div>
+        <div class="sidebar-card" id="chessDiffCard">
+          <h3>AI Difficulty</h3>
+          <div class="btn-group">
+            <button class="diff-btn active" data-chess-diff="easy">Easy</button>
+            <button class="diff-btn" data-chess-diff="medium">Medium</button>
+            <button class="diff-btn" data-chess-diff="hard">Hard</button>
+            <button class="diff-btn" data-chess-diff="expert">Expert</button>
+          </div>
+        </div>
+        <div class="sidebar-card">
+          <h3>Status</h3>
+          <div class="status-display" id="chessStatus">White's turn</div>
+        </div>
+        <div class="sidebar-card">
+          <div class="card-row">
+            <h3>Move History</h3>
+            <button class="icon-btn" id="chessResetBtn" title="Reset">↺</button>
+          </div>
+          <ol class="move-history" id="chessMoveHistory"></ol>
+        </div>
+      </div>
+      <div class="board-center">
+        <div id="chessBoardWrap">
+          <div id="chessboard"></div>
+        </div>
+        <button class="start-btn" id="chessStartBtn" type="button">Start Game</button>
+        <button class="flip-btn" id="chessFlipBtn">⇅ Flip Board</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CHECKERS VIEW ══════════════════════════════════════════ -->
+  <div id="view-checkers" class="view">
+    <div class="game-topbar checkers-bar">
+      <button class="back-btn" data-target="hub">← Hub</button>
+      <span class="game-topbar-title">⬡ Checkers</span>
+      <span class="online-badge hidden" id="ckOnlineBadge">🟢 Online</span>
+    </div>
+    <div class="chess-layout">
+      <div class="chess-sidebar">
+        <div class="sidebar-card">
+          <h3>Mode</h3>
+          <div class="btn-group">
+            <button class="mode-btn active" data-ck-mode="ai">vs AI</button>
+            <button class="mode-btn" data-ck-mode="local">2 Players</button>
+            <button class="mode-btn" data-ck-mode="create">Create Room</button>
+            <button class="mode-btn" data-ck-mode="join">Join Room</button>
+          </div>
+        </div>
+        <div class="sidebar-card" id="ckDiffCard">
+          <h3>AI Difficulty</h3>
+          <div class="btn-group">
+            <button class="diff-btn active" data-ck-diff="easy">Easy</button>
+            <button class="diff-btn" data-ck-diff="medium">Medium</button>
+            <button class="diff-btn" data-ck-diff="hard">Hard</button>
+          </div>
+        </div>
+        <div class="sidebar-card">
+          <h3>Status</h3>
+          <div class="status-display" id="ckStatus">Red's turn</div>
+        </div>
+        <div class="sidebar-card">
+          <div class="card-row">
+            <h3>Captures</h3>
+            <button class="icon-btn" id="ckResetBtn" title="Reset">↺</button>
+          </div>
+          <div class="captures-display">
+            <span>🔴 Red: <strong id="ckRedCaptures">0</strong></span>
+            <span>⚫ Black: <strong id="ckBlackCaptures">0</strong></span>
+          </div>
+        </div>
+      </div>
+      <div class="board-center">
+        <div class="ck-board-wrap">
+          <div id="checkersGrid" class="ck-board"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ GEMS CRUSH VIEW ════════════════════════════════════════ -->
+  <div id="view-gems" class="view">
+    <div class="game-topbar gems-bar">
+      <button class="back-btn" data-target="hub">← Hub</button>
+      <span class="game-topbar-title">💎 Gems Crush</span>
+      <button class="btn-secondary gems-sound-btn" id="gemsSoundBtn" type="button">🔊 Sound On</button>
+    </div>
+    <div class="gems-layout">
+      <div class="gems-sidebar">
+        <div class="sidebar-card gems-score-card">
+          <h3>Score</h3>
+          <div class="gems-score-num" id="gemsScore">0</div>
+          <div class="gems-best-txt" id="gemsBest">Best: 0</div>
+          <div class="gems-best-txt" id="gemsBestOwner">Player: Guest</div>
+          <div class="gems-best-txt" id="gemsTrophies">Trophies: 0</div>
+          <label class="gems-player-field">
+            <span>Player Name</span>
+            <input type="text" id="gemsPlayerName" maxlength="18" placeholder="Enter name" />
+          </label>
+          <button class="btn-secondary full" id="gemsSavePlayerBtn" type="button">Save Player</button>
+        </div>
+        <div class="sidebar-card">
+          <h3>Level <span id="gemsLevelNum">1</span></h3>
+          <div class="gems-progress-wrap">
+            <div class="gems-stage-name" id="gemsStageName">Candy Meadow</div>
+            <div class="gems-progress-bar">
+              <div class="gems-progress-fill" id="gemsProgressFill" style="width:0%"></div>
+            </div>
+            <div class="gems-target-txt" id="gemsTargetTxt">Target: 500</div>
+            <div class="gems-goal-txt" id="gemsGoalTxt">Goal: reach the target before you run out of moves.</div>
+          </div>
+        </div>
+        <div class="sidebar-card">
+          <h3>Moves Left</h3>
+          <div class="gems-moves-num" id="gemsMoves">20</div>
+          <div class="gems-best-txt" id="gemsContinueTxt">Continue: ready</div>
+        </div>
+        <div class="sidebar-card">
+          <h3>Bonuses</h3>
+          <div class="gems-combo-row">
+            <span>Combo</span>
+            <strong id="gemsComboNum">x1</strong>
+          </div>
+          <div class="gems-progress-wrap">
+            <div class="gems-progress-bar gems-gift-bar">
+              <div class="gems-progress-fill gems-gift-fill" id="gemsGiftFill" style="width:0%"></div>
+            </div>
+            <div class="gems-target-txt" id="gemsGiftTxt">Gift Meter: 0%</div>
+          </div>
+          <button class="btn-primary full" id="gemsGiftBtn" disabled>🎡 Spin Wheel</button>
+          <div class="gems-reward-text" id="gemsRewardText">Big matches and cascades charge your gift meter.</div>
+        </div>
+        <div class="sidebar-card">
+          <h3>Super Powers</h3>
+          <div class="gems-power-grid">
+            <button class="btn-secondary" id="gemsReshuffleBtn">🔀 Reshuffle <span id="gemsReshuffleCount">1</span></button>
+            <button class="btn-secondary" id="gemsRowBlastBtn">💥 Row <span id="gemsRowBlastCount">0</span></button>
+            <button class="btn-secondary" id="gemsColBlastBtn">⚡ Column <span id="gemsColBlastCount">0</span></button>
+          </div>
+          <div class="gems-reward-text" id="gemsPowerHint">Reshuffle is refreshed every level. Large clears and wheel rewards can charge row and column wipes.</div>
+        </div>
+        <div class="sidebar-card gems-hint-card">
+          <h3>How to Play</h3>
+          <p class="gems-hint-txt">Tap a gem, then tap an adjacent gem to swap. Match 3 or more in a row to score. Large clears build combos, trophies, super powers, and wheel spins that can save a failed run.</p>
+        </div>
+        <button class="btn-secondary full" id="gemsNewGameBtn">↺ New Game</button>
+      </div>
+      <div class="gems-board-wrap">
+        <div class="gems-board-shell">
+          <div class="gems-shell-top">
+            <div>
+              <div class="gems-shell-title">Candy Parade</div>
+              <div class="gems-shell-subtitle" id="gemsShellSubtitle">Chain sweet matches, trigger powers, and clear the target.</div>
+            </div>
+            <div class="gems-shell-badge" id="gemsShellBadge">Sweet x1</div>
+          </div>
+        <div class="gems-celebration hidden" id="gemsCelebration"></div>
+        <div class="gems-status-toast hidden" id="gemsStatusToast">Sweet!</div>
+        <div id="gemsBoard" class="gems-board"></div>
+        <div class="gems-overlay hidden" id="gemsOverlay">
+          <div class="gems-overlay-inner">
+            <div class="gems-over-icon" id="gemsOverIcon">💎</div>
+            <div class="gems-over-title" id="gemsOverTitle">Level Complete!</div>
+            <div class="gems-over-score" id="gemsOverScore"></div>
+            <button class="btn-primary" id="gemsNextBtn" style="display:none">Next Level →</button>
+            <button class="btn-primary" id="gemsContinueBtn" style="display:none">Continue +4 Moves</button>
+            <button class="btn-secondary" id="gemsReplayBtn" style="display:none">Replay Same Level</button>
+            <button class="btn-secondary" id="gemsRetryBtn">Restart Level 1</button>
+          </div>
+        </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SNAKE VIEW ════════════════════════════════════════════ -->
+  <div id="view-snake" class="view">
+    <div class="game-topbar snake-bar">
+      <button class="back-btn" data-target="hub">← Hub</button>
+      <span class="game-topbar-title">🐍 Snake</span>
+      <button class="btn-secondary" id="snakeShareBtn" style="display:none">📤 Share</button>
+    </div>
+    <div class="snake-layout">
+      <div class="snake-sidebar">
+        <div class="sidebar-card">
+          <h3>Score</h3>
+          <div class="snake-score-num" id="snakeScore">0</div>
+          <div class="snake-best-txt" id="snakeBest">Best: 0</div>
+          <label class="gems-player-field" style="margin-top:10px">
+            <span>Your Name</span>
+            <input type="text" id="snakePlayerName" maxlength="16" placeholder="Enter name" />
+          </label>
+        </div>
+        <div class="sidebar-card">
+          <h3>Speed</h3>
+          <div class="btn-group">
+            <button class="diff-btn" data-snake-speed="slow">🐢 Slow</button>
+            <button class="diff-btn active" data-snake-speed="normal">⚡ Normal</button>
+            <button class="diff-btn" data-snake-speed="fast">🔥 Fast</button>
+          </div>
+        </div>
+        <div class="sidebar-card">
+          <h3>How to Play</h3>
+          <p class="game-hint">Arrow keys or WASD to move. Swipe on mobile. Eat 🍎 to grow. Don't hit the walls or yourself! Big scores go on the global leaderboard.</p>
+        </div>
+        <button class="btn-secondary full" id="snakeNewBtn">↺ New Game</button>
+        <button class="btn-secondary full" id="snakeLeaderBtn" style="margin-top:8px">🏆 Leaderboard</button>
+      </div>
+      <div class="snake-board-wrap">
+        <canvas id="snakeCanvas" class="snake-canvas"></canvas>
+        <div class="snake-overlay hidden" id="snakeOverlay">
+          <div class="snake-overlay-inner">
+            <div class="snake-over-icon" id="snakeOverIcon">🐍</div>
+            <div class="snake-over-title" id="snakeOverTitle">Game Over!</div>
+            <div class="snake-over-score" id="snakeOverScore"></div>
+            <button class="btn-primary" id="snakeRetryBtn" style="margin-top:14px">Play Again</button>
+            <button class="btn-secondary" id="snakeShareOverBtn" style="margin-top:8px">📤 Share Score</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MERGE FRUIT VIEW ═════════════════════════════════════ -->
+  <div id="view-fruit" class="view">
+    <div class="game-topbar fruit-bar">
+      <button class="back-btn" data-target="hub">← Hub</button>
+      <span class="game-topbar-title">🍉 Merge Fruit</span>
+      <button class="btn-secondary" id="fruitShareBtn" style="display:none">📤 Share</button>
+    </div>
+    <div class="fruit-layout">
+      <div class="fruit-sidebar">
+        <div class="sidebar-card">
+          <h3>Score</h3>
+          <div class="fruit-score-num" id="fruitScore">0</div>
+          <div class="fruit-best-txt" id="fruitBest">Best: 0</div>
+          <label class="gems-player-field" style="margin-top:10px">
+            <span>Your Name</span>
+            <input type="text" id="fruitPlayerName" maxlength="16" placeholder="Enter name" />
+          </label>
+        </div>
+        <div class="sidebar-card">
+          <h3>Next Fruit</h3>
+          <div class="fruit-next-preview" id="fruitNextPreview">🍒</div>
+          <p class="game-hint">Drop fruit into the cup. Two matching fruits merge into a bigger one. Fill the cup too high and the run ends.</p>
+        </div>
+        <div class="sidebar-card">
+          <h3>How to Win</h3>
+          <p class="game-hint">Stay balanced, create chain merges, and build toward the biggest fruit. This game is made for quick retries and score sharing.</p>
+        </div>
+        <button class="btn-secondary full" id="fruitNewBtn">↺ New Game</button>
+        <button class="btn-secondary full" id="fruitLeaderBtn" style="margin-top:8px">🏆 Leaderboard</button>
+      </div>
+      <div class="fruit-board-wrap">
+        <canvas id="fruitCanvas" class="fruit-canvas"></canvas>
+        <div class="fruit-drop-guide" id="fruitDropGuide"></div>
+        <div class="fruit-overlay hidden" id="fruitOverlay">
+          <div class="fruit-overlay-inner">
+            <div class="fruit-over-icon" id="fruitOverIcon">🍉</div>
+            <div class="fruit-over-title" id="fruitOverTitle">Game Over!</div>
+            <div class="fruit-over-score" id="fruitOverScore"></div>
+            <button class="btn-primary" id="fruitRetryBtn" style="margin-top:14px">Play Again</button>
+            <button class="btn-secondary" id="fruitShareOverBtn" style="margin-top:8px">📤 Share Score</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ GLOBAL LEADERBOARD MODAL ══════════════════════════════ -->
+  <div class="modal-overlay hidden" id="leaderModal">
+    <div class="modal-box leader-modal-box">
+      <button class="modal-close" id="closeLeaderModal">✕</button>
+      <div class="leader-header">
+        <div class="room-icon">🏆</div>
+        <h3>Global Leaderboard</h3>
+      </div>
+      <div class="leader-tabs">
+        <button class="leader-tab active" data-ltab="snake">🐍 Snake</button>
+        <button class="leader-tab" data-ltab="fruit">🍉 Fruit</button>
+        <button class="leader-tab" data-ltab="gems">💎 Gems</button>
+      </div>
+      <ol class="leader-list" id="leaderList">
+        <li class="leader-loading">Loading…</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script>
+    firebase.initializeApp({
+      apiKey: "AIzaSyDUipT-BFyt_h2jMc3UjiHq9G010zP71dg",
+      authDomain: "youooo-chess.firebaseapp.com",
+      databaseURL: "https://youooo-chess-default-rtdb.firebaseio.com/",
+      projectId: "youooo-chess",
+      storageBucket: "youooo-chess.firebasestorage.app",
+      messagingSenderId: "726873828616",
+      appId: "1:726873828616:web:829a600819024bcf2910bd"
+    });
+  </script>
+  <script src="leaderboard.js"></script>
+  <script src="script.js"></script>
+  <script src="snake-extra.js"></script>
+  <script src="merge-fruit-extra.js"></script>
+  <script src="gems-upgrade.js?v=20260704-gems-polish-v1"></script>
+</body>
+</html>

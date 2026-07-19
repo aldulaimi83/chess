@@ -1,153 +1,82 @@
-# 🎮 Youooo Games - Free Online Game Hub
+# Youooo Games
 
-Play free browser games online with no signup required. Chess, Checkers, Snake, Gems Crush, and exclusive puzzle games. Works on desktop and mobile.
+Youooo Games is a static browser-gaming platform published at [game.youooo.com](https://game.youooo.com). It combines an original dashboard interface with eleven playable games and remains compatible with GitHub Pages.
 
-**🌐 [Play Now](https://game.youooo.com)**
+## Platform pages
 
-## 🎯 Games Available
+- `index.html` — platform home
+- `dashboard.html` — local player progress, favorites, and activity
+- `games.html` — searchable and filterable game library
+- `leaderboards.html` — clearly labeled demonstration leaderboards
+- `achievements.html` — achievement progress stored on the current device
+- `rewards.html` — seven-day demonstration reward calendar
+- `admin.html` — safe front-end administration prototype
+- `classic-games.html` — preserved playable hub for Chess, Checkers, Gems Crush, Snake, and Merge Fruit
 
-### Strategy Games
-- **♟ Chess** - Classic chess with AI and multiplayer online rooms
-  - Play vs AI (multiple difficulty levels)
-  - 2-player local mode
-  - Online multiplayer with room codes
-  - Smart AI opponent
+Shared platform presentation and behavior live in `platform.css` and `platform.js`. The older game hub continues to use `style.css`, `script.js`, `leaderboard.js`, `snake-extra.js`, `merge-fruit-extra.js`, and `gems-upgrade.js`.
 
-- **⬡ Checkers** - Traditional checkers/draughts
-  - Compete against AI
-  - Challenge a friend online
-  - Classic rules with modern interface
+## Games and routes
 
-### Puzzle Games
-- **💎 Gems Crush** - Match-3 puzzle gameplay
-  - Swap and match gems
-  - Progressively challenging levels
-  - Addictive arcade mechanics
-  - Leaderboard tracking
+| Game | Play route |
+| --- | --- |
+| Chess | `classic-games.html#chess` |
+| Checkers | `classic-games.html#checkers` |
+| Gems Crush | `classic-games.html#gems-crush` |
+| Snake | `classic-games.html#snake` |
+| Merge Fruit | `classic-games.html#merge-fruit` |
+| Mesopotamia Mahjong | `mesopotamia-mahjong.html` |
+| Stickman Escape | `stickman-escape.html` |
+| Stickman Arena | `stickman-arena.html` |
+| Stickman Maze Run | `stickman-maze-run.html` |
+| Stickman Smart Escape | `stickman-smart-escape.html` |
+| Stickman Odyssey | `stickman-odyssey.html` |
 
-  - Smooth animations
-  - High score tracking
-  - Undo moves
+The public SEO landing routes `chess.html`, `checkers.html`, `gems-crush.html`, `snake.html`, and `merge-fruit.html` remain available and direct players to the matching preserved game view.
 
-- **🧩 ChromaMaze** - Unique color puzzle (NEW!)
-  - Navigate mazes by color sequence
-  - Progressive difficulty
-  - Brain-teasing logic puzzles
-  - Hundreds of levels
+## Local persistence
 
-### Action Games
-- **🐍 Snake** - Classic snake arcade game
-  - Eat food, grow longer
-  - Increasing difficulty
-  - Compete for high score
-  - Multiple game modes
+The dashboard uses the `youooo_platform_state_v1` localStorage record for:
 
-## ✨ Features
+- Player display name
+- Favorites
+- Recent and played games
+- Coins and XP
+- Daily reward streak and history
+- Achievement progress derived from local activity
 
-- **🚀 No Installation** - Play directly in browser
-- **📱 Mobile Friendly** - Responsive design for all devices
-- **🌙 Offline Support** - Play without internet (PWA)
-- **💾 Save Progress** - Your scores and progress sync locally
-- **🎯 High Scores** - Track your best performances
-- **👥 Multiplayer** - Challenge friends in online rooms
-- **⚡ Fast & Light** - Loads in seconds
-- **🔒 Privacy** - No accounts or data collection
+This data stays on the visitor’s device. The demo leaderboards, example chart, and admin metrics are interface prototypes and are not presented as live server data.
 
-## 🎮 How to Play
+## Artwork
 
-### Chess & Checkers
-1. Select game from hub
-2. Choose opponent (AI or friend)
-3. For online: Create room or join with code
-4. Make your moves and checkmate!
+The new platform uses local CSS color compositions and text-based game symbols so it does not depend on third-party imagery. These are intentional lightweight placeholders. They can later be replaced with optimized screenshots created from the actual games while keeping the same card markup and accessible labels.
 
-1. Learn the rules (quick tutorial on game page)
-2. Make strategic moves
-3. Beat your high score
-4. Compete globally
+## Run locally
 
-### ChromaMaze
-1. Select difficulty level
-2. Memorize the color sequence
-3. Navigate the maze collecting colors in order
-4. Reach the exit to complete the puzzle
-5. Unlock harder levels
+From the repository root:
 
-## 🏆 Leaderboards
+```bash
+python3 -m http.server 8000
+```
 
-Track your progress and compete:
-- **Global Leaderboards** - Top players worldwide
-- **Personal Best** - Your high scores
-- **Daily Challenges** - Limited-time competitions
-- **Achievements** - Unlock badges for milestones
+Then open `http://localhost:8000/`.
 
-## 💡 Strategy Tips
+## Deployment
 
-### Chess
-- Control the center of the board
-- Develop pieces early
-- Protect your king
-- Look ahead 3-4 moves
+GitHub Pages serves the repository from `main`. Keep `CNAME` exactly:
 
-### Checkers
-- Back row is your safety zone
-- Create multiple jumps when possible
-- Don't lose pieces early game
-- Control the king row for promotion
+```text
+game.youooo.com
+```
 
-- Keep one corner locked
-- Build up one side first
-- Don't random tap
-- Plan 3-4 moves ahead
+The site has no build step. Commit static files and push to `main` to deploy.
 
-### Gems Crush
-- Look for cascade opportunities
-- Make special combo gems (4+ matches)
-- Use power-ups strategically
-- Plan multiple steps ahead
+## Backup
 
-### ChromaMaze
-- Study the maze pattern first
-- Memorize color sequences before moving
-- Use corners to plan ahead
-- Start with easier levels to understand mechanics
+The homepage that preceded the dashboard rebuild is preserved in two ways:
 
-## 🛠️ Technical Details
+- Git branch: `backup/pre-gaming-dashboard-20260718`
+- Playable repository route: `classic-games.html`
 
-- **Built with** - Vanilla JavaScript, HTML5 Canvas
-- **No Dependencies** - Pure frontend, zero bloat
-- **PWA Support** - Installable on home screen
-- **Performance** - 60 FPS gameplay
-- **Browser Support** - All modern browsers
+## License
 
-## 📊 Game Stats
-
-- **Total Games** - 6 unique titles
-- **Play Modes** - Single player, Local multiplayer, Online multiplayer
-- **Total Levels** - 500+ (across all games)
-- **Online Players** - Join anytime, create rooms
-- **Update Frequency** - New challenges monthly
-
-## 🤝 Contributing
-
-Found a bug or have a suggestion? 
-- [Report Issues](https://github.com/aldulaimi83/chess/issues)
-- [Join Discord Community](https://discord.gg/youooo)
-- Star this repo if you enjoy the games! ⭐
-
-## 📜 License
-
-MIT License - Free to use and modify
-
-## 🔗 Links
-
-- **Website** - https://game.youooo.com
-- **Discord** - Community server
-- **Twitter** - @YouoooGames
-- **GitHub** - https://github.com/aldulaimi83/chess
-
----
-
-**Play, Compete, Enjoy!** 🎮✨
-
-Last updated: April 2026
+See `LICENSE`.

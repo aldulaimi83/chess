@@ -1,12 +1,12 @@
 {
   "name": "Youooo Games",
   "short_name": "YGames",
-  "description": "Chess, Checkers, Snake, Gems Crush — play free online",
+  "description": "Play chess, mahjong, arcade, puzzle, and original stickman games in your browser.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
-  "theme_color": "#04080f",
-  "background_color": "#04080f",
+  "theme_color": "#ef8a24",
+  "background_color": "#f8f2e8",
   "categories": ["games", "entertainment"],
   "icons": [
     { "src": "youooo_logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
